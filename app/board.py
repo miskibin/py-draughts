@@ -2,8 +2,11 @@ from __future__ import annotations
 import numpy as np
 from utils import logger
 from typing import List
-from models import Entity, Square, MOVE
+from models import Entity, Square, Move
+from typing import NewType, Generator
 
+MoveType = NewType("MoveType", tuple[int, int])
+Moves = NewType("Moves", List[tuple[Square, Square]])
 # STARTING_POSITION = np.array(
 #     [
 #         [1, 0, 1, 0, 1, 0, 1, 0],
@@ -37,51 +40,74 @@ class Board:
     Therefore just draw them, but not store them.
     """
 
-    __slots__ = ("_position", "turn")
+    __slots__ = (
+        "__position",
+        "turn",
+    )
 
     def __init__(self, position: np.ndarray = STARTING_POSITION) -> None:
         if position.shape != (8, 4) or position.dtype != np.int8:
             msg = f"Invalid board with shape {position.shape} provided. Please use a 8x4 np.int8 array."
             logger.error(msg)
             raise ValueError(msg)
-        self._position = position
+        self.__position = position
         self.turn = Entity.WHITE
 
+    # position getter
+
     @property
-    def legal_moves(self) -> List[tuple[Square, Square]]:
-        """Returns a list of legal moves for the player."""
-        moves = []
-        for square in Square:
-            moves += self._legal_moves_from_square(square)
-        return moves
+    def position(self) -> np.ndarray:
+        """Returns board position."""
+        return self.__position
 
-    def _legal_moves_from_square(self, sq: Square) -> List[tuple[Square, Square]]:
-        logger.info(f"Checking moves from {sq.value}")
+    @property
+    def legal_moves(self) -> Generator[MoveType, None, None]:
+        """Returns a generator of legal moves for the player."""
+
+        if self.turn == Entity.BLACK:
+            position = self.__position[::-1]
+            squares_list = np.transpose(np.nonzero(position == Entity.BLACK))
+        else:
+            position = self.__position
+            squares_list = np.transpose(np.nonzero(position == Entity.WHITE))
+
+        for square in squares_list:
+            target_sqs = self._legal_moves_from_square(square, position)
+            for tg in target_sqs:
+                if self.turn == Entity.BLACK:
+                    yield Square(tuple(square)).reversed, Square(tg).reversed
+                else:
+                    yield Square(tuple(square)), Square(tg)
+
+    def _legal_moves_from_square(self, sq: Square, pos: np.ndarray) -> Moves:
         target_sqs = []
-        try:
-            if self[target := sq.as_np + MOVE.MOVE_LEFT.as_np] == Entity.EMPTY:
-                target_sqs.append(target)
-            if self[target := sq.as_np + MOVE.MOVE_RIGHT.as_np] == Entity.EMPTY:
-                target_sqs.append(target)
+        x, y = tuple(sq)
+        MOVE = Move(x, y)
 
-            # if (
-            #     self[square.as_np + MOVE_TYPE.CAPTURE_LEFT.as_np] == Entity.EMPTY
-            #     and self[square.as_np + (1, 0)] == -self.turn
-            # ):
-            #     moves.append(square.as_np, square.as_np + MOVE_TYPE.CAPTURE_LEFT.as_np)
+        if self._is_sq_valid(MOVE.MOVE_LEFT) and pos[MOVE.MOVE_LEFT] == Entity.EMPTY:
+            target_sqs.append(MOVE.MOVE_LEFT)
 
-            # if (
-            #     self[square.as_np + MOVE_TYPE.CAPTURE_RIGHT.as_np] == Entity.EMPTY
-            #     and self[square.as_np + (1, 1)] == -self.turn
-            # ):
-            #     moves.append(square.as_np, square.as_np + MOVE_TYPE.CAPTURE_RIGHT.as_np)
+        if self._is_sq_valid(MOVE.MOVE_RIGHT) and pos[MOVE.MOVE_RIGHT] == Entity.EMPTY:
+            target_sqs.append(MOVE.MOVE_RIGHT)
 
-            # map all moves to Square
-        except (IndexError, ValueError) as e:
-            logger.debug(f"Error while checking moves from {sq.value}: {e}")
-            pass  # TODO We should not try to move outside the board
+        if (
+            self._is_sq_valid(MOVE.CAPTURE_LEFT)
+            and pos[MOVE.CAPTURE_LEFT] == Entity.EMPTY
+            and pos[(x + 1, y)] == -self.turn
+        ):
+            target_sqs.append(MOVE.CAPTURE_LEFT)
 
-        return [(sq, Square(tuple(tg))) for tg in target_sqs]
+        if (
+            self._is_sq_valid(MOVE.CAPTURE_RIGHT)
+            and pos[MOVE.CAPTURE_RIGHT] == Entity.EMPTY
+            and pos[(x + 1, y - 1)] == -self.turn
+        ):
+            target_sqs.append(MOVE.CAPTURE_RIGHT)
+        return target_sqs
+
+    def _is_sq_valid(self, sq: Square) -> bool:
+        x, y = tuple(sq)
+        return 0 <= x < self.__position.shape[0] and 0 <= y < self.__position.shape[1]
 
     def move(self, move: tuple[Square, Square]) -> None:
         """Moves a piece from one square to another."""
@@ -92,7 +118,7 @@ class Board:
 
     @property
     def friendly_form(self) -> np.ndarray:
-        pos = list(self._position.copy())
+        pos = list(self.__position.copy())
         for row_idx in range(8):
             pos[row_idx] = [
                 pos[row_idx][i // 2] if (i + row_idx) % 2 == 0 else 0 for i in range(8)
@@ -122,24 +148,17 @@ class Board:
         # raise error if key is negative
         if key[0] < 0 or key[1] < 0:
             raise IndexError(f"Index {key} is out of bounds.")
-        return self._position[key[0], key[1]]
-
-    def __setitem__(self, key: tuple[int, int] | Square, value: Entity) -> None:
-        if isinstance(key, Square):
-            key = key.value
-            self._position[key // 8, key % 8] = value
-        else:
-            self._position[key] = value
+        return self.__position[key[0], key[1]]
 
     def __copy__(self) -> Board:
-        return Board(self._position.copy())
+        return Board(self.__position.copy())
 
 
 if __name__ == "__main__":
     board = Board()
     from pprint import pprint
 
-    pprint(board.legal_moves)
+    pprint(list(board.legal_moves))
     # print(board._position)
 
     # a = np.array([[1, 2, 3], [None, 5, 6]])

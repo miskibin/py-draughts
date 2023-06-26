@@ -45,6 +45,11 @@ class Square(Enum):
     def as_np(self):
         return np.array(self.value)
 
+    @cached_property
+    def reversed(self):
+        # (0, 0) -> (7, 3)
+        return Square((7 - self.value[0], 3 - self.value[1]))
+
 
 class Entity(IntEnum):
     BLACK = -1
@@ -52,12 +57,9 @@ class Entity(IntEnum):
     EMPTY = 0
 
 
-class MOVE(Enum):
-    CAPTURE_LEFT = (2, 1)
-    CAPTURE_RIGHT = (2, -1)
-    MOVE_LEFT = (1, 0)
-    MOVE_RIGHT = (1, -1)
-
-    @cached_property
-    def as_np(self):
-        return np.array(self.value)
+class Move:
+    def __init__(self, x, y) -> None:
+        self.CAPTURE_LEFT = (x + 2, y + 1)
+        self.CAPTURE_RIGHT = (x + 2, y - 1)
+        self.MOVE_LEFT = (x + 1, y + 0)
+        self.MOVE_RIGHT = (x + 1, y - 1)
