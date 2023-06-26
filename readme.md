@@ -38,6 +38,7 @@ The `Board` class in `board.py` represents the checkers board. It has the follow
 ## Frontend
 
 The frontend is implemented using HTML and CSS, with the help of the Jinja2 templating engine. The `index.html` template is responsible for rendering the checkers board. It uses a grid-based layout, with each tile representing a square on the checkers board. The tiles are populated dynamically based on the current state of the board.
+![image](https://github.com/michalskibinski109/checkers/assets/77834536/7bcf3a5d-4ea1-4124-a2e2-34fcf400ad17)
 
 ## Contributing
 
