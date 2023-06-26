@@ -2,22 +2,12 @@ from __future__ import annotations
 import numpy as np
 from utils import logger
 from typing import List
-from models import Entity, Square, Move
+from models import Entity, Square, MoveOffsets
 from typing import NewType, Generator
 
-MoveType = NewType("MoveType", tuple[int, int])
+Move = NewType("Move", tuple[int, int])
 Moves = NewType("Moves", List[tuple[Square, Square]])
-# STARTING_POSITION = np.array(
-#     [
-#         [1, 0, 1, 0, 1, 0, 1, 0],
-#         [0, 1, 0, 1, 0, 1, 0, 1],
-#         [1, 0, 1, 0, 1, 0, 1, 0],
-#         [0, 0, 0, 0, 0, 0, 0, 0],
-#         [0, 0, 0, 0, 0, 0, 0, 0],
-#         [0, -1, 0, -1, 0, -1, 0, -1],
-#         [-1, 0, -1, 0, -1, 0, -1, 0],
-#         [0, -1, 0, -1, 0, -1, 0, -1],
-#     ],
+
 STARTING_POSITION = np.array(
     [
         [1, 1, 1, 1],
@@ -61,7 +51,7 @@ class Board:
         return self.__position
 
     @property
-    def legal_moves(self) -> Generator[MoveType, None, None]:
+    def legal_moves(self) -> Generator[Move, None, None]:
         """Returns a generator of legal moves for the player."""
 
         if self.turn == Entity.BLACK:
@@ -82,38 +72,42 @@ class Board:
     def _legal_moves_from_square(self, sq: Square, pos: np.ndarray) -> Moves:
         target_sqs = []
         x, y = tuple(sq)
-        MOVE = Move(x, y)
+        offset = MoveOffsets(x, y)
 
-        if self._is_sq_valid(MOVE.MOVE_LEFT) and pos[MOVE.MOVE_LEFT] == Entity.EMPTY:
-            target_sqs.append(MOVE.MOVE_LEFT)
+        if offset.MOVE_LEFT and pos[offset.MOVE_LEFT] == Entity.EMPTY:
+            target_sqs.append(offset.MOVE_LEFT)
 
-        if self._is_sq_valid(MOVE.MOVE_RIGHT) and pos[MOVE.MOVE_RIGHT] == Entity.EMPTY:
-            target_sqs.append(MOVE.MOVE_RIGHT)
+        if offset.MOVE_RIGHT and pos[offset.MOVE_RIGHT] == Entity.EMPTY:
+            target_sqs.append(offset.MOVE_RIGHT)
 
         if (
-            self._is_sq_valid(MOVE.CAPTURE_LEFT)
-            and pos[MOVE.CAPTURE_LEFT] == Entity.EMPTY
+            offset.CAPTURE_LEFT
+            and pos[offset.CAPTURE_LEFT] == Entity.EMPTY
             and pos[(x + 1, y)] == -self.turn
         ):
-            target_sqs.append(MOVE.CAPTURE_LEFT)
+            target_sqs.append(offset.CAPTURE_LEFT)
 
         if (
-            self._is_sq_valid(MOVE.CAPTURE_RIGHT)
-            and pos[MOVE.CAPTURE_RIGHT] == Entity.EMPTY
+            offset.CAPTURE_RIGHT
+            and pos[offset.CAPTURE_RIGHT] == Entity.EMPTY
             and pos[(x + 1, y - 1)] == -self.turn
         ):
-            target_sqs.append(MOVE.CAPTURE_RIGHT)
+            target_sqs.append(offset.CAPTURE_RIGHT)
         return target_sqs
 
     def _is_sq_valid(self, sq: Square) -> bool:
         x, y = tuple(sq)
         return 0 <= x < self.__position.shape[0] and 0 <= y < self.__position.shape[1]
 
-    def move(self, move: tuple[Square, Square]) -> None:
+    def move(self, move: Move) -> None:
         """Moves a piece from one square to another."""
-        source, target = move
-        self[target] = self[source]
-        self[source] = Entity.EMPTY
+        source, target = tuple(move[0].value), tuple(move[1].value)
+        self.__position[target] = self.__position[source]
+        self.__position[source] = Entity.EMPTY
+        if abs(target[0] - source[0]) == 2:
+            self.__position[
+                (source[0] + target[0]) // 2, (source[1] + target[1]) // 2
+            ] = Entity.EMPTY
         self.turn = Entity.WHITE if self.turn == Entity.BLACK else Entity.BLACK
 
     @property
@@ -140,9 +134,11 @@ class Board:
             representation += f"\n {'-' * 34}\n"
         return representation
 
-    def __getitem__(self, key: tuple[int, int] | Square | np.ndarray) -> Entity:
+    def __getitem__(self, key: tuple[int, int] | Square | np.ndarray | int) -> Entity:
         if isinstance(key, np.ndarray):
             key = tuple(key)
+        if isinstance(key, int):
+            key = (key // 8, key % 4)
         if isinstance(key, Square):
             key = key.value
         # raise error if key is negative
@@ -150,16 +146,16 @@ class Board:
             raise IndexError(f"Index {key} is out of bounds.")
         return self.__position[key[0], key[1]]
 
-    def __copy__(self) -> Board:
-        return Board(self.__position.copy())
-
 
 if __name__ == "__main__":
     board = Board()
     from pprint import pprint
+    from time import sleep
 
-    pprint(list(board.legal_moves))
-    # print(board._position)
-
-    # a = np.array([[1, 2, 3], [None, 5, 6]])
-    # print(np.argwhere(a == 5))
+    # play random game
+    while True:
+        print(list(board))
+        sleep(1.5)
+        moves = list(board.legal_moves)
+        move = moves[np.random.randint(0, len(moves))]
+        board.move(move)

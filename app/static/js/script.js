@@ -28,6 +28,8 @@ const populateBoard = () => {
             i * 4 + j / 2
           }" style="background-color: ${colorMap[boardArray[i][j]]}"></div>`
         );
+      } else {
+        tile.empty();
       }
     }
   }
@@ -52,11 +54,27 @@ const drawBoard = () => {
   }
 };
 
+// on document ready
+
 // on ready
 $(document).ready(() => {
   drawBoard();
   populateBoard();
-  // all pieces should have position: absolute
+
+  // call /random_move and /board in a loop
+  // while (true) {
+  setInterval(() => {
+    $.ajax({
+      url: "/random_move",
+      type: "GET",
+      success: (data) => {
+        console.log(data);
+        $("#board").attr("position", JSON.stringify(data["position"]));
+        populateBoard();
+      },
+    });
+  }, 1000);
+  // }
 
   dragPiece();
 });

@@ -1,9 +1,9 @@
 from __future__ import annotations
+from typing import Any
 import numpy as np
-from enum import Enum, auto, IntEnum
+from enum import Enum, IntEnum
 from utils import logger
 
-# import cachedproperty
 from functools import cached_property
 
 
@@ -57,9 +57,15 @@ class Entity(IntEnum):
     EMPTY = 0
 
 
-class Move:
+class MoveOffsets:
     def __init__(self, x, y) -> None:
-        self.CAPTURE_LEFT = (x + 2, y + 1)
-        self.CAPTURE_RIGHT = (x + 2, y - 1)
-        self.MOVE_LEFT = (x + 1, y + 0)
-        self.MOVE_RIGHT = (x + 1, y - 1)
+        self.CAPTURE_LEFT = self._get_valid_offset(x + 2, y + 1)
+        self.CAPTURE_RIGHT = self._get_valid_offset(x + 2, y - 1)
+        self.MOVE_LEFT = self._get_valid_offset(x + 1, y + 0)
+        self.MOVE_RIGHT = self._get_valid_offset(x + 1, y - 1)
+
+    def _get_valid_offset(self, x, y):
+        return (x, y) if self._is_offset_valid(x, y) else None
+
+    def _is_offset_valid(self, x, y) -> bool:
+        return 0 <= x < 8 and 0 <= y < 4

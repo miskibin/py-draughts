@@ -1,3 +1,4 @@
+import numpy as np
 from fastapi import FastAPI, Request
 import uvicorn
 from fastapi.responses import JSONResponse, HTMLResponse
@@ -17,6 +18,20 @@ def index(request: Request):
     return templates.TemplateResponse(
         "index.html", {"request": request, "board": board.friendly_form.tolist()}
     )
+
+
+@app.get("/random_move")
+def random_move(request: Request):
+    moves = list(board.legal_moves)
+    move = moves[np.random.randint(0, len(moves))]
+    board.move(move)
+    print(board)
+    return {"position": board.friendly_form.tolist()}
+
+
+@app.get("/board")
+def get_board(request: Request):
+    return {"position": board.friendly_form.tolist()}
 
 
 if __name__ == "__main__":
