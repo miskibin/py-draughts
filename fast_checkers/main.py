@@ -6,11 +6,11 @@ from fastapi.templating import Jinja2Templates
 from fastapi.staticfiles import StaticFiles
 from board import Board
 
-templates = Jinja2Templates(directory="app/templates/")
+templates = Jinja2Templates(directory="fast_checkers/templates/")
 
 app = FastAPI()
 board = Board()
-app.mount("/static", StaticFiles(directory="app/static"), name="static")
+app.mount("/static", StaticFiles(directory="fast_checkers/static"), name="static")
 
 
 @app.get("/")

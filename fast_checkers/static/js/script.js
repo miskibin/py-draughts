@@ -22,6 +22,7 @@ const populateBoard = () => {
   for (let i = 0; i < boardArray.length; i++) {
     for (let j = 0; j < boardArray[i].length; j++) {
       let tile = $(`#tile-${i * 8 + j}`);
+      tile.children(".piece").remove();
       if (boardArray[i][j] !== 0) {
         tile.append(
           `<div class="piece" id="piece-${
@@ -29,7 +30,7 @@ const populateBoard = () => {
           }" style="background-color: ${colorMap[boardArray[i][j]]}"></div>`
         );
       } else {
-        tile.empty();
+        // remove piece if it exists but leave text
       }
     }
   }
@@ -62,7 +63,6 @@ $(document).ready(() => {
   populateBoard();
 
   // call /random_move and /board in a loop
-  // while (true) {
   setInterval(() => {
     $.ajax({
       url: "/random_move",
@@ -74,7 +74,6 @@ $(document).ready(() => {
       },
     });
   }, 1000);
-  // }
 
   dragPiece();
 });
