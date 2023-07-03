@@ -1,4 +1,13 @@
-from fast_checkers.board import Board, Square, Entity, Move, STARTING_POSITION
+from fast_checkers.base_board import (
+    BaseBoard,
+    Color,
+    Move,
+    STARTING_POSITION,
+    Entity,
+    MovesChain,
+)
+from fast_checkers.models import Square as Sq
+from fast_checkers.models import MovesChain as Chain
 import pytest
 import numpy as np
 
@@ -6,35 +15,56 @@ import numpy as np
 class TestBoard:
     @pytest.fixture(autouse=True)
     def setup(self):
-        self.board = Board()
+        self.board = BaseBoard()
         yield
         del self.board
 
     def test_init(self):
-        assert self.board.turn == Entity.WHITE
+        assert self.board.turn == Color.WHITE
         assert np.array_equal(self.board.position, STARTING_POSITION)
 
     def test_move(self):
-        self.board.move((Square.A3, Square.B4))
-        assert self.board.turn == Entity.BLACK
-        assert self.board[Square.A3] == Entity.EMPTY
-        assert self.board[Square.B4] == Entity.WHITE
-        self.board.move((Square.F6, Square.G5))
-        assert self.board.turn == Entity.WHITE
-        assert self.board[Square.F6] == Entity.EMPTY
-        assert self.board[Square.G5] == Entity.BLACK
+        m = Chain([Move(Sq.A3, Sq.B4)])
+        self.board.push(m)
+        assert self.board.turn == Color.BLACK
+        assert self.board[Sq.A3] == Entity.EMPTY
+        assert self.board[Sq.B4] == Entity.WHITE_MAN
+        m = Chain([Move(Sq.F6, Sq.G5)])
+        self.board.push(m)
+        assert self.board.turn == Color.WHITE
+        assert self.board[Sq.F6] == Entity.EMPTY
+        assert self.board[Sq.G5] == Entity.BLACK_MAN
 
     def test_capture(self):
-        print(self.board)
-        self.board.move((Square.A3, Square.B4))
-        self.board.move((Square.D6, Square.C5))
-        self.board.move((Square.B4, Square.D6))
-        self.board.move((Square.B4, Square.D6))
-        assert self.board[Square.A3] == Entity.EMPTY
-        assert self.board[Square.B4] == Entity.EMPTY
-        assert self.board[Square.D6] == Entity.WHITE
-        assert self.board[Square.C5] == Entity.EMPTY
-        self.board.move((Square.C7, Square.E5))
-        assert self.board[Square.C7] == Entity.EMPTY
-        assert self.board[Square.D6] == Entity.EMPTY
-        assert self.board[Square.E5] == Entity.BLACK
+        m1 = MovesChain([Move(Sq(22).index, Sq(17).index)])
+        self.board.push(m1)
+        m2 = MovesChain([Move(Sq(9).index, Sq(13).index)])
+        self.board.push(m2)
+        m2 = MovesChain([Move(Sq(24).index, Sq(20).index)])
+        self.board.push(m2)
+        m2 = MovesChain([Move(Sq(13).index, Sq(22).index, Sq(17).index)])
+        self.board.push(m2)
+
+        assert self.board[Sq(17)] == Entity.EMPTY
+        assert self.board[Sq(22)] == Entity.BLACK_MAN
+
+        m5 = Chain([Move(Sq(25), Sq(18), Sq(22))])
+        self.board.push(m5)
+        assert self.board[Sq(25)] == Entity.EMPTY
+        assert self.board[Sq(22)] == Entity.EMPTY
+        assert self.board[Sq(18)] == Entity.WHITE_MAN
+
+    def test_pop(self):
+        m = Chain([Move(Sq.A3, Sq.B4)])
+        self.board.push(m)
+        assert self.board.turn == Color.BLACK
+        assert self.board[Sq.A3] == Entity.EMPTY
+        assert self.board[Sq.B4] == Entity.WHITE_MAN
+        m = Chain([Move(Sq.F6, Sq.G5)])
+        self.board.push(m)
+        self.board.pop()
+        assert self.board.turn == Color.BLACK
+        assert self.board[Sq.F6] == Entity.BLACK_MAN
+        assert self.board[Sq.G5] == Entity.EMPTY
+        assert self.board[Sq.A3] == Entity.EMPTY
+        assert self.board[Sq.B4] == Entity.WHITE_MAN

@@ -1,7 +1,7 @@
 from __future__ import annotations
 import numpy as np
 from fast_checkers.utils import logger
-from models import (
+from fast_checkers.models import (
     Entity,
     Square,
     MovesChain,
@@ -24,9 +24,9 @@ class BaseBoard(ABC):
 
     """
 
-    def __init__(self, position: np.ndarray) -> None:
+    def __init__(self, position: np.ndarray = STARTING_POSITION) -> None:
         super().__init__()
-        self.__position = position
+        self.__position = position.copy()
         size = int(np.sqrt(len(self.position) * 2))
         if size**2 != len(self.position) * 2:
             msg = f"Invalid board with shape {position.shape} provided.\
@@ -53,9 +53,6 @@ class BaseBoard(ABC):
                 Entity.EMPTY,
                 self.__position[step.from_],
             )
-            for row in range(0, self.shape[0]):
-                print(self.__position[row * 4 : (row + 1) * 4])
-                print(list(range(row * 4, (row + 1) * 4)))
             if step.captured:
                 self.__position[step.captured] = Entity.EMPTY
         self._moves_stack.append(move)
@@ -110,10 +107,10 @@ if __name__ == "__main__":
     print(board)
     m1 = MovesChain([Move(Square(22).index, Square(17).index)])
     board.push(m1)
-    m2 = MovesChain([Move(Square(11).index, Square(15).index)])
+    m2 = MovesChain([Move(Square(9).index, Square(13).index)])
     board.push(m2)
-    print(board)
-    board.pop()
-    print(board)
-    board.pop()
+    m2 = MovesChain([Move(Square(24).index, Square(20).index)])
+    board.push(m2)
+    m2 = MovesChain([Move(Square(13).index, Square(22).index, Square(17).index)])
+    board.push(m2)
     print(board)

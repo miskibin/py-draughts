@@ -1,10 +1,11 @@
 from __future__ import annotations
 
-from typing import Any, TypeAlias, NewType, Generator
+from typing import NewType, Generator
 import numpy as np
 from enum import Enum, IntEnum
 from fast_checkers.utils import logger
 from dataclasses import dataclass, field
+import warnings
 
 # import cached_property
 from functools import cached_property
@@ -25,7 +26,14 @@ class Move:
     # post init
     def __post_init__(self):
         if isinstance(self.from_, Square) or isinstance(self.to, Square):
-            raise ValueError(f"Invalid move {self}. with type {type(self.from_)}")
+            warnings.warn(
+                "Square type is deprecated. Please use int instead.",
+                DeprecationWarning,
+            )
+            self.from_ = self.from_.index
+            self.to = self.to.index
+            if isinstance(self.captured, Square):
+                self.captured = self.captured.index
 
     def __repr__(self) -> str:
         return f"Move(from={self.from_}, to={self.to}, captured={self.captured})"

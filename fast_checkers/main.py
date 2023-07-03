@@ -4,7 +4,7 @@ import uvicorn
 from fastapi.responses import JSONResponse, HTMLResponse
 from fastapi.templating import Jinja2Templates
 from fastapi.staticfiles import StaticFiles
-from board import Board
+from fast_checkers.base_board import Board
 
 templates = Jinja2Templates(directory="fast_checkers/templates/")
 
