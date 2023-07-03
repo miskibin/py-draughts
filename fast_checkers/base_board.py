@@ -1,16 +1,18 @@
 from __future__ import annotations
 import numpy as np
 from fast_checkers.utils import logger
-from models2 import (
+from models import (
     Entity,
     Square,
     MovesChain,
     ENTITY_REPR,
     STARTING_POSITION,
     Color,
+    Move,
 )
 from typing import Generator
 from abc import ABC, abstractmethod
+import warnings
 
 
 class BaseBoard(ABC):
@@ -33,9 +35,9 @@ class BaseBoard(ABC):
             raise ValueError(msg)
         self.shape = (size, size)
         self.turn = Color.WHITE
+        self._moves_stack: list[MovesChain] = []
         logger.info(f"Board initialized with shape {self.shape}.")
 
-    @abstractmethod
     def legal_moves(self) -> Generator[MovesChain, None, None]:
         pass
 
@@ -43,6 +45,32 @@ class BaseBoard(ABC):
     def position(self) -> np.ndarray:
         """Returns board position."""
         return self.__position
+
+    def push(self, move: MovesChain) -> None:
+        """Pushes a move to the board."""
+        for step in move.steps:
+            self.__position[step.from_], self.__position[step.to] = (
+                Entity.EMPTY,
+                self.__position[step.from_],
+            )
+            for row in range(0, self.shape[0]):
+                print(self.__position[row * 4 : (row + 1) * 4])
+                print(list(range(row * 4, (row + 1) * 4)))
+            if step.captured:
+                self.__position[step.captured] = Entity.EMPTY
+        self._moves_stack.append(move)
+        self.turn = Color.WHITE if self.turn == Color.BLACK else Color.BLACK
+
+    def pop(self) -> None:
+        """Pops a move from the board."""
+        move = self._moves_stack.pop()
+        for step in reversed(move.steps):
+            self.__position[step.from_] = self.__position[step.to]
+            self.__position[step.to] = Entity.EMPTY
+            if step.captured:
+                self.__position[step.captured] = step.captured_entity
+        self.turn = Color.WHITE if self.turn == Color.BLACK else Color.BLACK
+        return move
 
     @property
     def friendly_form(self) -> np.ndarray:
@@ -74,9 +102,18 @@ class BaseBoard(ABC):
             yield sq
 
     def __getitem__(self, key: Square) -> Entity:
-        return self.position[key.value]
+        return self.position[key.index]
 
 
 if __name__ == "__main__":
     board = BaseBoard(STARTING_POSITION)
+    print(board)
+    m1 = MovesChain([Move(Square(22).index, Square(17).index)])
+    board.push(m1)
+    m2 = MovesChain([Move(Square(11).index, Square(15).index)])
+    board.push(m2)
+    print(board)
+    board.pop()
+    print(board)
+    board.pop()
     print(board)

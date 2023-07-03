@@ -4,11 +4,31 @@ from typing import Any, TypeAlias, NewType, Generator
 import numpy as np
 from enum import Enum, IntEnum
 from fast_checkers.utils import logger
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
+# import cached_property
+from functools import cached_property
 
 STARTING_POSITION = np.array([1] * 12 + [0] * 8 + [-1] * 12, dtype=np.int8)
-SquareT = TypeAlias("SquareT", int)
+SquareT = NewType("SquareT", int)
+
+
+@dataclass
+class Move:
+    """Move representation."""
+
+    from_: SquareT
+    to: SquareT
+    captured: SquareT = None
+    captured_entity: int = None
+
+    # post init
+    def __post_init__(self):
+        if isinstance(self.from_, Square) or isinstance(self.to, Square):
+            raise ValueError(f"Invalid move {self}. with type {type(self.from_)}")
+
+    def __repr__(self) -> str:
+        return f"Move(from={self.from_}, to={self.to}, captured={self.captured})"
 
 
 @dataclass
@@ -26,7 +46,7 @@ class MovesChain:
     ```
     """
 
-    steps: list[(SquareT, SquareT, SquareT)]
+    steps: list[Move]  # SOURCE, DESTINATION, CAPTURED
 
     @classmethod
     def from_string(cls, move: str, legal_moves: Generator) -> MovesChain:
@@ -67,40 +87,46 @@ class Square(IntEnum):
     """
     For me it will be easier to use notation from chess. (A-H for columns, 1-8 for rows)
     Source: https://webdocs.cs.ualberta.ca/~chinook/play/notation.html
+    USE INDEX VAR TO GET INDEX OF THE SQUARE ON BORAD. VALUES ARE SHIFTED BY 1.
     """
 
-    A2 = 32
-    A4 = 31
-    A6 = 30
-    A8 = 29
-    B1 = 28
-    B3 = 27
-    B5 = 26
-    B7 = 25
-    C2 = 24
-    C4 = 23
-    C6 = 22
-    C8 = 21
-    D1 = 20
-    D3 = 19
-    D5 = 18
-    D7 = 17
-    E2 = 16
-    E4 = 15
-    E6 = 14
-    E8 = 13
-    F1 = 12
-    F3 = 11
-    F5 = 10
-    F7 = 9
-    G2 = 8
-    G4 = 7
-    G6 = 6
-    G8 = 5
-    H1 = 4
-    H3 = 3
-    H5 = 2
-    H7 = 1
+    B8 = 1
+    D8 = 2
+    F8 = 3
+    H8 = 4
+    A7 = 5
+    C7 = 6
+    E7 = 7
+    G7 = 8
+    B6 = 9
+    D6 = 10
+    F6 = 11
+    H6 = 12
+    A5 = 13
+    C5 = 14
+    E5 = 15
+    G5 = 16
+    B4 = 17
+    D4 = 18
+    F4 = 19
+    H4 = 20
+    A3 = 21
+    C3 = 22
+    E3 = 23
+    G3 = 24
+    B2 = 25
+    D2 = 26
+    F2 = 27
+    H2 = 28
+    A1 = 29
+    C1 = 30
+    E1 = 31
+    G1 = 32
+
+    # overwrite value attribute
+    @cached_property
+    def index(self) -> int:
+        return self.value - 1
 
 
 class Entity(IntEnum):
@@ -118,3 +144,9 @@ ENTITY_REPR = {
     Entity.BLACK_KING: "X",
     Entity.WHITE_KING: "O",
 }
+
+if __name__ == "__main__":
+    print(Square.A1.value)
+    print(Square.B8.value)
+    print(Square.C3.value)
+    print(Square(22).value)

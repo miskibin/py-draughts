@@ -1,6 +1,8 @@
 # Checkers 
 Modern and flexible implementation of checkers game with beautiful web interface. Supports multiple variants of the game and allows to play against AI.
 
+
+
 ## Bibliography
 1. [notatin](https://en.wikipedia.org/wiki/Portable_Draughts_Notation)
 2. [rules and variants](https://en.wikipedia.org/wiki/Checkers)
@@ -12,3 +14,15 @@ Modern and flexible implementation of checkers game with beautiful web interface
 Contributions to this project are welcome. If you encounter any issues or have suggestions for improvements, please open an issue or submit a pull request on the project repository.
 
 ---
+
+## ideas
+Move can be stored as 
+16 bits:
+`0b 000000 00000 000000 0`
+where:
+- 0-6 bits - source square (0-63)
+- 6-12 bits - destination square (0-63)
+-  12-18 bits - captured piece (0-63)
+- 19 bit - weather captured piece is king (0-1)
+> bigest possible board is 10x10, so 6 bits is enough to store square number
+
