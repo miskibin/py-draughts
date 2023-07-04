@@ -17,18 +17,6 @@ SquareT = NewType("SquareT", int)
 
 @dataclass
 class Move:
-    """Note that:
-    n - number of visited squares (include source square)
-    n - 2 - number of captured pieces
-    """
-
-    square_list: list[int]
-    captured_list: list[int] = field(default_factory=list)
-    captured_entities: list[bool] =  field(default_factory=list)# wether or not captured piece was king or not
-
-
-@dataclass
-class MovesChain:
     """Move representation.
     Since
     ```
@@ -40,12 +28,17 @@ class MovesChain:
     The intermediate square is only shown if there are two ways
     to jump and it would not be clear otherwise.
     ```
+    Note that:
+    n - number of visited squares (include source square)
+    n - 2 - number of captured pieces
     """
 
-    steps: list[Move]  # SOURCE, DESTINATION, CAPTURED
+    square_list: list[int]
+    captured_list: list[int] = field(default_factory=list)
+    captured_entities: list[bool] =  field(default_factory=list)# wether or not captured piece was king or not
 
     @classmethod
-    def from_string(cls, move: str, legal_moves: Generator) -> MovesChain:
+    def from_string(cls, move: str, legal_moves: Generator) -> Move:
         """Converts string representation of move to MovesChain
         Accepted types:
         with `-` separator: eg 1-5
@@ -63,16 +56,10 @@ class MovesChain:
             )
         steps = [int(step) for step in steps]
         for legal_move in legal_moves:
-            if (
-                legal_move[0] == steps[0]
-                and legal_move[-1] == steps[-1]
-                and steps[1:-1] in legal_move[1:-1]
-            ):
-                return cls(legal_move)
+            raise NotImplementedError
         raise ValueError(
             f"Move {move} is correct, but not legal in given position.\n Legal moves are: {list(legal_moves)}"
         )
-
 
 class Color(Enum):
     WHITE = -1

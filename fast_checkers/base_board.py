@@ -20,9 +20,8 @@ class BaseBoard(ABC):
     The class is designed to support checkers boards of any size.
     The shape attribute, represented as a tuple (rows, columns),
     enables dynamic configuration of the board's dimensions.
-
-
     """
+    
 
     def __init__(self, position: np.ndarray = STARTING_POSITION) -> None:
         super().__init__()
