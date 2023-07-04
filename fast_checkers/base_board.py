@@ -11,8 +11,9 @@ from fast_checkers.models import (
     Color,
     Move,
     SquareT,
-    T10X10
+    T8X8
 )
+from fast_checkers import models
 from typing import Generator
 from abc import ABC, abstractmethod
 import warnings
@@ -25,7 +26,7 @@ class BaseBoard(ABC):
     enables dynamic configuration of the board's dimensions.
     """
     
-    SQUARES_MAP = T10X10
+    SQUARES_MAP = T8X8
 
     def __init__(self, position: np.ndarray = STARTING_POSITION) -> None:
         super().__init__()
@@ -53,7 +54,7 @@ class BaseBoard(ABC):
 
     def push(self, move: Move) -> None:
         """Pushes a move to the board."""
-        src, tg = move.square_list[0], move.square_list[-1]
+        src, tg = self.SQUARES_MAP[move.square_list[0]], self.SQUARES_MAP[move.square_list[-1]]
         self.__pos[src], self.__pos[tg] = self.__pos[tg], self.__pos[src]
         if move.captured_list:
             self.__pos[np.array(move.captured_list)] = Entity.EMPTY
@@ -63,7 +64,7 @@ class BaseBoard(ABC):
     def pop(self) -> None:
         """Pops a move from the board."""
         move = self._moves_stack.pop()
-        src, tg = move.square_list[0], move.square_list[-1]
+        src, tg = self.SQUARES_MAP[move.square_list[0]], self.SQUARES_MAP[move.square_list[-1]]
         self.__pos[src], self.__pos[tg] = self.__pos[tg], self.__pos[src]
         for sq, is_king in zip(move.captured_list, move.captured_entities): 
             self.__pos[sq] = ENTITY_MAP[(self.turn, is_king)]
@@ -105,8 +106,7 @@ class BaseBoard(ABC):
 if __name__ == "__main__":
     board = BaseBoard(STARTING_POSITION)
     print(board)
-    m1 = Move(square_list=[Square(22).index, Square(17).index])
-    m1 = Move(square_list=[SQUARES[22], SQUARES[17]])
+    m1 = Move(square_list=[models.A3,models.B4])
     print(m1)
     board.push(m1)
     print(board)
