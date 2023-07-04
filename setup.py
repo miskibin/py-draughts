@@ -7,6 +7,7 @@ setuptools.setup(
     author="Michał Skibiński",
     author_email="mskibinski109@gmail.com",
     files_to_include=["checkers"],
+    long_description="Modern checkers library with fast move generation. Still in development.",
     packages=setuptools.find_packages(),
     classifiers=[
         "Programming Language :: Python :: 3",
