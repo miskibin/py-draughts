@@ -1,7 +1,7 @@
 from __future__ import annotations
 from typing import Generator
-from fast_checkers.base_board import BaseBoard
-from fast_checkers.models import T8X8, Move
+from checkers.base_board import BaseBoard
+from checkers.models import T8X8, Move
 import numpy as np
 """
  board 8x8

@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import NewType, Generator
 import numpy as np
 from enum import Enum, IntEnum
-from fast_checkers.utils import logger
+from checkers.utils import logger
 from dataclasses import dataclass, field
 
 import warnings

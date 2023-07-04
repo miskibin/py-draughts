@@ -1,7 +1,7 @@
 from __future__ import annotations
 import numpy as np
-from fast_checkers.utils import logger
-from fast_checkers.models import (
+from checkers.utils import logger
+from checkers.models import (
     Entity,
     Square,
     ENTITY_REPR,
@@ -13,7 +13,7 @@ from fast_checkers.models import (
     SquareT,
     T8X8
 )
-from fast_checkers import models
+from checkers import models
 from typing import Generator
 from abc import ABC, abstractmethod
 import warnings

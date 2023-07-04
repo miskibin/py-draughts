@@ -6,13 +6,13 @@ LONG_DESCRIPTION = """
 """
 
 setuptools.setup(
-    name="fast-checkers",
+    name="checkers",
     version="1.1.2",
     author="Michał Skibiński",
     author_email="mskibinski109@gmail.com",
     long_description_content_type="text/markdown",
     long_description=LONG_DESCRIPTION,
-    files_to_include=["fast_checkers"],
+    files_to_include=["checkers"],
     packages=setuptools.find_packages(),
     classifiers=[
         "Programming Language :: Python :: 3",

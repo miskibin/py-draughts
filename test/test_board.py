@@ -1,12 +1,12 @@
-from fast_checkers.base_board import (
+from checkers.base_board import (
     BaseBoard,
     Color,
     Move,
     STARTING_POSITION,
     Entity,
 )
-from fast_checkers.models import Square as Sq
-from fast_checkers.models import MovesChain as Chain
+from checkers.models import Square as Sq
+from checkers.models import MovesChain as Chain
 import pytest
 import numpy as np
 
