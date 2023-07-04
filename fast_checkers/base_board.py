@@ -7,8 +7,10 @@ from fast_checkers.models import (
     ENTITY_REPR,
     STARTING_POSITION,
     ENTITY_MAP,
+    SQUARES,
     Color,
     Move,
+    SquareT
 )
 from typing import Generator
 from abc import ABC, abstractmethod
@@ -22,6 +24,7 @@ class BaseBoard(ABC):
     enables dynamic configuration of the board's dimensions.
     """
     
+    SQUARES_MAP = {idx:val for idx,val in enumerate(SQUARES[1:])}
 
     def __init__(self, position: np.ndarray = STARTING_POSITION) -> None:
         super().__init__()
@@ -83,7 +86,6 @@ class BaseBoard(ABC):
     def __repr__(self) -> str:
         board = ""
         position = self.friendly_form
-        self.shape[0]
         for i in range(self.shape[0]):
             board += f"{'-' * (self.shape[0]*4 + 1) }\n|"
             for j in range(self.shape[0]):
@@ -95,14 +97,16 @@ class BaseBoard(ABC):
         for sq in self.position:
             yield sq
 
-    def __getitem__(self, key: Square) -> Entity:
-        return self.position[key.index]
+    def __getitem__(self, key: SquareT) -> Entity:
+        return self.position[self.SQUARES_MAP[key]]
 
 
 if __name__ == "__main__":
     board = BaseBoard(STARTING_POSITION)
     print(board)
     m1 = Move(square_list=[Square(22).index, Square(17).index])
+    m1 = Move(square_list=[SQUARES[22], SQUARES[17]])
+    print(m1)
     board.push(m1)
     print(board)
 

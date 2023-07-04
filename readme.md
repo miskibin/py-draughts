@@ -1,5 +1,6 @@
 # Checkers 
-Modern and flexible implementation of checkers game with beautiful web interface. Supports multiple variants of the game and allows to play against AI.
+Efficient Modern and flexible implementation of checkers game with beautiful web interface.
+Supports multiple variants of the game and allows to play against AI.
 
 
 
