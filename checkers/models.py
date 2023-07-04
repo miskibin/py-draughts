@@ -6,8 +6,6 @@ from enum import Enum, IntEnum
 from checkers.utils import logger
 from dataclasses import dataclass, field
 
-import warnings
-
 # import cached_property
 from functools import cached_property
 
@@ -34,16 +32,28 @@ class Move:
 
     def __init__(
         self,
-        visited_squares: tuple[int],
-        captured_list: tuple[int] = (),
-        captured_entities: tuple[bool] = (),
+        visited_squares: list[int],
+        captured_list: list[int] = [],
+        captured_entities: list[bool] = [],
     ) -> None:
         self.square_list = visited_squares
         self.captured_list = captured_list
         self.captured_entities = captured_entities
 
     def __str__(self) -> str:
-        return f"Move from {self.square_list[0]} to {self.square_list[-1]}"
+        return f"Squares: {self.square_list}, Captured: {self.captured_list}"
+
+    def __add__(self, other: Move) -> Move:
+        """Append moves"""
+        if self.square_list[-1] != other.square_list[0]:
+            raise ValueError(
+                f"Cannot append moves {self} and {other}. Last square of first move should be equal to first square of second move."
+            )
+        return Move(
+            self.square_list + other.square_list[1:],
+            self.captured_list + other.captured_list,
+            self.captured_entities + other.captured_entities,
+        )
 
     @classmethod
     def from_string(cls, move: str, legal_moves: Generator) -> Move:
@@ -98,5 +108,6 @@ ENTITY_MAP = {
     (Color.BLACK, True): Entity.BLACK_KING,
 }
 
-if __name__ == "__main__":
-    pass
+m1 = Move((1, 5), (3,), (False,))
+m2 = Move((5, 9), (7,), (False,))
+print(m1 + m2)
