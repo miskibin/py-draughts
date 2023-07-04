@@ -6,7 +6,7 @@ LONG_DESCRIPTION = """
 """
 
 setuptools.setup(
-    name="checkers",
+    name="fast-checkers",
     version="0.0.1",
     author="Michał Skibiński",
     author_email="mskibinski109@gmail.com",
