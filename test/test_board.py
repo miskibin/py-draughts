@@ -4,7 +4,6 @@ from fast_checkers.base_board import (
     Move,
     STARTING_POSITION,
     Entity,
-    MovesChain,
 )
 from fast_checkers.models import Square as Sq
 from fast_checkers.models import MovesChain as Chain
@@ -24,43 +23,46 @@ class TestBoard:
         assert np.array_equal(self.board.position, STARTING_POSITION)
 
     def test_move(self):
-        m = Chain([Move(Sq.A3, Sq.B4)])
+        m = Move(square_list=[Sq.A3.index, Sq.B4.index])
         self.board.push(m)
         assert self.board.turn == Color.BLACK
         assert self.board[Sq.A3] == Entity.EMPTY
         assert self.board[Sq.B4] == Entity.WHITE_MAN
-        m = Chain([Move(Sq.F6, Sq.G5)])
+        m = Move(square_list=[Sq.F6.index, Sq.G5.index])
         self.board.push(m)
         assert self.board.turn == Color.WHITE
         assert self.board[Sq.F6] == Entity.EMPTY
         assert self.board[Sq.G5] == Entity.BLACK_MAN
 
     def test_capture(self):
-        m1 = MovesChain([Move(Sq(22).index, Sq(17).index)])
+        m1 = Move(square_list=[Sq(22).index, Sq(17).index])
         self.board.push(m1)
-        m2 = MovesChain([Move(Sq(9).index, Sq(13).index)])
+
+        m2 = Move(square_list=[Sq(9).index, Sq(13).index])
         self.board.push(m2)
-        m2 = MovesChain([Move(Sq(24).index, Sq(20).index)])
-        self.board.push(m2)
-        m2 = MovesChain([Move(Sq(13).index, Sq(22).index, Sq(17).index)])
-        self.board.push(m2)
+
+        m3 = Move(square_list=[Sq(24).index, Sq(20).index])
+        self.board.push(m3)
+
+        m4 = Move(square_list=[Sq(13).index, Sq(22).index], captured_list=[Sq(17).index])
+        self.board.push(m4)
 
         assert self.board[Sq(17)] == Entity.EMPTY
         assert self.board[Sq(22)] == Entity.BLACK_MAN
 
-        m5 = Chain([Move(Sq(25), Sq(18), Sq(22))])
+        m5 = Move(square_list=[Sq(25).index, Sq(18).index], captured_list=[Sq(22).index])
         self.board.push(m5)
         assert self.board[Sq(25)] == Entity.EMPTY
         assert self.board[Sq(22)] == Entity.EMPTY
         assert self.board[Sq(18)] == Entity.WHITE_MAN
 
     def test_pop(self):
-        m = Chain([Move(Sq.A3, Sq.B4)])
+        m = Move(square_list=[Sq.A3.index, Sq.B4.index])
         self.board.push(m)
         assert self.board.turn == Color.BLACK
         assert self.board[Sq.A3] == Entity.EMPTY
         assert self.board[Sq.B4] == Entity.WHITE_MAN
-        m = Chain([Move(Sq.F6, Sq.G5)])
+        m = Move(square_list=[Sq.F6.index, Sq.G5.index])
         self.board.push(m)
         self.board.pop()
         assert self.board.turn == Color.BLACK

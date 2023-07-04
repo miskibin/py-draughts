@@ -5,6 +5,7 @@ import numpy as np
 from enum import Enum, IntEnum
 from fast_checkers.utils import logger
 from dataclasses import dataclass, field
+
 import warnings
 
 # import cached_property
@@ -19,14 +20,12 @@ class Move:
     """Note that:
     n - number of visited squares (include source square)
     n - 2 - number of captured pieces
-    To maintain info about captured piece
-    - x - number of square from `captured_list`
-    - x = x - if piece was main
-    - x = x+100 - if piece was king
     """
 
     square_list: list[int]
-    captured_list: list[int]
+    captured_list: list[int] = field(default_factory=list)
+    captured_entities: list[bool] =  field(default_factory=list)# wether or not captured piece was king or not
+
 
 
 @dataclass
@@ -142,6 +141,13 @@ ENTITY_REPR = {
     Entity.BLACK_KING: "X",
     Entity.WHITE_KING: "O",
 }
+
+ENTITY_MAP = {
+        (Color.WHITE, False): Entity.WHITE_MAN,
+        (Color.WHITE, True): Entity.WHITE_KING,
+        (Color.BLACK, False): Entity.BLACK_MAN,
+        (Color.BLACK, True): Entity.BLACK_KING
+    }
 
 if __name__ == "__main__":
     print(Square.A1.value)

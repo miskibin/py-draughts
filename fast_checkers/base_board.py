@@ -6,6 +6,7 @@ from fast_checkers.models import (
     Square,
     ENTITY_REPR,
     STARTING_POSITION,
+    ENTITY_MAP,
     Color,
     Move,
 )
@@ -49,19 +50,18 @@ class BaseBoard(ABC):
         """Pushes a move to the board."""
         src, tg = move.square_list[0], move.square_list[-1]
         self.__pos[src], self.__pos[tg] = self.__pos[tg], self.__pos[src]
-        for sq in move.captured_list:
-            self.__pos[sq] = Entity.EMPTY
+        if move.captured_list:
+            self.__pos[np.array(move.captured_list)] = Entity.EMPTY
         self._moves_stack.append(move)
         self.turn = Color.WHITE if self.turn == Color.BLACK else Color.BLACK
 
     def pop(self) -> None:
         """Pops a move from the board."""
         move = self._moves_stack.pop()
-        for step in reversed(move.steps):
-            self.__pos[step.from_] = self.__pos[step.to]
-            self.__pos[step.to] = Entity.EMPTY
-            if step.captured:
-                self.__pos[step.captured] = step.captured_entity
+        src, tg = move.square_list[0], move.square_list[-1]
+        self.__pos[src], self.__pos[tg] = self.__pos[tg], self.__pos[src]
+        for sq, is_king in zip(move.captured_list, move.captured_entities): 
+            self.__pos[sq] = ENTITY_MAP[(self.turn, is_king)]
         self.turn = Color.WHITE if self.turn == Color.BLACK else Color.BLACK
         return move
 
@@ -100,7 +100,12 @@ class BaseBoard(ABC):
 
 if __name__ == "__main__":
     board = BaseBoard(STARTING_POSITION)
-    # print(board)
+    print(board)
+    # m1 = MovesChain([Move(Square(22).index, Square(17).index)])
+    m1 = Move(square_list=[Square(22).index, Square(17).index])
+    board.push(m1)
+    print(board)
+
     # m1 = MovesChain([Move(Square(22).index, Square(17).index)])
     # board.push(m1)
     # m2 = MovesChain([Move(Square(9).index, Square(13).index)])
