@@ -30,7 +30,8 @@ class BaseBoard(ABC):
         size = int(np.sqrt(len(self.position) * 2))
         if size**2 != len(self.position) * 2:
             msg = f"Invalid board with shape {position.shape} provided.\
-                Please use an array with lenght = (n * n/2). Where n is an size of the board."
+                Please use an array with lenght = (n * n/2). \
+                Where n is an size of the board."
             logger.error(msg)
             raise ValueError(msg)
         self.shape = (size, size)
@@ -38,6 +39,7 @@ class BaseBoard(ABC):
         self._moves_stack: list[Move] = []
         logger.info(f"Board initialized with shape {self.shape}.")
 
+    #@abstractmethod
     def legal_moves(self) -> Generator[Move, None, None]:
         pass
 
@@ -101,17 +103,7 @@ class BaseBoard(ABC):
 if __name__ == "__main__":
     board = BaseBoard(STARTING_POSITION)
     print(board)
-    # m1 = MovesChain([Move(Square(22).index, Square(17).index)])
     m1 = Move(square_list=[Square(22).index, Square(17).index])
     board.push(m1)
     print(board)
 
-    # m1 = MovesChain([Move(Square(22).index, Square(17).index)])
-    # board.push(m1)
-    # m2 = MovesChain([Move(Square(9).index, Square(13).index)])
-    # board.push(m2)
-    # m2 = MovesChain([Move(Square(24).index, Square(20).index)])
-    # board.push(m2)
-    # m2 = MovesChain([Move(Square(13).index, Square(22).index, Square(17).index)])
-    # board.push(m2)
-    # print(board)

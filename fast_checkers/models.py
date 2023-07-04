@@ -27,7 +27,6 @@ class Move:
     captured_entities: list[bool] =  field(default_factory=list)# wether or not captured piece was king or not
 
 
-
 @dataclass
 class MovesChain:
     """Move representation.
