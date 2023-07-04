@@ -10,7 +10,8 @@ from fast_checkers.models import (
     SQUARES,
     Color,
     Move,
-    SquareT
+    SquareT,
+    T10X10
 )
 from typing import Generator
 from abc import ABC, abstractmethod
@@ -24,7 +25,7 @@ class BaseBoard(ABC):
     enables dynamic configuration of the board's dimensions.
     """
     
-    SQUARES_MAP = {idx:val for idx,val in enumerate(SQUARES[1:])}
+    SQUARES_MAP = T10X10
 
     def __init__(self, position: np.ndarray = STARTING_POSITION) -> None:
         super().__init__()
