@@ -1,5 +1,5 @@
 ![example workflow](https://github.com/michalskibinski109/checkers/actions/workflows/python-app.yml/badge.svg)
-[![PyPI version](https://badge.fury.io/py/fast_checkers.svg)](https://badge.fury.io/py/miskibin)
+[![PyPI version](https://badge.fury.io/py/fast_checkers.svg)](https://badge.fury.io/py/fast_checkers)
 
 # Checkers 
 Efficient Modern and flexible implementation of checkers game with beautiful web interface.
