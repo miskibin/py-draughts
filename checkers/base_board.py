@@ -1,19 +1,16 @@
 from __future__ import annotations
 import numpy as np
-from fast_checkers.utils import logger
-from fast_checkers.models import (
+from checkers.utils import logger
+from checkers.models import (
     Entity,
-    Square,
     ENTITY_REPR,
     STARTING_POSITION,
     ENTITY_MAP,
-    SQUARES,
     Color,
     Move,
     SquareT,
-    T8X8
 )
-from fast_checkers import models
+import checkers
 from typing import Generator
 from abc import ABC, abstractmethod
 import warnings
@@ -25,8 +22,8 @@ class BaseBoard(ABC):
     The shape attribute, represented as a tuple (rows, columns),
     enables dynamic configuration of the board's dimensions.
     """
-    
-    SQUARES_MAP = T8X8
+
+    SQUARES_MAP = checkers.T8X8
 
     def __init__(self, position: np.ndarray = STARTING_POSITION) -> None:
         super().__init__()
@@ -43,7 +40,7 @@ class BaseBoard(ABC):
         self._moves_stack: list[Move] = []
         logger.info(f"Board initialized with shape {self.shape}.")
 
-    #@abstractmethod
+    # @abstractmethod
     def legal_moves(self) -> Generator[Move, None, None]:
         pass
 
@@ -54,19 +51,27 @@ class BaseBoard(ABC):
 
     def push(self, move: Move) -> None:
         """Pushes a move to the board."""
-        src, tg = self.SQUARES_MAP[move.square_list[0]], self.SQUARES_MAP[move.square_list[-1]]
+        src, tg = (
+            self.SQUARES_MAP[move.square_list[0]],
+            self.SQUARES_MAP[move.square_list[-1]],
+        )
         self.__pos[src], self.__pos[tg] = self.__pos[tg], self.__pos[src]
         if move.captured_list:
-            self.__pos[np.array(move.captured_list)] = Entity.EMPTY
+            self.__pos[
+                np.array([self.SQUARES_MAP[sq] for sq in move.captured_list])
+            ] = Entity.EMPTY
         self._moves_stack.append(move)
         self.turn = Color.WHITE if self.turn == Color.BLACK else Color.BLACK
 
     def pop(self) -> None:
         """Pops a move from the board."""
         move = self._moves_stack.pop()
-        src, tg = self.SQUARES_MAP[move.square_list[0]], self.SQUARES_MAP[move.square_list[-1]]
+        src, tg = (
+            self.SQUARES_MAP[move.square_list[0]],
+            self.SQUARES_MAP[move.square_list[-1]],
+        )
         self.__pos[src], self.__pos[tg] = self.__pos[tg], self.__pos[src]
-        for sq, is_king in zip(move.captured_list, move.captured_entities): 
+        for sq, is_king in zip(move.captured_list, move.captured_entities):
             self.__pos[sq] = ENTITY_MAP[(self.turn, is_king)]
         self.turn = Color.WHITE if self.turn == Color.BLACK else Color.BLACK
         return move
@@ -105,9 +110,16 @@ class BaseBoard(ABC):
 
 if __name__ == "__main__":
     board = BaseBoard(STARTING_POSITION)
-    print(board)
-    m1 = Move(square_list=[models.A3,models.B4])
-    print(m1)
+    m1 = Move([checkers.C3, checkers.B4])
     board.push(m1)
+
+    m2 = Move([checkers.B6, checkers.A5])
+    board.push(m2)
+
+    m3 = Move([checkers.G3, checkers.H4])
+    board.push(m3)
     print(board)
 
+    m4 = Move([checkers.A5, checkers.C3], captured_list=[checkers.B4])
+    board.push(m4)
+    print(board)

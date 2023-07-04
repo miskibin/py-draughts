@@ -1,25 +1,28 @@
 from __future__ import annotations
 from typing import Generator
-from fast_checkers.base_board import BaseBoard
-from fast_checkers.models import T8X8, Move
+from checkers.base_board import BaseBoard
+from checkers.models import Move
+import checkers
 import numpy as np
+
 """
  board 8x8
  Short moves only 
  Cannot capture backwards
  Capture - choose any
 """
+
+
 class AmericanBoard(BaseBoard):
-    
     STARTING_POSITION = np.array([1] * 12 + [0] * 8 + [-1] * 12, dtype=np.int8)
-    size =int(np.sqrt(len(STARTING_POSITION) * 2))
-    row_idx = { val:val//4 for val in range(len(STARTING_POSITION))}
-    col_idx = { val:val%8 for val in range(len(STARTING_POSITION))}
-    SQUARES_MAP = T8X8
+    size = int(np.sqrt(len(STARTING_POSITION) * 2))
+    row_idx = {val: val // 4 for val in range(len(STARTING_POSITION))}
+    col_idx = {val: val % 8 for val in range(len(STARTING_POSITION))}
+    SQUARES_MAP = checkers.T8X8
 
     def legal_moves(self) -> Generator[Move, None, None]:
         moves: list[Move] = []
-        
+
         """
         Standard:
             1  (+4, +5) -> 5,6 
@@ -37,4 +40,4 @@ class AmericanBoard(BaseBoard):
         """
 
 
-b= AmericanBoard()
+b = AmericanBoard()
