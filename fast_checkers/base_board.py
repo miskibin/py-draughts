@@ -4,7 +4,6 @@ from fast_checkers.utils import logger
 from fast_checkers.models import (
     Entity,
     Square,
-    MovesChain,
     ENTITY_REPR,
     STARTING_POSITION,
     Color,
@@ -26,7 +25,7 @@ class BaseBoard(ABC):
 
     def __init__(self, position: np.ndarray = STARTING_POSITION) -> None:
         super().__init__()
-        self.__position = position.copy()
+        self.__pos = position.copy()
         size = int(np.sqrt(len(self.position) * 2))
         if size**2 != len(self.position) * 2:
             msg = f"Invalid board with shape {position.shape} provided.\
@@ -35,26 +34,23 @@ class BaseBoard(ABC):
             raise ValueError(msg)
         self.shape = (size, size)
         self.turn = Color.WHITE
-        self._moves_stack: list[MovesChain] = []
+        self._moves_stack: list[Move] = []
         logger.info(f"Board initialized with shape {self.shape}.")
 
-    def legal_moves(self) -> Generator[MovesChain, None, None]:
+    def legal_moves(self) -> Generator[Move, None, None]:
         pass
 
     @property
     def position(self) -> np.ndarray:
         """Returns board position."""
-        return self.__position
+        return self.__pos
 
-    def push(self, move: MovesChain) -> None:
+    def push(self, move: Move) -> None:
         """Pushes a move to the board."""
-        for step in move.steps:
-            self.__position[step.from_], self.__position[step.to] = (
-                Entity.EMPTY,
-                self.__position[step.from_],
-            )
-            if step.captured:
-                self.__position[step.captured] = Entity.EMPTY
+        src, tg = move.square_list[0], move.square_list[-1]
+        self.__pos[src], self.__pos[tg] = self.__pos[tg], self.__pos[src]
+        for sq in move.captured_list:
+            self.__pos[sq] = Entity.EMPTY
         self._moves_stack.append(move)
         self.turn = Color.WHITE if self.turn == Color.BLACK else Color.BLACK
 
@@ -62,10 +58,10 @@ class BaseBoard(ABC):
         """Pops a move from the board."""
         move = self._moves_stack.pop()
         for step in reversed(move.steps):
-            self.__position[step.from_] = self.__position[step.to]
-            self.__position[step.to] = Entity.EMPTY
+            self.__pos[step.from_] = self.__pos[step.to]
+            self.__pos[step.to] = Entity.EMPTY
             if step.captured:
-                self.__position[step.captured] = step.captured_entity
+                self.__pos[step.captured] = step.captured_entity
         self.turn = Color.WHITE if self.turn == Color.BLACK else Color.BLACK
         return move
 
@@ -104,13 +100,13 @@ class BaseBoard(ABC):
 
 if __name__ == "__main__":
     board = BaseBoard(STARTING_POSITION)
-    print(board)
-    m1 = MovesChain([Move(Square(22).index, Square(17).index)])
-    board.push(m1)
-    m2 = MovesChain([Move(Square(9).index, Square(13).index)])
-    board.push(m2)
-    m2 = MovesChain([Move(Square(24).index, Square(20).index)])
-    board.push(m2)
-    m2 = MovesChain([Move(Square(13).index, Square(22).index, Square(17).index)])
-    board.push(m2)
-    print(board)
+    # print(board)
+    # m1 = MovesChain([Move(Square(22).index, Square(17).index)])
+    # board.push(m1)
+    # m2 = MovesChain([Move(Square(9).index, Square(13).index)])
+    # board.push(m2)
+    # m2 = MovesChain([Move(Square(24).index, Square(20).index)])
+    # board.push(m2)
+    # m2 = MovesChain([Move(Square(13).index, Square(22).index, Square(17).index)])
+    # board.push(m2)
+    # print(board)

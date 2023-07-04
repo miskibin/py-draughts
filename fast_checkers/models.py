@@ -16,27 +16,17 @@ SquareT = NewType("SquareT", int)
 
 @dataclass
 class Move:
-    """Move representation."""
+    """Note that:
+    n - number of visited squares (include source square)
+    n - 2 - number of captured pieces
+    To maintain info about captured piece
+    - x - number of square from `captured_list`
+    - x = x - if piece was main
+    - x = x+100 - if piece was king
+    """
 
-    from_: SquareT
-    to: SquareT
-    captured: SquareT = None
-    captured_entity: int = None
-
-    # post init
-    def __post_init__(self):
-        if isinstance(self.from_, Square) or isinstance(self.to, Square):
-            warnings.warn(
-                "Square type is deprecated. Please use int instead.",
-                DeprecationWarning,
-            )
-            self.from_ = self.from_.index
-            self.to = self.to.index
-            if isinstance(self.captured, Square):
-                self.captured = self.captured.index
-
-    def __repr__(self) -> str:
-        return f"Move(from={self.from_}, to={self.to}, captured={self.captured})"
+    square_list: list[int]
+    captured_list: list[int]
 
 
 @dataclass
