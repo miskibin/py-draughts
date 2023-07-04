@@ -1,7 +1,15 @@
+![example workflow](https://github.com/michalskibinski109/checkers/actions/workflows/python-app.yml/badge.svg)
+[![PyPI version](https://badge.fury.io/py/fast_checkers.svg)](https://badge.fury.io/py/miskibin)
+
 # Checkers 
 Efficient Modern and flexible implementation of checkers game with beautiful web interface.
 Supports multiple variants of the game and allows to play against AI.
 
+# Installation
+
+```bash
+python -m pip install fast-checkers 
+```
 
 
 ## Bibliography
