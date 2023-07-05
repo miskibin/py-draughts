@@ -47,6 +47,3 @@ T8X8 = [_, B8, D8, F8, H8,
 # fmt: on
 """10x10 Board """
 T10X10 = {val: idx for idx, val in enumerate(SQUARES)}
-
-from .american_board import AmericanBoard
-from .models import Move

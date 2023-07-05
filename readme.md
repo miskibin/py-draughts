@@ -18,7 +18,7 @@ python -m pip install fast-checkers
 
 ```python
 import checkers
-from checkers import AmericanBoard, Move 
+from checkers.american_board import AmericanBoard, Move 
 board = AmericanBoard()
 move = Move([A3, B4])
 board.push(move)
