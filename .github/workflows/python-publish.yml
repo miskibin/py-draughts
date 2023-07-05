@@ -12,28 +12,25 @@ on:
     tags:
       - "*"
 
-permissions:
-  contents: read
-
 jobs:
-  deploy:
+  pypi-publish:
+    name: Upload release to PyPI
     runs-on: ubuntu-latest
-
+    environment:
+      name: pypi
+      url: https://pypi.org/p/fast-checkers
+    permissions:
+      id-token: write  # IMPORTANT: this permission is mandatory for trusted publishing
     steps:
-      - name: Set up Python
-        uses: actions/setup-python@v3
-        with:
-          python-version: "3.x"
+    # retrieve your distributions here
       - uses: actions/checkout@v3
-      - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          python -m pip install -r requirements.txt
-          pip install build
-      - name: Build package
-        run: python -m build
-      - name: Publish package
-        uses: pypa/gh-action-pypi-publish@27b31702a0e7fc50959f5ad993c78deac1bdfc29
         with:
-          user: __token__
-          password: ${{ secrets.PYPI_API_TOKEN }}
+          sparse-checkout: |
+            README.md
+          sparse-checkout-cone-mode: false
+      - name: debug
+        run:
+        - ls -la
+      - name: Publish package distributions to PyPI
+
+        uses: pypa/gh-action-pypi-publish@release/v1
