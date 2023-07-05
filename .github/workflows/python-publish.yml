@@ -37,8 +37,8 @@ jobs:
       environment:
         name: pypi
         url: https://pypi.org/p/fast-checkers
-        permissions:
-          id-token: write
-        steps:  
-        - name: Publish package distributions to PyPI
-          uses: pypa/gh-action-pypi-publish@release/v1
+      permissions:
+        id-token: write
+      steps:  
+      - name: Publish package distributions to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
