@@ -1,5 +1,4 @@
 from __future__ import annotations
-import numpy as np
 from checkers.utils import logger
 from checkers.models import (
     Entity,
@@ -14,6 +13,7 @@ import checkers
 from typing import Generator, Literal
 from abc import ABC, abstractmethod
 import warnings
+import numpy as np
 
 
 class BaseBoard(ABC):

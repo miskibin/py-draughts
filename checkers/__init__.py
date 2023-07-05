@@ -48,5 +48,5 @@ T8X8 = [_, B8, D8, F8, H8,
 """10x10 Board """
 T10X10 = {val: idx for idx, val in enumerate(SQUARES)}
 
-from checkers.american_board import AmericanBoard
-from checkers.models import Move
+from .american_board import AmericanBoard
+from .models import Move
