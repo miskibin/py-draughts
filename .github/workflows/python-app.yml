@@ -24,7 +24,9 @@ jobs:
         python-version: "3.10"
     - uses: actions/checkout@v3
     - name: Install dependencies
+      working-directory: .
       run: |
+        ls -la
         python -m pip install --upgrade pip
         pip install flake8 pytest
         pip install -r requirements.txt
