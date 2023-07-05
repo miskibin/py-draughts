@@ -8,8 +8,7 @@ def read_description():
     Reads the description from README.rst and substitutes mentions of the
     latest version with a concrete version number.
     """
-    print(os.path.join(os.path.dirname(__file__), "README.md"))
-    with open(os.path.join(os.path.dirname(__file__), "README.md"), encoding="utf-8") as f:
+    with open("readme.md", encoding="utf-8") as f:
         description = f.read()
     return description
 setuptools.setup(
