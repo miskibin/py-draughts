@@ -1,6 +1,5 @@
 import setuptools
 from checkers.__init__ import __doc__
-import os
 
 
 from pathlib import Path
