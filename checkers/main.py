@@ -4,34 +4,36 @@ import uvicorn
 from fastapi.responses import JSONResponse, HTMLResponse
 from fastapi.templating import Jinja2Templates
 from fastapi.staticfiles import StaticFiles
-from fast_checkers.base_board import Board
+from checkers.american_board import AmericanBoard as Board
 
-templates = Jinja2Templates(directory="fast_checkers/templates/")
+templates = Jinja2Templates(directory="checkers/templates/")
 
 app = FastAPI()
 board = Board()
-app.mount("/static", StaticFiles(directory="fast_checkers/static"), name="static")
+app.mount("/static", StaticFiles(directory="checkers/static"), name="static")
 
 
 @app.get("/")
 def index(request: Request):
     return templates.TemplateResponse(
-        "index.html", {"request": request, "board": board.friendly_form.tolist()}
+        "index.html",
+        {"request": request, "board": board.friendly_form.reshape(8, 8).tolist()},
     )
 
 
 @app.get("/random_move")
 def random_move(request: Request):
     moves = list(board.legal_moves)
-    move = moves[np.random.randint(0, len(moves))]
-    board.move(move)
-    print(board)
-    return {"position": board.friendly_form.tolist()}
+    # get move wiht longest capture chain
+    move = max(moves, key=lambda x: len(x.captured_list))
+    print(move)
+    board.push(move)
+    return {"position": board.friendly_form.reshape(8, 8).tolist()}
 
 
 @app.get("/board")
 def get_board(request: Request):
-    return {"position": board.friendly_form.tolist()}
+    return {"position": board.friendly_form.reshape(8, 8).tolist()}
 
 
 if __name__ == "__main__":

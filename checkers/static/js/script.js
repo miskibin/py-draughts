@@ -73,7 +73,7 @@ $(document).ready(() => {
         populateBoard();
       },
     });
-  }, 1000);
+  }, 2000);
 
   dragPiece();
 });
