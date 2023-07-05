@@ -28,9 +28,5 @@ jobs:
           sparse-checkout: |
             README.md
           sparse-checkout-cone-mode: false
-      - name: debug
-        run: |
-          ls -la
       - name: Publish package distributions to PyPI      
-        working-directory: .
         uses: pypa/gh-action-pypi-publish@release/v1
