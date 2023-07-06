@@ -3,12 +3,13 @@ from checkers.__init__ import __doc__
 
 
 from pathlib import Path
+
 this_directory = Path(__file__).parent
-long_description = (this_directory / "readme.md").read_text()
+long_description = (this_directory / "README.md").read_text()
 
 setuptools.setup(
     name="fast-checkers",
-    version="0.0.4",
+    version="0.0.5",
     author="Michał Skibiński",
     author_email="mskibinski109@gmail.com",
     files_to_include=["checkers"],

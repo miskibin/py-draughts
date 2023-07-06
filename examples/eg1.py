@@ -44,7 +44,10 @@ print(board)
 # >>> ---------------------------------
 # >>> | o |   | o |   | o |   | o |   |
 print(list(board.legal_moves))
-
+# >>> [Move through squares: [8, 12], Move through squares: [9, 13],
+# >>>  Move through squares: [9, 14], Move through squares: [10, 14],
+# >>>  Move through squares: [10, 15], Move through squares: [11, 15],
+# >>>  Move through squares: [11, 16]]
 # import checkers.base as checkers
 # import numpy as np
 # CUSTOM_POSITION = np.array([1] * 20 + [-1] * 12, dtype=np.int8)
