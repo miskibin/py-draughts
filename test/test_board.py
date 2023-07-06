@@ -13,7 +13,7 @@ import numpy as np
 class TestBoard:
     @pytest.fixture(autouse=True)
     def setup(self):
-        self.board = BaseBoard()
+        self.board = BaseBoard(STARTING_POSITION)
         yield
         del self.board
 

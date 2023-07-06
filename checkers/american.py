@@ -25,6 +25,15 @@ SQUARES = [_, B8, D8, F8, H8,
 
 
 class Board(BaseBoard):
+    """
+    Board for American checkers.
+    Game rules:
+    - Board size: 8x8
+    - Short moves only
+    - Only the king can capture backwards
+    - Capture - choose any
+    """
+
     STARTING_POSITION = np.array([1] * 12 + [0] * 8 + [-1] * 12, dtype=np.int8)
     size = int(np.sqrt(len(STARTING_POSITION) * 2))
     row_idx = {val: val // 4 for val in range(len(STARTING_POSITION))}
