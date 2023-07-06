@@ -16,16 +16,20 @@ python -m pip install fast-checkers
 
 ## Usage:
 
+### simple
+
 ```python
-import checkers
-from checkers.american_board import AmericanBoard, Move 
-board = AmericanBoard()
-move = Move([A3, B4])
+import checkers.american as checkers
+board = checkers.Board()
+move = checkers.Move([checkers.A3, checkers.B4])
 board.push(move)
+
+print(list(board.legal_moves))
 print(board)
 ```
 
 ```bash
+['Move through squares: [8, 12]', 'Move through squares: [8, 13]', 'Move through squares: [9, 13]', 'Move through squares: [9, 14]', 'Move through squares: [10, 14]', 'Move through squares: [10, 15]', 'Move through squares: [11, 15]']
 ---------------------------------
 |   | x |   | x |   | x |   | x |
 ---------------------------------
@@ -43,6 +47,40 @@ print(board)
 ---------------------------------
 | o |   | o |   | o |   | o |   |
 ```
+
+### advenced:
+
+```python
+import checkers.base as checkers
+import numpy as np
+CUSTOM_POSITION = np.array([1] * 20 + [-1] * 12, dtype=np.int8)
+board = checkers.BaseBoard(starting_position=CUSTOM_POSITION)
+board.legal_moves = ... # create your own custom legal_moves method (property)
+print(board)
+print(board.legal_moves)
+```
+
+```bash
+---------------------------------
+|   | x |   | x |   | x |   | x |
+---------------------------------
+| x |   | x |   | x |   | x |   |
+---------------------------------
+|   | x |   | x |   | x |   | x |
+---------------------------------
+| x |   | x |   | x |   | x |   |
+---------------------------------
+|   | x |   | x |   | x |   | x |
+---------------------------------
+| o |   | o |   | o |   | o |   |
+---------------------------------
+|   | o |   | o |   | o |   | o |
+---------------------------------
+| o |   | o |   | o |   | o |   |
+
+Ellipsis
+```
+
 
 ## Bibliography
 1. [notatin](https://en.wikipedia.org/wiki/Portable_Draughts_Notation)

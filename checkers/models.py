@@ -4,10 +4,6 @@ from typing import NewType, Generator
 import numpy as np
 from enum import Enum, IntEnum
 from checkers.utils import logger
-from dataclasses import dataclass, field
-
-# import cached_property
-from functools import cached_property
 
 STARTING_POSITION = np.array([1] * 12 + [0] * 8 + [-1] * 12, dtype=np.int8)
 SquareT = NewType("SquareT", int)
@@ -41,7 +37,7 @@ class Move:
         self.captured_entities = captured_entities
 
     def __str__(self) -> str:
-        return f"Squares: {self.square_list}, Captured: {self.captured_list}"
+        return f"Move through squares: {self.square_list}"
 
     def __add__(self, other: Move) -> Move:
         """Append moves"""

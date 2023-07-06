@@ -1,9 +1,8 @@
 from __future__ import annotations
 from typing import Generator
-from checkers.base_board import BaseBoard
-from checkers.models import STARTING_POSITION, Move, Color, Entity
+from checkers.base import BaseBoard
+from checkers.models import  Move, Color
 from checkers.utils import logger
-import checkers
 import numpy as np
 
 """
@@ -13,8 +12,18 @@ import numpy as np
  Capture - choose any
 """
 
+# fmt: off
+SQUARES = [_, B8, D8, F8, H8,
+        A7, C7, E7, G7,
+        B6, D6, F6, H6,
+        A5, C5, E5, G5,
+        B4, D4, F4, H4,
+        A3, C3, E3, G3,
+        B2, D2, F2, H2,
+        A1, C1, E1, G1] = range(33)
+# fmt: on
 
-class AmericanBoard(BaseBoard):
+class Board(BaseBoard):
     STARTING_POSITION = np.array([1] * 12 + [0] * 8 + [-1] * 12, dtype=np.int8)
     size = int(np.sqrt(len(STARTING_POSITION) * 2))
     row_idx = {val: val // 4 for val in range(len(STARTING_POSITION))}
@@ -88,7 +97,7 @@ class AmericanBoard(BaseBoard):
 
 
 if __name__ == "__main__":
-    board = AmericanBoard()
+    board = Board()
     while True:
         moves = board.legal_moves
         move = np.random.choice(list(moves))

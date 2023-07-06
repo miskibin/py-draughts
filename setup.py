@@ -8,7 +8,7 @@ long_description = (this_directory / "README.md").read_text()
 
 setuptools.setup(
     name="fast-checkers",
-    version="0.0.3",
+    version="0.0.4",
     author="Michał Skibiński",
     author_email="mskibinski109@gmail.com",
     files_to_include=["checkers"],

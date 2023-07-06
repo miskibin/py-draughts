@@ -1,11 +1,11 @@
-from checkers.base_board import (
+from checkers.base import (
     BaseBoard,
     Color,
     Move,
     STARTING_POSITION,
     Entity,
 )
-import checkers
+import checkers.base as checkers
 import pytest
 import numpy as np
 

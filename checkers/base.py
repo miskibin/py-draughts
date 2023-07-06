@@ -10,10 +10,32 @@ from checkers.models import (
     SquareT,
 )
 import checkers
-from typing import Generator, Literal
-from abc import ABC, abstractmethod
-import warnings
+from typing import Generator
+from abc import ABC
 import numpy as np
+
+# SQUARES = [
+#     _, B10, D10, F10, H10, J10,
+#     A9, C9, E9, G9, I9,
+#     B8, D8, F8, H8, J8,
+#     A7, C7, E7, G7, I7,
+#     B6, D6, F6, H6, J6,
+#     A5, C5, E5, G5, I5,
+#     B4, D4, F4, H4, J4,
+#     A3, C3, E3, G3, I3,
+#     B2, D2, F2, H2, J2,
+#     A1, C1, E1, G1, I1
+#     ] = range(51)
+# fmt: off
+SQUARES = [_, B8, D8, F8, H8,
+        A7, C7, E7, G7,
+        B6, D6, F6, H6,
+        A5, C5, E5, G5,
+        B4, D4, F4, H4,
+        A3, C3, E3, G3,
+        B2, D2, F2, H2,
+        A1, C1, E1, G1] = range(33)
+# fmt: on
 
 
 class BaseBoard(ABC):
@@ -23,14 +45,13 @@ class BaseBoard(ABC):
     enables dynamic configuration of the board's dimensions.
     """
 
-    SQUARES_MAP: checkers.T10X10 | checkers.T8X8 = checkers.T8X8
 
-    def __init__(self, position: np.ndarray = STARTING_POSITION) -> None:
+    def __init__(self, starting_position: np.ndarray = STARTING_POSITION) -> None:
         super().__init__()
-        self._pos = position.copy()
+        self._pos = starting_position.copy()
         size = int(np.sqrt(len(self.position) * 2))
         if size**2 != len(self.position) * 2:
-            msg = f"Invalid board with shape {position.shape} provided.\
+            msg = f"Invalid board with shape {starting_position.shape} provided.\
                 Please use an array with lenght = (n * n/2). \
                 Where n is an size of the board."
             logger.error(msg)
@@ -58,7 +79,7 @@ class BaseBoard(ABC):
         self._pos[src], self._pos[tg] = self._pos[tg], self._pos[src]
         if move.captured_list:
             self._pos[
-                np.array([self.SQUARES_MAP[sq] for sq in move.captured_list])
+                np.array([sq for sq in move.captured_list])
             ] = Entity.EMPTY
         self._moves_stack.append(move)
         if is_finished:
@@ -113,18 +134,18 @@ class BaseBoard(ABC):
 if __name__ == "__main__":
     board = BaseBoard(STARTING_POSITION)
 
-    m1 = Move([checkers.C3, checkers.B4])
+    m1 = Move([C3, B4])
     board.push(m1)
 
-    m2 = Move([checkers.B6, checkers.A5])
+    m2 = Move([B6, A5])
     board.push(m2)
 
-    m3 = Move([checkers.G3, checkers.H4])
+    m3 = Move([G3, H4])
     board.push(m3)
     print(board)
 
-    m4 = Move([checkers.A5, checkers.C3], captured_list=[checkers.B4])
+    m4 = Move([A5, C3], captured_list=[B4])
     board.push(m4)
     print(board)
-    checkers.SQUARES = range(51)
-    print(checkers.SQUARES)
+    SQUARES = range(51)
+    print(SQUARES)
