@@ -1,5 +1,5 @@
 Fast Checkers
-=========
+=============
 
 .. image:: https://github.com/michalskibinski109/checkers/actions/workflows/python-app.yml/badge.svg
    :target: https://github.com/michalskibinski109/checkers/actions/workflows/python-app.yml
