@@ -18,6 +18,8 @@ const populateBoard = () => {
   let colorMap = {
     1: whitePieceColor,
     "-1": blackPieceColor,
+    10: "#aaa",
+    "-10": "#555",
   };
   for (let i = 0; i < boardArray.length; i++) {
     for (let j = 0; j < boardArray[i].length; j++) {
@@ -73,7 +75,7 @@ $(document).ready(() => {
         populateBoard();
       },
     });
-  }, 2000);
+  }, 900);
 
   dragPiece();
 });

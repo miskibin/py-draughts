@@ -15,10 +15,12 @@ class Color(Enum):
 
 
 class Entity(IntEnum):
-    BLACK_KING = 10
-    BLACK_MAN = 1
-    WHITE_KING = -10
-    WHITE_MAN = -1
+    BLACK_KING = Color.BLACK.value * 10
+    BLACK_MAN = Color.BLACK.value
+    WHITE_KING = Color.WHITE.value * 10
+    WHITE_MAN = Color.WHITE.value
+    KING = 10
+    MAN = 1
     EMPTY = 0
 
 

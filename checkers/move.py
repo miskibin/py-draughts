@@ -31,13 +31,16 @@ class Move:
         visited_squares: list[int],
         captured_list: list[int] = [],
         captured_entities: list[Entity.value] = [],
+        is_promotion: bool = False,
     ) -> None:
         self.square_list = visited_squares
         self.captured_list = captured_list
         self.captured_entities = captured_entities
+        self.is_promotion = is_promotion
 
     def __repr__(self) -> str:
-        return f"Move through squares: {[s + 1 for s in self.square_list ]}"
+        visited_squares = [str(s + 1) for s in self.square_list]
+        return f"Move: {'->'.join(visited_squares)}"
 
     def __eq__(self, other: object) -> bool:
         """Check if two moves are equal. move created from string will have only visited squares definied."""

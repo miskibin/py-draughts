@@ -5,16 +5,10 @@ from typing import Generator
 import numpy as np
 
 from checkers.base import BaseBoard
-from checkers.models import Color
+from checkers.models import Color, Entity
 from checkers.move import Move
 from checkers.utils import logger
 
-"""
- board 8x8
- Short moves only 
- Cannot capture backwards
- Capture - choose any
-"""
 
 # fmt: off
 SQUARES = [B8, D8, F8, H8,
@@ -44,8 +38,8 @@ class Board(BaseBoard):
     row_idx = {val: val // 4 for val in range(len(STARTING_POSITION))}
     col_idx = {val: val % 8 for val in range(len(STARTING_POSITION))}
 
-    def __init__(self) -> None:
-        super().__init__(Board.STARTING_POSITION)
+    def __init__(self, starting_position=STARTING_POSITION) -> None:
+        super().__init__(starting_position)
 
     @property
     def legal_moves(self) -> Generator[Move, None, None]:
@@ -53,42 +47,52 @@ class Board(BaseBoard):
             squares_list = np.transpose(np.nonzero(self._pos > 0))
         else:
             squares_list = np.transpose(np.nonzero(self._pos < 0))
-
         for square in squares_list.flatten():
             moves = self._legal_moves_from(square)
             for move in moves:
                 yield move
 
-    def _legal_moves_from(self, square: int) -> Generator[Move, None, None]:
+    def _legal_moves_from(
+        self, square: int, is_after_capture=False
+    ) -> Generator[Move, None, None]:
         row = self.row_idx[square]
         moves = []
-        odd = (row % 2 != 0 and self.turn == Color.BLACK) or (
+        odd = bool(row % 2 != 0 and self.turn == Color.BLACK) or (
             row % 2 == 0 and self.turn == Color.WHITE
         )
-        for move_offset, capture_offset in [(4 - odd, 7), (5 - odd, 9)]:
-            move_square = square + move_offset * (self.turn.value)
-            capture_square = square + capture_offset * (self.turn.value)
+        is_king = bool(self[square] == self.turn.value * Entity.KING)
+        # is_king = False  # DEBUF
+        for mv_offset, cap_offset, dir in [
+            (4 - odd, 7, self.turn.value),
+            (5 - odd, 9, self.turn.value),
+        ] + is_king * [
+            (4 - (not odd), 7, -self.turn.value),
+            (5 - (not odd), 9, -self.turn.value),
+        ]:
+            move_sq = square + mv_offset * (dir)
+            capture_sq = square + cap_offset * (dir)
 
             if (
-                0 <= move_square < len(self._pos)
-                and row + 1 * (self.turn.value) == self.row_idx[move_square]
-                and self[move_square] == 0
+                0 <= move_sq < len(self._pos)
+                and row + 1 * (dir) == self.row_idx[move_sq]
+                and self[move_sq] == 0
+                and not is_after_capture
             ):
-                moves.append(Move([square, move_square]))
+                moves.append(Move([square, move_sq]))
             elif (
-                0 <= capture_square < len(self._pos)
-                and row + 2 * (self.turn.value) == self.row_idx[capture_square]
-                and self[capture_square] == 0
-                and self[move_square] * self.turn.value < 0
+                0 <= capture_sq < len(self._pos)
+                and row + 2 * (dir) == self.row_idx[capture_sq]
+                and self[capture_sq] == 0
+                and self[move_sq] * self.turn.value < 0
             ):
                 move = Move(
-                    [square, capture_square],
-                    captured_list=[move_square],
-                    captured_entities=[self[move_square]],
+                    [square, capture_sq],
+                    captured_list=[move_sq],
+                    captured_entities=[self[move_sq]],
                 )
                 moves.append(move)
                 self.push(move, False)
-                moves += [move + m for m in self._legal_moves_from(capture_square)]
+                moves += [move + m for m in self._legal_moves_from(capture_sq, True)]
                 self.pop(False)
 
         return moves
@@ -96,20 +100,12 @@ class Board(BaseBoard):
 
 if __name__ == "__main__":
     board = Board()
-    board.push_from_str("24-19")
-    board.push_from_str("12-16")
-    board.push_from_str("23-18")
-    # from copy import deepcopy
-
-    # logger.info(
-    #     f"stack: {len(board._moves_stack)} turn: {board.turn}, num_moves: {len(list(board.legal_moves))}, num_of_white: {len(np.where(board._pos == -1)[0])}, num_of_black: {len(np.where(board._pos == 1)[0])}"
-    # )
-    # logger.info(
-    #     f"stack: {len(board._moves_stack)} turn: {board.turn}, num_moves: {len(list(board.legal_moves))}, num_of_white: {len(np.where(board._pos == -1)[0])}, num_of_black: {len(np.where(board._pos == 1)[0])}"
-    # )
-    # print(b2.__dict__)
-    # print(board.__dict__)
-    board.push_from_str("16-23")
+    print(list(board.legal_moves))
+    # board.push_from_str("12-16")
+    # board.push_from_str("12-16")
+    # board.push_from_str("23-18")
+    # board.push_from_str("16-23")
+    # print(board.pop())
     print(board)
     # while True:
     #     moves = board.legal_moves

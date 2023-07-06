@@ -78,18 +78,24 @@ class BaseBoard(ABC):
 
     def push(self, move: Move, is_finished: bool = True) -> None:
         """Pushes a move to the board.
+        Automatically promotes a piece if it reaches the last row.
 
         If ``is_finished`` is set to ``True``, the turn is switched. This parameter is used only
         for generating legal moves.
+
         """
         src, tg = (
             move.square_list[0],
             move.square_list[-1],
         )
         self._pos[src], self._pos[tg] = self._pos[tg], self._pos[src]
-        logger.debug(
-            f"({is_finished}) PUSH METHOD: Moved entity: {Entity(self._pos[tg])} to {tg}"
-        )
+        # is promotion
+        if (tg // (self.shape[0] // 2)) in (0, self.shape[0] - 1) and abs(
+            self._pos[tg]
+        ) == 1:
+            self._pos[tg] *= Entity.KING.value
+            move.is_promotion = True
+            logger.warning(f"Kinged: {tg} on row {tg // self.shape[0]}")
         if move.captured_list:
             self._pos[np.array([sq for sq in move.captured_list])] = Entity.EMPTY
         self._moves_stack.append(move)
@@ -107,7 +113,8 @@ class BaseBoard(ABC):
             move.square_list[0],
             move.square_list[-1],
         )
-        logger.debug(f"({is_finished}): Reversing: {Entity(self._pos[tg])} to {tg}")
+        if move.is_promotion:
+            self._pos[tg] //= Entity.KING.value
         self._pos[src], self._pos[tg] = self._pos[tg], self._pos[src]
         for sq, entity in zip(move.captured_list, move.captured_entities):
             self._pos[sq] = entity  # Dangerous line
@@ -118,6 +125,9 @@ class BaseBoard(ABC):
     def push_from_str(self, str_move: str) -> None:
         """
         Allows to push a move from a string.
+
+        * Converts string to ``Move`` object
+        * calls ``BaseBoard.push`` method
         """
         try:
             move = Move.from_string(str_move, self.legal_moves)
@@ -174,5 +184,3 @@ if __name__ == "__main__":
     m4 = Move([A5, C3], captured_list=[B4])
     board.push(m4)
     print(board)
-    SQUARES = range(51)
-    print(SQUARES)
