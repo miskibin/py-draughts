@@ -5,7 +5,7 @@ import setuptools
 from checkers.__init__ import __doc__, __version__
 
 this_directory = Path(__file__).parent
-long_description = (this_directory / "readme.md").read_text()
+long_description = (this_directory / "readme.rst").read_text()
 
 setuptools.setup(
     name="fast-checkers",
@@ -15,7 +15,8 @@ setuptools.setup(
     files_to_include=["checkers"],
     description=__doc__.replace("\n", " ").strip(),
     long_description=long_description,
-    long_description_content_type="text/markdown",
+    # rst
+    long_description_content_type="text/x-rst",
     packages=setuptools.find_packages(),
     license="GPL-3.0+",
     keywords="checkers AI mini-max droughts, game, board",

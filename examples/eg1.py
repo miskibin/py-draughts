@@ -3,11 +3,11 @@ import checkers.american as checkers
 board = checkers.Board()
 
 
-board.push_from_str("24-19")
-board.push_from_str("12-16")
-board.push_from_str("23-18")
-board.push_from_str("16-23")
-board.push_from_str("26-19")
+# board.push_from_str("24-19")
+# board.push_from_str("12-16")
+# board.push_from_str("23-18")
+# board.push_from_str("16-23")
+# board.push_from_str("26-19")
 print(board)
 # >>> ---------------------------------
 # >>> |   | x |   | x |   | x |   | x |
