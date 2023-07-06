@@ -13,13 +13,13 @@ class Move:
 
     As we can read on wikipedia:
 
-    Multiple jumps, such as a double or triple jump,
+    *Multiple jumps, such as a double or triple jump,
     require you to pay attention, as the convention is
     to just show the start and end squares and not the
     in-between or intermediate squares. So the notation
     1-3 would mean a King does a double jump from 1 to 10 to 3.
     The intermediate square is only shown if there are two ways
-    to jump and it would not be clear otherwise.
+    to jump and it would not be clear otherwise.*
 
     Note that always:
     n - number of visited squares (include source square)
@@ -86,10 +86,12 @@ class Move:
 
 
         input format:
+
         * ``<square_number>-<square_number>`` for simple move
         * ``<square_number>x<square_number>`` for capture
 
         Examples:
+
         * ``24-19`` - means from 24 to 19
         * ``24x19`` - means from 24 to 16 means capture of piece between 24 and 16
         * ``1x10x19`` - means capture of two pieces between 1 and 19
