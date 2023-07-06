@@ -5,10 +5,7 @@ Fast Checkers
    :maxdepth: 2
    
    base
-   
-   :hidden:
-
-
+   move
 
 ===================
 

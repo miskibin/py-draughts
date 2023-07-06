@@ -9,8 +9,10 @@ from checkers.models import Color, Entity, SquareT
 
 class Move:
     """Move representation.
-    Since
-    ```
+    End user should never interact with this class directly.
+
+    As we can read on wikipedia:
+
     Multiple jumps, such as a double or triple jump,
     require you to pay attention, as the convention is
     to just show the start and end squares and not the
@@ -18,8 +20,8 @@ class Move:
     1-3 would mean a King does a double jump from 1 to 10 to 3.
     The intermediate square is only shown if there are two ways
     to jump and it would not be clear otherwise.
-    ```
-    Note that:
+
+    Note that always:
     n - number of visited squares (include source square)
     n - 2 - number of captured pieces
     """
@@ -75,16 +77,28 @@ class Move:
 
     @classmethod
     def from_string(cls, move: str, legal_moves: Generator) -> Move:
-        """Converts string representation of move to MovesChain
-        Accepted types:
-        with `-` separator: eg 1-5
-        with `x` separator: eg 1x5
-        multiple jumps: eg 1-5-9
+        """
+
+        Converts string representation of move to ``Move`` object.
+        This is generic method, so it can be used for any board size. Therefore,
+        For different context different move object will be generated.
+        Also we need to pass legal moves, to understand given move and check if it is legal.
+
+
+        input format:
+        * ``<square_number>-<square_number>`` for simple move
+        * ``<square_number>x<square_number>`` for capture
+
+        Examples:
+        * ``24-19`` - means from 24 to 19
+        * ``24x19`` - means from 24 to 16 means capture of piece between 24 and 16
+        * ``1x10x19`` - means capture of two pieces between 1 and 19
+
         """
         move = move.lower()
-        if "-" in move:
+        if "-" in move:  # classic move
             steps = move.split("-")
-        elif "x" in move:
+        elif "x" in move:  # this means capture
             steps = move.split("x")
         else:
             raise ValueError(f"Invalid move {move}.")

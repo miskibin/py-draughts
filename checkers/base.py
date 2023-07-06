@@ -31,8 +31,7 @@ class BaseBoard(ABC):
     The class is designed to support checkers boards of any size.
     By specifying the starting position, the user can create a board of any size.
 
-    .. note::
-    Board should always be square.
+
 
     To create new variants of checkers, inherit from this class and:
 
@@ -43,6 +42,7 @@ class BaseBoard(ABC):
     Constraints:
     - There are only two colors: ``Color.WHITE`` and ``Color.BLACK``
     - There are only two types of pieces: ``PieceType.MAN`` and ``PieceType.KING``
+    - Board should always be square.
     """
 
     def __init__(self, starting_position: np.ndarray) -> None:
