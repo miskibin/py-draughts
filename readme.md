@@ -30,6 +30,8 @@ board.push_from_str("23-18")
 board.push_from_str("16x23")
 board.push_from_str("26x19")
 print(board)
+```
+```bash
 >>> ---------------------------------
 >>> |   | x |   | x |   | x |   | x |
 >>> ---------------------------------
@@ -46,8 +48,12 @@ print(board)
 >>> |   | o |   |   |   | o |   | o |
 >>> ---------------------------------
 >>> | o |   | o |   | o |   | o |   |
+```
+```python
 board.pop()
 print(board)
+```
+```bash
 >>> ---------------------------------
 >>> |   | x |   | x |   | x |   | x |
 >>> ---------------------------------
@@ -64,7 +70,11 @@ print(board)
 >>> |   | o |   | o |   | o |   | o |
 >>> ---------------------------------
 >>> | o |   | o |   | o |   | o |   |
+```
+```python
 print(list(board.legal_moves))
+```
+```bash
 >>> [Move through squares: [8, 12], Move through squares: [9, 13],
 >>>  Move through squares: [9, 14], Move through squares: [10, 14],
 >>>  Move through squares: [10, 15], Move through squares: [11, 15],
