@@ -33,7 +33,6 @@ jobs:
           python -m pip install --upgrade pip
           pip install build
       - name: Build package
-        uses: actions/checkout@v3
         run: python -m build -n
       - name: Publish package distributions to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1
