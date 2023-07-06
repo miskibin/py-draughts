@@ -1,5 +1,5 @@
 import setuptools
-from checkers.__init__ import __doc__
+from checkers.__init__ import __doc__, __version__
 
 
 from pathlib import Path
@@ -9,7 +9,7 @@ long_description = (this_directory / "readme.md").read_text()
 
 setuptools.setup(
     name="fast-checkers",
-    version="0.0.56",
+    version=__version__,
     author="Michał Skibiński",
     author_email="mskibinski109@gmail.com",
     files_to_include=["checkers"],

@@ -1,3 +1,8 @@
+# documentation in rst format
+"""
+
+"""
+
 from __future__ import annotations
 from checkers.utils import logger
 from checkers.models import (
@@ -8,23 +13,10 @@ from checkers.models import (
     Move,
     SquareT,
 )
-import checkers
 from typing import Generator
 from abc import ABC
 import numpy as np
 
-# SQUARES = [
-#     _, B10, D10, F10, H10, J10,
-#     A9, C9, E9, G9, I9,
-#     B8, D8, F8, H8, J8,
-#     A7, C7, E7, G7, I7,
-#     B6, D6, F6, H6, J6,
-#     A5, C5, E5, G5, I5,
-#     B4, D4, F4, H4, J4,
-#     A3, C3, E3, G3, I3,
-#     B2, D2, F2, H2, J2,
-#     A1, C1, E1, G1, I1
-#     ] = range(51)
 # fmt: off
 SQUARES = [_, B8, D8, F8, H8,
         A7, C7, E7, G7,
@@ -40,11 +32,29 @@ SQUARES = [_, B8, D8, F8, H8,
 class BaseBoard(ABC):
     """
     The class is designed to support checkers boards of any size.
-    The shape attribute, represented as a tuple (rows, columns),
-    enables dynamic configuration of the board's dimensions.
+    By specifying the starting position, the user can create a board of any size.
+
+    .. note::
+    Board should always be square.
+
+    To create new variants of checkers, inherit from this class and:
+
+    - override the ``legal_moves`` property
+    - override the ``SQUARES`` list to match the new board size
+    - override the ``STARTING_POSITION`` to specify the starting position
+
+    Constraints:
+    - There are only two colors: ``Color.WHITE`` and ``Color.BLACK``
+    - There are only two types of pieces: ``PieceType.MAN`` and ``PieceType.KING``
     """
 
-    def __init__(self, starting_position: np.ndarray = STARTING_POSITION) -> None:
+    def __init__(self, starting_position: np.ndarray) -> None:
+        """
+        Initializes the board with a starting position.
+        The starting position must be a numpy array of length n * n/2,
+        where n is the size of the board.
+
+        """
         super().__init__()
         self._pos = starting_position.copy()
         size = int(np.sqrt(len(self.position) * 2))
@@ -70,7 +80,11 @@ class BaseBoard(ABC):
         return self._pos
 
     def push(self, move: Move, is_finished: bool = True) -> None:
-        """Pushes a move to the board."""
+        """Pushes a move to the board.
+
+        If ``is_finished`` is set to ``True``, the turn is switched. This parameter is used only
+        for generating legal moves.
+        """
         src, tg = (
             move.square_list[0],
             move.square_list[-1],
@@ -86,7 +100,11 @@ class BaseBoard(ABC):
             self.turn = Color.WHITE if self.turn == Color.BLACK else Color.BLACK
 
     def pop(self, is_finished=True) -> None:
-        """Pops a move from the board."""
+        """Pops a move from the board.
+
+        If ``is_finished`` is set to ``True``, the turn is switched. This parameter is used only
+        for generating legal moves.
+        """
         move = self._moves_stack.pop()
         src, tg = (
             move.square_list[0],
@@ -101,6 +119,9 @@ class BaseBoard(ABC):
         return move
 
     def push_from_str(self, str_move: str) -> None:
+        """
+        Allows to push a move from a string.
+        """
         try:
             move = Move.from_string(str_move, self.legal_moves)
         except ValueError as e:

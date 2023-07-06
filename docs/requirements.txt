@@ -1,0 +1,5 @@
+myst-parser
+sphinx
+# readthedocs theme
+sphinx_rtd_theme
+sphinxcontrib-mermaid==0.8.1
