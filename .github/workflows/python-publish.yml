@@ -32,10 +32,6 @@ jobs:
           pip install build
       - name: Checkout
         uses: actions/checkout@v3
-        with:
-          sparse-checkout: |
-            README.md
-          sparse-checkout-cone-mode: false
       - name: Build package
         run: python -m build -n
       - name: Publish package distributions to PyPI
