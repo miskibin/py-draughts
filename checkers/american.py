@@ -1,7 +1,7 @@
 from __future__ import annotations
 from typing import Generator
 from checkers.base import BaseBoard
-from checkers.models import  Move, Color
+from checkers.models import Move, Color
 from checkers.utils import logger
 import numpy as np
 
@@ -23,6 +23,7 @@ SQUARES = [_, B8, D8, F8, H8,
         A1, C1, E1, G1] = range(33)
 # fmt: on
 
+
 class Board(BaseBoard):
     STARTING_POSITION = np.array([1] * 12 + [0] * 8 + [-1] * 12, dtype=np.int8)
     size = int(np.sqrt(len(STARTING_POSITION) * 2))
@@ -41,27 +42,32 @@ class Board(BaseBoard):
             for move in moves:
                 yield move
 
-
     def _legal_moves_from(self, square: int) -> Generator[Move, None, None]:
         row = self.row_idx[square]
         moves = []
-        odd = (row % 2 != 0 and self.turn == Color.BLACK) or (row % 2 == 0 and self.turn == Color.WHITE)
+        odd = (row % 2 != 0 and self.turn == Color.BLACK) or (
+            row % 2 == 0 and self.turn == Color.WHITE
+        )
         for move_offset, capture_offset in [(4 - odd, 7), (5 - odd, 9)]:
             move_square = square + move_offset * (self.turn.value)
             capture_square = square + capture_offset * (self.turn.value)
 
-            if 0 <= move_square < len(self._pos) and row + 1 * (self.turn.value) == self.row_idx[move_square] and self[move_square] == 0:
+            if (
+                0 <= move_square < len(self._pos)
+                and row + 1 * (self.turn.value) == self.row_idx[move_square]
+                and self[move_square] == 0
+            ):
                 moves.append(Move([square, move_square]))
             elif (
                 0 <= capture_square < len(self._pos)
                 and row + 2 * (self.turn.value) == self.row_idx[capture_square]
                 and self[capture_square] == 0
-                and self[move_square] == self.turn.value * -1
+                and self[move_square] * self.turn.value < 0
             ):
                 move = Move(
                     [square, capture_square],
                     captured_list=[move_square],
-                    captured_entities=[False],
+                    captured_entities=[self[move_square]],
                 )
                 moves.append(move)
                 self.push(move, False)
@@ -70,10 +76,23 @@ class Board(BaseBoard):
 
         return moves
 
+
 if __name__ == "__main__":
     board = Board()
-    print(list(board.legal_moves))
     board.push_from_str("24-19")
+    board.push_from_str("12-16")
+    board.push_from_str("23-18")
+    # from copy import deepcopy
+
+    # logger.info(
+    #     f"stack: {len(board._moves_stack)} turn: {board.turn}, num_moves: {len(list(board.legal_moves))}, num_of_white: {len(np.where(board._pos == -1)[0])}, num_of_black: {len(np.where(board._pos == 1)[0])}"
+    # )
+    # logger.info(
+    #     f"stack: {len(board._moves_stack)} turn: {board.turn}, num_moves: {len(list(board.legal_moves))}, num_of_white: {len(np.where(board._pos == -1)[0])}, num_of_black: {len(np.where(board._pos == 1)[0])}"
+    # )
+    # print(b2.__dict__)
+    # print(board.__dict__)
+    board.push_from_str("16-23")
     print(board)
     # while True:
     #     moves = board.legal_moves

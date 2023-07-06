@@ -4,7 +4,6 @@ from checkers.models import (
     Entity,
     ENTITY_REPR,
     STARTING_POSITION,
-    ENTITY_MAP,
     Color,
     Move,
     SquareT,
@@ -45,7 +44,6 @@ class BaseBoard(ABC):
     enables dynamic configuration of the board's dimensions.
     """
 
-
     def __init__(self, starting_position: np.ndarray = STARTING_POSITION) -> None:
         super().__init__()
         self._pos = starting_position.copy()
@@ -78,11 +76,11 @@ class BaseBoard(ABC):
             move.square_list[-1],
         )
         self._pos[src], self._pos[tg] = self._pos[tg], self._pos[src]
-        logger.debug(f'({is_finished}) PUSH METHOD: Moved entity: {Entity(self._pos[tg])} to {tg}')
+        logger.debug(
+            f"({is_finished}) PUSH METHOD: Moved entity: {Entity(self._pos[tg])} to {tg}"
+        )
         if move.captured_list:
-            self._pos[
-                np.array([sq for sq in move.captured_list])
-            ] = Entity.EMPTY
+            self._pos[np.array([sq for sq in move.captured_list])] = Entity.EMPTY
         self._moves_stack.append(move)
         if is_finished:
             self.turn = Color.WHITE if self.turn == Color.BLACK else Color.BLACK
@@ -94,16 +92,20 @@ class BaseBoard(ABC):
             move.square_list[0],
             move.square_list[-1],
         )
-        logger.debug(f'({is_finished}): Reversing: {Entity(self._pos[tg])} to {tg}')
+        logger.debug(f"({is_finished}): Reversing: {Entity(self._pos[tg])} to {tg}")
         self._pos[src], self._pos[tg] = self._pos[tg], self._pos[src]
-        for sq, is_king in zip(move.captured_list, move.captured_entities):
-            self._pos[sq] = ENTITY_MAP[(self.turn, is_king)]
+        for sq, entity in zip(move.captured_list, move.captured_entities):
+            self._pos[sq] = entity  # Dangerous line
         if is_finished:
             self.turn = Color.WHITE if self.turn == Color.BLACK else Color.BLACK
         return move
 
-    def push_from_str(self,str_move:str) -> None:
-        move =  Move.from_string(str_move,self.legal_moves)
+    def push_from_str(self, str_move: str) -> None:
+        try:
+            move = Move.from_string(str_move, self.legal_moves)
+        except ValueError as e:
+            logger.error(f"{e} \n {str(self)}")
+            raise e
         self.push(move)
 
     @property

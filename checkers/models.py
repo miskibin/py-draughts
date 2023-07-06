@@ -30,7 +30,7 @@ class Move:
         self,
         visited_squares: list[int],
         captured_list: list[int] = [],
-        captured_entities: list[bool] = [],
+        captured_entities: list[Entity.value] = [],
     ) -> None:
         self.square_list = visited_squares
         self.captured_list = captured_list
@@ -40,20 +40,29 @@ class Move:
         return f"Move through squares: {[s + 1 for s in self.square_list ]}"
 
     def __eq__(self, other: object) -> bool:
-            """Check if two moves are equal. move created from string will have only visited squares definied."""
-            if not isinstance(other, Move):
-                return False
-
-            if (
-                self.square_list[0] == other.square_list[0]
-                and self.square_list[-1] == other.square_list[-1]
-            ):
-                longer = self.square_list if len(self.square_list) >= len(other.square_list) else other.square_list
-                shorter = self.square_list if len(self.square_list) < len(other.square_list) else other.square_list
-
-                return all(square in longer for square in shorter)
-
+        """Check if two moves are equal. move created from string will have only visited squares definied."""
+        if not isinstance(other, Move):
             return False
+
+        if (
+            self.square_list[0] == other.square_list[0]
+            and self.square_list[-1] == other.square_list[-1]
+        ):
+            longer = (
+                self.square_list
+                if len(self.square_list) >= len(other.square_list)
+                else other.square_list
+            )
+            shorter = (
+                self.square_list
+                if len(self.square_list) < len(other.square_list)
+                else other.square_list
+            )
+
+            return all(square in longer for square in shorter)
+
+        return False
+
     def __add__(self, other: Move) -> Move:
         """Append moves"""
         if self.square_list[-1] != other.square_list[0]:
@@ -80,16 +89,14 @@ class Move:
         elif "x" in move:
             steps = move.split("x")
         else:
-            raise ValueError(
-                f"Invalid move {move}."
-            )
-        
-        move = Move([int(step) -1 for step in steps])
+            raise ValueError(f"Invalid move {move}.")
+
+        move = Move([int(step) - 1 for step in steps])
         for legal_move in legal_moves:
             if legal_move == move:
-                return legal_move 
+                return legal_move
         raise ValueError(
-            f"Move {move} is correct, but not legal in given position.\n Legal moves are: {list(legal_moves)}"
+            f"{move} is correct, but not legal in given position.\n Legal moves are: {list(legal_moves)}"
         )
 
 
@@ -113,11 +120,3 @@ ENTITY_REPR = {
     Entity.BLACK_KING: "X",
     Entity.WHITE_KING: "O",
 }
-
-ENTITY_MAP = {
-    (Color.WHITE, False): Entity.WHITE_MAN,
-    (Color.WHITE, True): Entity.WHITE_KING,
-    (Color.BLACK, False): Entity.BLACK_MAN,
-    (Color.BLACK, True): Entity.BLACK_KING,
-}
-
