@@ -90,8 +90,7 @@ Ellipsis
 
 ## UI
 __for now UI is mostly used for debugging pruposes__
-![image](https://github.com/michalskibinski109/checkers/assets/77834536/acae0786-9cf3-4e30-9a04-abd7c018202b)
-
+<img src="https://github.com/michalskibinski109/checkers/assets/77834536/acae0786-9cf3-4e30-9a04-abd7c018202b" width="400">
 
 ## Contributing
 
