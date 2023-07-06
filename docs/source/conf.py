@@ -1,5 +1,5 @@
-import sys
 import os
+import sys
 
 # Import the chess module.
 sys.path.insert(0, os.path.abspath(".."))

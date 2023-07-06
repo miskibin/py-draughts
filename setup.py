@@ -1,8 +1,8 @@
-import setuptools
-from checkers.__init__ import __doc__, __version__
-
-
 from pathlib import Path
+
+import setuptools
+
+from checkers.__init__ import __doc__, __version__
 
 this_directory = Path(__file__).parent
 long_description = (this_directory / "readme.md").read_text()

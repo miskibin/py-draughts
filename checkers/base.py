@@ -4,18 +4,15 @@
 """
 
 from __future__ import annotations
-from checkers.utils import logger
-from checkers.models import (
-    Entity,
-    ENTITY_REPR,
-    STARTING_POSITION,
-    Color,
-    Move,
-    SquareT,
-)
-from typing import Generator
+
 from abc import ABC
+from typing import Generator
+
 import numpy as np
+
+from checkers.models import ENTITY_REPR, STARTING_POSITION, Color, Entity, SquareT
+from checkers.move import Move
+from checkers.utils import logger
 
 # fmt: off
 SQUARES = [_, B8, D8, F8, H8,

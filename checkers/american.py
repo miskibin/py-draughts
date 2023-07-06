@@ -1,9 +1,13 @@
 from __future__ import annotations
+
 from typing import Generator
-from checkers.base import BaseBoard
-from checkers.models import Move, Color
-from checkers.utils import logger
+
 import numpy as np
+
+from checkers.base import BaseBoard
+from checkers.models import Color
+from checkers.move import Move
+from checkers.utils import logger
 
 """
  board 8x8

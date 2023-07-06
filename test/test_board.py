@@ -1,13 +1,8 @@
-from checkers.base import (
-    BaseBoard,
-    Color,
-    Move,
-    STARTING_POSITION,
-    Entity,
-)
-import checkers.base as checkers
-import pytest
 import numpy as np
+import pytest
+
+import checkers.base as checkers
+from checkers.base import STARTING_POSITION, BaseBoard, Color, Entity, Move
 
 
 class TestBoard:
