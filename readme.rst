@@ -88,10 +88,7 @@ Moving pieces
 .. code-block:: python
 
     >>> print(list(board.legal_moves))
-    [Move through squares: [8, 12], Move through squares: [9, 13],
-     Move through squares: [9, 14], Move through squares: [10, 14],
-     Move through squares: [10, 15], Move through squares: [11, 15],
-     Move through squares: [11, 16]]
+    [Move: 21->17, Move: 22->18, Move: 22->17, Move: 23->19, Move: 23->18, Move: 24->20, Move: 24->19]
 
 Creating custom board
 *********************
@@ -120,7 +117,7 @@ Contributions to this project are welcome. If you encounter any issues or have s
 Bibliography
 ------------
 
-1. `notatin <https://en.wikipedia.org/wiki/Portable_Draughts_Notation>`_
+1. `notation <https://en.wikipedia.org/wiki/Portable_Draughts_Notation>`_
 2. `rules and variants <https://en.wikipedia.org/wiki/Checkers>`_
 3. `list of pdns <https://github.com/mig0/Games-Checkers/>`_
 4. `additional 1 (checkers online) <https://checkers.online/play>`_
