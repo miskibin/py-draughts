@@ -1,12 +1,14 @@
-Fast Checkers 
-==========================================
-
 .. include:: ../../readme.rst
 
+
+Contents
+========
+
 .. toctree::
-   :maxdepth: 2
-   base
-   move
+    :maxdepth: 2
+    
+    base
+    move
 
 ===================
 

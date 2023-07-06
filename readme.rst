@@ -1,4 +1,4 @@
-Checkers
+Fast Checkers
 =========
 
 .. image:: https://github.com/michalskibinski109/checkers/actions/workflows/python-app.yml/badge.svg
