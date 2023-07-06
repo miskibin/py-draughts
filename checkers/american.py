@@ -41,65 +41,39 @@ class Board(BaseBoard):
             for move in moves:
                 yield move
 
+
     def _legal_moves_from(self, square: int) -> Generator[Move, None, None]:
         row = self.row_idx[square]
         moves = []
-        odd = (row % 2 != 0 and self.turn == Color.BLACK) or (
-            row % 2 == 0 and self.turn == Color.WHITE
-        )
-        move_right = square + (4 - odd) * (self.turn.value)
-        capture_right = square + 7 * (self.turn.value)
-        move_left = square + (5 - odd) * (self.turn.value)
-        capture_left = square + 9 * (self.turn.value)
-        if (
-            0 <= move_right < len(self._pos)
-            and row + 1 * (self.turn.value) == self.row_idx[move_right]
-            and self[move_right] == 0
-        ):
-            moves.append(Move([square, move_right]))
-        elif (
-            0 <= capture_right < len(self._pos)
-            and row + 2 * (self.turn.value) == self.row_idx[capture_right]
-            and self[capture_right] == 0
-            and self[move_right] == self.turn.value * -1
-        ):
-            move = Move(
-                [square, capture_right],
-                captured_list=[move_right],
-                captured_entities=[False],
-            )
-            moves.append(move)
-            self.push(move, False)
-            moves += [move + m for m in self._legal_moves_from(capture_right)]
-            self.pop(False)
-        if (
-            0 <= move_left < len(self._pos)
-            and row + 1 * (self.turn.value) == self.row_idx[move_left]
-            and self[move_left] == 0
-        ):
-            moves.append(Move([square, move_left]))
-        elif (
-            0 <= capture_left < len(self._pos)
-            and row + 2 * (self.turn.value) == self.row_idx[capture_left]
-            and self[capture_left] == 0
-            and self[move_left] == self.turn.value * -1
-        ):
-            move = Move(
-                [square, capture_left],
-                captured_list=[move_left],
-                captured_entities=[False],
-            )
-            moves.append(move)
-            self.push(move, False)
-            moves += [move + m for m in self._legal_moves_from(capture_left)]
-            self.pop(False)
-        return moves
+        odd = (row % 2 != 0 and self.turn == Color.BLACK) or (row % 2 == 0 and self.turn == Color.WHITE)
+        for move_offset, capture_offset in [(4 - odd, 7), (5 - odd, 9)]:
+            move_square = square + move_offset * (self.turn.value)
+            capture_square = square + capture_offset * (self.turn.value)
 
+            if 0 <= move_square < len(self._pos) and row + 1 * (self.turn.value) == self.row_idx[move_square] and self[move_square] == 0:
+                moves.append(Move([square, move_square]))
+            elif (
+                0 <= capture_square < len(self._pos)
+                and row + 2 * (self.turn.value) == self.row_idx[capture_square]
+                and self[capture_square] == 0
+                and self[move_square] == self.turn.value * -1
+            ):
+                move = Move(
+                    [square, capture_square],
+                    captured_list=[move_square],
+                    captured_entities=[False],
+                )
+                moves.append(move)
+                self.push(move, False)
+                moves += [move + m for m in self._legal_moves_from(capture_square)]
+                self.pop(False)
+
+        return moves
 
 if __name__ == "__main__":
     board = Board()
     print(list(board.legal_moves))
-    board.move_from_str("24-19")
+    board.push_from_str("24-19")
     print(board)
     # while True:
     #     moves = board.legal_moves

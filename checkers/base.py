@@ -78,6 +78,7 @@ class BaseBoard(ABC):
             move.square_list[-1],
         )
         self._pos[src], self._pos[tg] = self._pos[tg], self._pos[src]
+        logger.debug(f'({is_finished}) PUSH METHOD: Moved entity: {Entity(self._pos[tg])} to {tg}')
         if move.captured_list:
             self._pos[
                 np.array([sq for sq in move.captured_list])
@@ -93,6 +94,7 @@ class BaseBoard(ABC):
             move.square_list[0],
             move.square_list[-1],
         )
+        logger.debug(f'({is_finished}): Reversing: {Entity(self._pos[tg])} to {tg}')
         self._pos[src], self._pos[tg] = self._pos[tg], self._pos[src]
         for sq, is_king in zip(move.captured_list, move.captured_entities):
             self._pos[sq] = ENTITY_MAP[(self.turn, is_king)]
@@ -100,10 +102,10 @@ class BaseBoard(ABC):
             self.turn = Color.WHITE if self.turn == Color.BLACK else Color.BLACK
         return move
 
-    def move_from_str(self,str_move:str):
+    def push_from_str(self,str_move:str) -> None:
         move =  Move.from_string(str_move,self.legal_moves)
         self.push(move)
-        
+
     @property
     def friendly_form(self) -> np.ndarray:
         """

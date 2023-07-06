@@ -1,10 +1,15 @@
-# import checkers.american as checkers
-# board = checkers.Board()
-# move = checkers.Move([checkers.A3, checkers.B4])
+import checkers.american as checkers
+board = checkers.Board()
 
-# board.push(move)
-# print([str(m) for m in list(board.legal_moves)])
-# print(board)
+
+board.push_from_str("24-19")
+board.push_from_str("12-16")
+board.push_from_str("23-18")
+print(list(board.legal_moves))
+board.push_from_str("16-23")
+# board.push_from_str("27-18")
+print(board)
+
 
 
 # import checkers.base as checkers

@@ -21,11 +21,12 @@ python -m pip install fast-checkers
 ```python
 import checkers.american as checkers
 board = checkers.Board()
-move = checkers.Move([checkers.A3, checkers.B4])
-board.push(move)
 
+board.push_from_str("24-19")
 print(list(board.legal_moves))
 print(board)
+
+
 ```
 
 ```bash
