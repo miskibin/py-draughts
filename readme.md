@@ -8,6 +8,8 @@ __Project still under active development. Usage may be different in futurue vers
 Efficient Modern and flexible implementation of checkers game with beautiful web interface.
 Supports multiple variants of the game and allows to play against AI.
 
+
+
 # Installation
 
 ```bash
