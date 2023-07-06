@@ -88,20 +88,14 @@ Ellipsis
 3. [additional 1 (checkers online)](https://checkers.online/play)
 4. [additional 2 (chinook)](https://webdocs.cs.ualberta.ca/~chinook/play/notation.html)
 
+## UI
+__for now UI is mostly used for debugging pruposes__
+![image](https://github.com/michalskibinski109/checkers/assets/77834536/acae0786-9cf3-4e30-9a04-abd7c018202b)
+
+
 ## Contributing
 
 Contributions to this project are welcome. If you encounter any issues or have suggestions for improvements, please open an issue or submit a pull request on the project repository.
 
 ---
-
-## ideas
-Move can be stored as 
-16 bits:
-`0b 000000 00000 000000 0`
-where:
-- 0-6 bits - source square (0-63)
-- 6-12 bits - destination square (0-63)
--  12-18 bits - captured piece (0-63)
-- 19 bit - weather captured piece is king (0-1)
-> bigest possible board is 10x10, so 6 bits is enough to store square number
 
