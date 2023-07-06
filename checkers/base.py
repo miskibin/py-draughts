@@ -62,6 +62,7 @@ class BaseBoard(ABC):
         logger.info(f"Board initialized with shape {self.shape}.")
 
     # @abstractmethod
+    @property
     def legal_moves(self) -> Generator[Move, None, None]:
         pass
 
@@ -99,6 +100,10 @@ class BaseBoard(ABC):
             self.turn = Color.WHITE if self.turn == Color.BLACK else Color.BLACK
         return move
 
+    def move_from_str(self,str_move:str):
+        move =  Move.from_string(str_move,self.legal_moves)
+        self.push(move)
+        
     @property
     def friendly_form(self) -> np.ndarray:
         """

@@ -98,12 +98,15 @@ class Board(BaseBoard):
 
 if __name__ == "__main__":
     board = Board()
-    while True:
-        moves = board.legal_moves
-        move = np.random.choice(list(moves))
-        board.push(move)
-        print(move)
-        print(board)
-        from time import sleep
+    print(list(board.legal_moves))
+    board.move_from_str("24-19")
+    print(board)
+    # while True:
+    #     moves = board.legal_moves
+    #     move = np.random.choice(list(moves))
+    #     board.push(move)
+    #     print(move)
+    #     print(board)
+    #     from time import sleep
 
-        sleep(2)
+    #     sleep(2)

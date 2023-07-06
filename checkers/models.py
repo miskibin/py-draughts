@@ -36,9 +36,24 @@ class Move:
         self.captured_list = captured_list
         self.captured_entities = captured_entities
 
-    def __str__(self) -> str:
-        return f"Move through squares: {self.square_list}"
+    def __repr__(self) -> str:
+        return f"Move through squares: {[s + 1 for s in self.square_list ]}"
 
+    def __eq__(self, other: object) -> bool:
+            """Check if two moves are equal. move created from string will have only visited squares definied."""
+            if not isinstance(other, Move):
+                return False
+
+            if (
+                self.square_list[0] == other.square_list[0]
+                and self.square_list[-1] == other.square_list[-1]
+            ):
+                longer = self.square_list if len(self.square_list) >= len(other.square_list) else other.square_list
+                shorter = self.square_list if len(self.square_list) < len(other.square_list) else other.square_list
+
+                return all(square in longer for square in shorter)
+
+            return False
     def __add__(self, other: Move) -> Move:
         """Append moves"""
         if self.square_list[-1] != other.square_list[0]:
@@ -66,11 +81,13 @@ class Move:
             steps = move.split("x")
         else:
             raise ValueError(
-                f"Invalid move {move}. Accepted moves <1-32>-<1-32> or <1-32>x<1-32>."
+                f"Invalid move {move}."
             )
-        steps = [int(step) for step in steps]
+        
+        move = Move([int(step) -1 for step in steps])
         for legal_move in legal_moves:
-            raise NotImplementedError
+            if legal_move == move:
+                return legal_move 
         raise ValueError(
             f"Move {move} is correct, but not legal in given position.\n Legal moves are: {list(legal_moves)}"
         )
