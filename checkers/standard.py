@@ -1,8 +1,9 @@
+from __future__ import annotations
+
 """
 **Board for Standard (international) checkers.**
-__Still in development.__
+*Still in development.*
 """
-from __future__ import annotations
 
 from typing import Generator
 
@@ -28,6 +29,38 @@ SQUARES=  [ B10, D10, F10, H10, J10,
 # fmt: on
 
 
+def _get_all_squares_at_the_diagonal(square: int) -> list[int]:
+    """
+    [[up-right], [down-right], [up-left], [down-left]]
+    It was hard to write, so it should be hard to read.
+    No comment for you.
+    """
+    row_idx = {val: val // 5 for val in range(50)}
+    result = []
+    squares, sq = [], square
+
+    while (sq + 1) % 10 != 0 and sq > 4:  # up right
+        sq = (sq - 5) + row_idx[sq] % 2
+        squares.append(sq)
+    result += list(squares)
+    squares, sq = [], square
+    while (sq + 1) % 10 != 0 and sq < 45:  # down right
+        sq = sq + 6 - (row_idx[sq] + 1) % 2
+        squares.append(sq)
+    result += list(squares)
+    squares, sq = [], square
+    while sq % 10 != 0 and sq > 4:  # up left
+        sq = (sq - 6) + row_idx[sq] % 2
+        squares.append(sq)
+    result += list(squares)
+    squares, sq = [], square
+    while sq % 10 != 0 and sq < 45:  # down left
+        sq = sq + 5 - (row_idx[sq] + 1) % 2
+        squares.append(sq)
+    result += list(squares)
+    return result
+
+
 class Board(BaseBoard):
     """
     **Board for Standard (international) checkers.**
@@ -41,6 +74,11 @@ class Board(BaseBoard):
 
     GAME_TYPE = 20
     STARTING_POSITION = np.array([1] * 15 + [0] * 20 + [-1] * 15, dtype=np.int8)
+    row_idx = {val: val // 5 for val in range(len(STARTING_POSITION))}
+    col_idx = {val: val % 10 for val in range(len(STARTING_POSITION))}
+    PSEUDO_LEGAL_KING_MOVES = {
+        k: _get_all_squares_at_the_diagonal(k) for k in range(50)
+    }
 
     def __init__(self, starting_position=STARTING_POSITION) -> None:
         super().__init__(starting_position)
@@ -65,3 +103,4 @@ class Board(BaseBoard):
 if __name__ == "__main__":
     board = Board()
     print(board)
+    print(board.PSEUDO_LEGAL_KING_MOVES)

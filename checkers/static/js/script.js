@@ -38,18 +38,41 @@ const populateBoard = () => {
   }
 };
 
+// square click handler
+const squareClick = (e) => {
+  // get text of square as number
+  drawBoard();
+  let number = parseInt(e.target.innerText);
+
+  let squares_to_highlight = $("#board").attr("debug");
+  squares_to_highlight = JSON.parse(squares_to_highlight);
+  list_of_squares = squares_to_highlight[number - 1];
+  console.log(list_of_squares);
+  list_of_squares.forEach((element) => {
+    // get tile with text  attribute == element
+    tiles = $(".tile");
+    for (let i = 0; i < tiles.length; i++) {
+      if (tiles[i].innerText - 1 == element) {
+        tiles[i].style.backgroundColor = "red";
+      }
+    }
+  });
+
+  // Uncaught SyntaxError: Expected property name or '}' in JSON at position 1
+};
+// highlight corresponding squares
+//from this dict {0: (5, 11, 16, 22, 27, 33, 38, 44, 49), 1: (6, 12, 17, 23, 28, 34, 39, 45), 2
+
 // make half of the board light and half dark
 const drawBoard = () => {
-  let cols = ["A", "B", "C", "D", "E", "F", "G", "H"];
-  let rows = ["1", "2", "3", "4", "5", "6", "7", "8"];
-  for (let i = 0; i < 64; i++) {
+  for (let i = 0; i < 100; i++) {
     let tile = $(`#tile-${i}`);
     let tileText = $(`#tile-${i}-text`);
-    let text = cols[i % 8] + rows[Math.floor(i / 8)];
-    tileText.text(text);
-    if ((i + Math.floor(i / 8)) % 2 === 0) {
+    let text = Math.floor(i / 2) + 1;
+    if ((i + Math.floor(i / 10)) % 2 === 0) {
       tile.css("background-color", light);
       tile.css("color", dark);
+      tileText.text(text);
     } else {
       tile.css("background-color", dark);
       tile.css("color", light);
@@ -62,22 +85,26 @@ const drawBoard = () => {
 // on ready
 $(document).ready(() => {
   drawBoard();
-  populateBoard();
 
-  // call /random_move and /board in a loop
-  setInterval(() => {
-    $.ajax({
-      url: "/random_move",
-      type: "GET",
-      success: (data) => {
-        console.log(data);
-        $("#board").attr("position", JSON.stringify(data["position"]));
-        populateBoard();
-      },
-    });
-  }, 900);
+  // add click handler to squares
+  $(".tile").click(squareClick);
 
-  dragPiece();
+  // populateBoard();
+
+  // // call /random_move and /board in a loop
+  // setInterval(() => {
+  //   $.ajax({
+  //     url: "/random_move",
+  //     type: "GET",
+  //     success: (data) => {
+  //       console.log(data);
+  //       $("#board").attr("position", JSON.stringify(data["position"]));
+  //       populateBoard();
+  //     },
+  //   });
+  // }, 900);
+
+  // dragPiece();
 });
 function dragPiece() {
   $(".piece").draggable({

@@ -3,7 +3,6 @@ from __future__ import annotations
 from typing import Generator
 
 import numpy as np
-
 from checkers.base import BaseBoard
 from checkers.models import Color, Entity
 from checkers.move import Move

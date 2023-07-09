@@ -1,10 +1,11 @@
 import numpy as np
 import uvicorn
 from fastapi import FastAPI, Request
+import json
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
-
-from checkers.american import Board
+from pprint import pprint
+from checkers.standard import Board
 
 templates = Jinja2Templates(directory="checkers/templates/")
 
@@ -18,9 +19,14 @@ app.mount("/static", StaticFiles(directory="checkers/static"), name="static")
 
 @app.get("/")
 def index(request: Request):
+    pprint(board.PSEUDO_LEGAL_KING_MOVES)
     return templates.TemplateResponse(
         "index.html",
-        {"request": request, "board": board.friendly_form.reshape(8, 8).tolist()},
+        {
+            "request": request,
+            "board": board.friendly_form.reshape(10, 10).tolist(),
+            "debug": json.dumps(board.PSEUDO_LEGAL_KING_MOVES),
+        },
     )
 
 

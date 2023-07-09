@@ -1,8 +1,6 @@
-Standart draughts 
+Standard draughts 
 ==========================================
 
-.. automodule:: checkers.standrad
+.. automodule:: checkers.standard
     :members:
-
-.. autoclass:: checkers.standrad.Board
-    :members:
+    :noindex:
