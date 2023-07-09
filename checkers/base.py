@@ -81,13 +81,17 @@ class BaseBoard(ABC):
         """Returns board position."""
         return self._pos
 
+    @property
+    def is_game_over(self) -> bool:
+        """Returns ``True`` if the game is over."""
+        return not bool(list(self.legal_moves))
+
     def push(self, move: Move, is_finished: bool = True) -> None:
         """Pushes a move to the board.
         Automatically promotes a piece if it reaches the last row.
 
         If ``is_finished`` is set to ``True``, the turn is switched. This parameter is used only
         for generating legal moves.
-
         """
         src, tg = (
             move.square_list[0],
