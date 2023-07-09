@@ -45,6 +45,11 @@ class BaseBoard(ABC):
     - Board should always be square.
     """
 
+    GAME_TYPE = -1
+    VARIANT_NAME = "Abstract variant"
+    STARTING_POSITION = STARTING_POSITION
+    STARTING_COLOR = Color.WHITE
+
     def __init__(self, starting_position: np.ndarray) -> None:
         """
         Initializes the board with a starting position.
@@ -167,10 +172,22 @@ class BaseBoard(ABC):
     def __getitem__(self, key: SquareT) -> Entity:
         return self.position[key]
 
+    @classmethod
+    @property
+    def info(cls) -> str:
+        board_size = int(np.sqrt(cls.STARTING_POSITION.shape[0]))
+        data = (
+            f'[GameType "{cls.GAME_TYPE}"]\n'
+            f'[Variant "{cls.VARIANT_NAME}"]\n'
+            f'[BoardSize "{board_size} X {board_size}"]\n'
+            f'[StartingColor "{cls.STARTING_COLOR}"]\n'
+        )
+        return data
+
 
 if __name__ == "__main__":
     board = BaseBoard(STARTING_POSITION)
-
+    print(board.info)
     m1 = Move([C3, B4])
     board.push(m1)
 

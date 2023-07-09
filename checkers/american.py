@@ -33,7 +33,9 @@ class Board(BaseBoard):
      - Capture - choose any
     """
 
+    GAME_TYPE = 23
     STARTING_POSITION = np.array([1] * 12 + [0] * 8 + [-1] * 12, dtype=np.int8)
+    VARIANT_NAME = "American checkers"
     size = int(np.sqrt(len(STARTING_POSITION) * 2))
     row_idx = {val: val // 4 for val in range(len(STARTING_POSITION))}
     col_idx = {val: val % 8 for val in range(len(STARTING_POSITION))}
@@ -61,7 +63,7 @@ class Board(BaseBoard):
             row % 2 == 0 and self.turn == Color.WHITE
         )
         is_king = bool(self[square] == self.turn.value * Entity.KING)
-        # is_king = False  # DEBUF
+        # is_king = False  # DEBUG
         for mv_offset, cap_offset, dir in [
             (4 - odd, 7, self.turn.value),
             (5 - odd, 9, self.turn.value),
