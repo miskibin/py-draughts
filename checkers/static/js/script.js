@@ -24,8 +24,8 @@ let ceruleanColor = getComputedStyle(document.body).getPropertyValue(
 const colorMap = {
   1: whiteManColor,
   "-1": blackManColor,
-  10: whiteKingColor,
-  "-10": blackKingColor,
+  10: whiteManColor,
+  "-10": blackManColor,
 };
 
 // ######################### constants #########################
@@ -42,6 +42,8 @@ const showPseudoLegalMoves = JSON.parse(
   $("#board").attr("show_pseudo_legal_moves")
 );
 const size = Math.floor(Math.sqrt(boardPosition.length));
+
+const crown_icon = $("#board").attr("crown_icon");
 // ######################### constants #########################
 
 const drawBoardMethod = () => {
@@ -71,6 +73,9 @@ const populateBoardMethod = () => {
           colorMap[boardPosition[i]]
         }"></div>`
       );
+      if (Math.abs(boardPosition[i]) > 1) {
+        $(`#tile-${i}`).append(`<img src="${crown_icon}" class="crown" />`);
+      }
     }
   }
 };

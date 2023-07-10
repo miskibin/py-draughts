@@ -7,12 +7,16 @@ from __future__ import annotations
 
 from abc import ABC
 from typing import Generator
-
+from collections import defaultdict
 import numpy as np
 
-from checkers.models import ENTITY_REPR, STARTING_POSITION, Color, Entity, SquareT
+from checkers.models import ENTITY_REPR, Color, Entity, SquareT
 from checkers.move import Move
-from checkers.utils import logger
+from checkers.utils import (
+    logger,
+    get_king_pseudo_legal_moves,
+    get_man_pseudo_legal_moves,
+)
 
 # fmt: off
 SQUARES = [_, B8, D8, F8, H8,
@@ -47,8 +51,10 @@ class BaseBoard(ABC):
 
     GAME_TYPE = -1
     VARIANT_NAME = "Abstract variant"
-    STARTING_POSITION = STARTING_POSITION
+    STARTING_POSITION = np.array([1] * 12 + [0] * 8 + [-1] * 12, dtype=np.int8)
     STARTING_COLOR = Color.WHITE
+    PSEUDO_LEGAL_KING_MOVES = None
+    PSEUDO_LEGAL_MAN_MOVES = None
 
     def __init__(self, starting_position: np.ndarray) -> None:
         """
@@ -189,19 +195,33 @@ class BaseBoard(ABC):
         return data
 
 
-if __name__ == "__main__":
-    board = BaseBoard(STARTING_POSITION)
-    print(board.info)
-    m1 = Move([C3, B4])
-    board.push(m1)
+# if __name__ == "__main__":
+#     board = BaseBoard(STARTING_POSITION)
+#     print(board.info)
+#     m1 = Move([C3, B4])
+#     board.push(m1)
 
-    m2 = Move([B6, A5])
-    board.push(m2)
+#     m2 = Move([B6, A5])
+#     board.push(m2)
 
-    m3 = Move([G3, H4])
-    board.push(m3)
-    print(board)
+#     m3 = Move([G3, H4])
+#     board.push(m3)
+#     print(board)
 
-    m4 = Move([A5, C3], captured_list=[B4])
-    board.push(m4)
-    print(board)
+#     m4 = Move([A5, C3], captured_list=[B4])
+#     board.push(m4)
+#     print(board)
+
+
+def foo(a):
+    return a * 2
+
+
+class A:
+    B = [1, 2, 3]
+    C = B * 2
+    for a in range(len(B)):
+        print(a)
+
+
+A()

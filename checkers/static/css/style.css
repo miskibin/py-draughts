@@ -73,12 +73,27 @@ main {
     width: 85%;
     height: 85%;
     border-radius: 50%;
-    opacity: .90;
+    opacity: .84;
     background: var(--primary);
     box-shadow: 0.3rem 0.9rem 0.7rem rgba(0, 0, 0, 0.747);
+    pointer-events: auto;
+    z-index: 1;
 }
 
 
+
+.crown {
+    width: 60%;
+    height: 60%;
+    opacity: 0.4;
+    margin: auto;
+    position: absolute;
+    pointer-events: none;
+    align-self: center;
+    justify-self: center;
+
+    z-index: 2;
+}
 
 .tile:hover {
     /* background */

@@ -12,7 +12,11 @@ from collections import defaultdict
 from checkers.base import BaseBoard
 from checkers.models import Color, Entity
 from checkers.move import Move
-from checkers.utils import logger
+from checkers.utils import (
+    logger,
+    get_king_pseudo_legal_moves,
+    get_man_pseudo_legal_moves,
+)
 
 
 # fmt: off
@@ -27,38 +31,6 @@ SQUARES=  [ B10, D10, F10, H10, J10,
             B2, D2, F2, H2, J2,
             A1, C1, E1, G1, I1] = range(50)
 # fmt: on
-
-
-def _get_all_squares_at_the_diagonal(square: int) -> list[int]:
-    """
-    [[up-right], [down-right], [up-left], [down-left]]
-    It was hard to write, so it should be hard to read.
-    No comment for you.
-    """
-    row_idx = {val: val // 5 for val in range(50)}
-    result = []
-    squares, sq = [], square
-
-    while (sq) % 10 != 4 and sq > 4:  # up right
-        sq = (sq - 5) + (row_idx[sq] + 1) % 2
-        squares.append(sq)
-    result.append(list(squares))
-    squares, sq = [], square
-    while (sq) % 10 != 4 and sq < 45:  # down right
-        sq = sq + 6 - (row_idx[sq]) % 2
-        squares.append(sq)
-    result.append(list(squares))
-    squares, sq = [], square
-    while (sq) % 10 != 5 and sq > 4:  # up left
-        sq = (sq - 6) + (row_idx[sq] + 1) % 2
-        squares.append(sq)
-    result.append(list(squares))
-    squares, sq = [], square
-    while (sq) % 10 != 5 and sq < 45:  # down left
-        sq = sq + 5 - (row_idx[sq]) % 2
-        squares.append(sq)
-    result.append(list(squares))
-    return result
 
 
 class Board(BaseBoard):
@@ -76,16 +48,8 @@ class Board(BaseBoard):
     STARTING_POSITION = np.array([1] * 15 + [0] * 20 + [-1] * 15, dtype=np.int8)
     row_idx = {val: val // 5 for val in range(len(STARTING_POSITION))}
     col_idx = {val: val % 10 for val in range(len(STARTING_POSITION))}
-    PSEUDO_LEGAL_KING_MOVES = {
-        k: _get_all_squares_at_the_diagonal(k) for k in range(50)
-    }
-    PSEUDO_LEGAL_MAN_MOVES = defaultdict(list)
-    # PSEUDO_LEGAL_MAN_MOVES = {
-    #     k +d[:2] for k, v in PSEUDO_LEGAL_KING_MOVES.items() for d in v
-    # }
-    for k, v in PSEUDO_LEGAL_KING_MOVES.items():
-        for d in v:
-            PSEUDO_LEGAL_MAN_MOVES[k].append(d[:2])
+    PSEUDO_LEGAL_KING_MOVES = get_king_pseudo_legal_moves(len(STARTING_POSITION))
+    PSEUDO_LEGAL_MAN_MOVES = get_man_pseudo_legal_moves(len(STARTING_POSITION))
 
     def __init__(self, starting_position=STARTING_POSITION) -> None:
         super().__init__(starting_position)
