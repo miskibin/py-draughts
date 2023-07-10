@@ -105,6 +105,7 @@ UI
 --
 
 **for now UI is mostly used for debugging purposes**
+
 *On image: pseudo legal moves for selected square* 
 
 .. image:: https://github.com/michalskibinski109/checkers/assets/77834536/095dbd02-9e34-42ef-8406-ff7b48dbb721
