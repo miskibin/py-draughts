@@ -104,9 +104,11 @@ Creating custom board
 UI
 --
 
-**for now UI is mostly used for debugging purpose**
+**for now UI is mostly used for debugging purposes**
 
-.. image:: https://github.com/michalskibinski109/checkers/assets/77834536/acae0786-9cf3-4e30-9a04-abd7c018202b
+*On image: pseudo legal moves for selected square* 
+
+.. image:: https://github.com/michalskibinski109/checkers/assets/77834536/095dbd02-9e34-42ef-8406-ff7b48dbb721
    :width: 400
 
 Contributing
