@@ -1,12 +1,14 @@
 import numpy as np
 import uvicorn
 from fastapi import FastAPI, Request, APIRouter
+from fastapi.responses import RedirectResponse
 import json
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from pprint import pprint
 from checkers import __version__
 from checkers.standard import Board
+from typing import Literal
 
 
 class Server:
@@ -25,19 +27,45 @@ class Server:
         self.board = board
         self.router = APIRouter()
         self.router.add_api_route("/", self.index)
+        self.router.add_api_route("/set_board/{board_type}", self.set_board)
+        self.router.add_api_route("/set_random_position", self.set_random_position)
         self.app.include_router(self.router)
         self.draw_board = draw_board
         self.populate_board = populate_board
         self.show_pseudo_legal_moves = show_pseudo_legal_moves
+
+    def set_board(self, request: Request, board_type: Literal["standard", "american"]):
+        if board_type == "standard":
+            from checkers.standard import Board
+
+            self.board = Board()
+        elif board_type == "american":
+            from checkers.american import Board
+
+            self.board = Board()
+
+        return RedirectResponse(url="/")
+
+    def set_random_position(self, request: Request):
+        STARTING_POSITION = np.random.choice(
+            [10, 0, -10, 1, -1],
+            size=len(self.board.STARTING_POSITION),
+            replace=True,
+            p=[0.1, 0.4, 0.1, 0.2, 0.2],
+        )
+        self.board._pos = STARTING_POSITION
+        return RedirectResponse(url="/")
 
     def index(self, request: Request):
         return self.templates.TemplateResponse(
             "index.html",
             {
                 "request": request,
-                "board": json.dumps(board.friendly_form.tolist()),
-                "pseudo_legal_king_moves": json.dumps(board.PSEUDO_LEGAL_KING_MOVES),
-                "pseudo_legal_man_moves": json.dumps(board.PSEUDO_LEGAL_MAN_MOVES),
+                "board": json.dumps(self.board.friendly_form.tolist()),
+                "pseudo_legal_king_moves": json.dumps(
+                    self.board.PSEUDO_LEGAL_KING_MOVES
+                ),
+                "pseudo_legal_man_moves": json.dumps(self.board.PSEUDO_LEGAL_MAN_MOVES),
                 "draw_board": json.dumps(self.draw_board),
                 "populate_board": json.dumps(self.populate_board),
                 "show_pseudo_legal_moves": json.dumps(self.show_pseudo_legal_moves),
@@ -57,7 +85,7 @@ STARTING_POSITION = np.random.choice(
     replace=True,
     p=[0.1, 0.4, 0.1, 0.2, 0.2],
 )
-board = Board(STARTING_POSITION)
+# board = Board(STARTING_POSITION)
 # board = Board()
 
 

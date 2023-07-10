@@ -5,10 +5,10 @@ let light = getComputedStyle(document.body).getPropertyValue("--light");
 let dark = getComputedStyle(document.body).getPropertyValue("--dark");
 
 let whiteManColor = getComputedStyle(document.body).getPropertyValue(
-  "--primary"
+  "--white-man"
 );
 let blackManColor = getComputedStyle(document.body).getPropertyValue(
-  "--tertiary"
+  "--black-man"
 );
 let blackKingColor = getComputedStyle(document.body).getPropertyValue(
   "--black-king"
@@ -17,9 +17,7 @@ let whiteKingColor = getComputedStyle(document.body).getPropertyValue(
   "--white-king"
 );
 
-let ceruleanColor = getComputedStyle(document.body).getPropertyValue(
-  "--cerulean"
-);
+let redColor = getComputedStyle(document.body).getPropertyValue("--red");
 
 const colorMap = {
   1: whiteManColor,
@@ -29,7 +27,7 @@ const colorMap = {
 };
 
 // ######################### constants #########################
-var boardPosition = JSON.parse($("#board").attr("board"));
+var boardArray = JSON.parse($("#board").attr("board"));
 const pseudoLegalKingMoves = JSON.parse(
   $("#board").attr("pseudo_legal_king_moves")
 );
@@ -41,13 +39,13 @@ const populateBoard = JSON.parse($("#board").attr("populate_board"));
 const showPseudoLegalMoves = JSON.parse(
   $("#board").attr("show_pseudo_legal_moves")
 );
-const size = Math.floor(Math.sqrt(boardPosition.length));
+const size = Math.floor(Math.sqrt(boardArray.length));
 
 const crown_icon = $("#board").attr("crown_icon");
 // ######################### constants #########################
 
 const drawBoardMethod = () => {
-  for (let i = 0; i < boardPosition.length; i++) {
+  for (let i = 0; i < boardArray.length; i++) {
     let tile = $(`#tile-${i}`);
     let tileText = $(`#tile-${i}-text`);
     let text = Math.floor(i / 2) + 1;
@@ -63,17 +61,17 @@ const drawBoardMethod = () => {
 };
 
 const populateBoardMethod = () => {
-  for (let i = 0; i < boardPosition.length; i++) {
+  for (let i = 0; i < boardArray.length; i++) {
     let tile = $(`#tile-${i}`);
     tile.children(".piece").remove();
     console.log(tile.attr("tile-number"));
-    if (boardPosition[i] !== 0) {
+    if (boardArray[i] !== 0) {
       tile.append(
         `<div class="piece" id="piece-${i}" style="background-color: ${
-          colorMap[boardPosition[i]]
+          colorMap[boardArray[i]]
         }"></div>`
       );
-      if (Math.abs(boardPosition[i]) > 1) {
+      if (Math.abs(boardArray[i]) > 1) {
         $(`#tile-${i}`).append(`<img src="${crown_icon}" class="crown" />`);
       }
     }
@@ -85,18 +83,16 @@ const showPseudoLegalMovesMethod = (square, king = false) => {
   drawBoardMethod();
   //  get tile number from attr
   console.log(square);
-  let squares_to_highlight = pseudoLegalKingMoves[square - 1];
   if (king) {
     squares_to_highlight = pseudoLegalKingMoves[square - 1];
   } else {
     squares_to_highlight = pseudoLegalManMoves[square - 1];
   }
-  console.log(squares_to_highlight.flat());
   squares_to_highlight.flat().forEach((element) => {
     tiles = $(".tile");
     for (let i = 0; i < tiles.length; i++) {
       if (tiles[i].innerText - 1 == element) {
-        tiles[i].style.backgroundColor = ceruleanColor;
+        tiles[i].style.backgroundColor = redColor;
       }
     }
   });
@@ -104,14 +100,9 @@ const showPseudoLegalMovesMethod = (square, king = false) => {
 
 const showPseudoLegalMovesForPieceMethod = (e) => {
   let number = $(e.target).parent().attr("tile-number");
-  let pieceValue = boardPosition[number];
+  let pieceValue = boardArray[number];
   let square = parseInt($(e.target).parent().text());
-  console.log(number, pieceValue, square);
-  if (Math.abs(pieceValue) < 2) {
-    showPseudoLegalMovesMethod(square, false);
-  } else {
-    showPseudoLegalMovesMethod(square, true);
-  }
+  showPseudoLegalMovesMethod(square, Math.abs(pieceValue) > 2);
 };
 
 const init = () => {
@@ -125,9 +116,6 @@ $(document).ready(() => {
   if (drawBoard) drawBoardMethod();
   if (populateBoard) populateBoardMethod();
   if (showPseudoLegalMoves) {
-    // $(".tile").click((e) => {
-    //   showPseudoLegalMovesMethod(parseInt($(e.target).text()), true);
-    // });
     $(".piece").click((e) => {
       showPseudoLegalMovesForPieceMethod(e);
     });
@@ -189,17 +177,3 @@ function dragPiece() {
     },
   });
 }
-
-// function updateBoardPosition(sourceTile, targetTile) {
-//   let board = $("#board").attr("position");
-//   let boardArray = JSON.parse(board);
-
-//   let sourceIndex = sourceTile.attr("id").split("-")[1];
-//   let targetIndex = targetTile.attr("id").split("-")[1];
-
-//   let piece = boardArray[Math.floor(sourceIndex / 8)][sourceIndex % 8];
-//   boardArray[Math.floor(sourceIndex / 8)][sourceIndex % 8] = 0;
-//   boardArray[Math.floor(targetIndex / 8)][targetIndex % 8] = piece;
-
-//   $("#board").attr("position", JSON.stringify(boardArray));
-// }

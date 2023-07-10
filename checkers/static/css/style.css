@@ -1,22 +1,28 @@
 :root {
-    --primary: rgb(113, 180, 111);
-    --white-king: rgb(59, 94, 58);
-    --red: #f94144ff;
+    --primary: #FDF0D5;
+    --white-man: #780000;
+    --black-man: #336683;
+    --light: #FDF0D5;
+    --dark: #669BBC;
+    --dark: #003049;
     --secondary: #333;
-    --light: #eee;
-    --dark: #111;
-    --code: #f8961eff;
-    --tertiary: rgb(89, 66, 190);
-    --black-king: rgb(36, 28, 73);
-    --paynes-gray: #577590ff;
-    --cerulean: #c75f5f;
+    --red: #669BBC;
+    --tetriary: #669BBC;
 }
 
+/* 
+--hunyadi-yellow: #edae49ff;
+--amaranth: #d1495bff;
+--caribbean-current: #00798cff;
+--lapis-lazuli: #30638eff;
+--indigo-dye: #003d5bff;
+
+*/
 
 main {
-    display: flex;
+    /* display: flex;
     align-items: center;
-    justify-content: center;
+    justify-content: center; */
     height: 100vh;
     font-family: sans-serif;
     font-size: 1.5rem;
@@ -33,11 +39,11 @@ main {
     border: 3px;
     width: 56rem;
     height: 56rem;
-    margin: 0 auto;
+    margin: 10px auto;
     background-color: var(--secondary);
     padding: 2px;
     border-radius: 10px;
-    color: #eee;
+    color: var(--light);
 
 }
 
@@ -54,11 +60,11 @@ main {
     /* font weight */
     color: var(--light);
     /* border */
-    border: 2px solid #eee;
+    border: 2px solid var(--primary);
     /* border radius */
     border-radius: 10px;
     /* background */
-    background: var(--secondary);
+    background: var(--primary);
     /* cursor */
     cursor: pointer;
     /* hover-time */
@@ -70,8 +76,8 @@ main {
 
 .piece {
     position: absolute;
-    width: 85%;
-    height: 85%;
+    width: 80%;
+    height: 80%;
     border-radius: 50%;
     opacity: .84;
     background: var(--primary);
@@ -121,4 +127,21 @@ main {
     text-align: center;
     font-weight: bolder;
 
+}
+
+.btn-custom {
+    background-color: var(--primary);
+    color: var(--dark);
+    border: 2px solid var(--dark);
+    border-radius: 10px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: 0.1s ease-in-out;
+    user-select: none;
+}
+
+.btn-custom:hover {
+    background-color: var(--dark);
+    color: var(--primary);
+    border: 2px solid var(--primary);
 }

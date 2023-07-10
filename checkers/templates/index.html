@@ -1,23 +1,74 @@
 <!-- extends base.html -->
 {% extends "base.html" %} {% block content %}
 <main>
-  <div
-    id="board"
-    class="board"
-    board="{{board}}"
-    pseudo_legal_king_moves="{{pseudo_legal_king_moves}}"
-    pseudo_legal_man_moves="{{pseudo_legal_man_moves}}"
-    draw_board="{{draw_board}}"
-    populate_board="{{populate_board}}"
-    show_pseudo_legal_moves="{{show_pseudo_legal_moves}}"
-    crown_icon="{{ url_for('static', path='img/crown-icon.svg') }}"
-  >
-    {% for i in range(size) %}
-    <div class="tile" id="tile-{{ i }}" tile-number="{{ i }}">
-      <p id="tile-{{ i }}-text" class="tile-text"></p>
+  <div class="row">
+    <div class="col-3 rounded p-5">
+      <div class="row">
+        <div class="col-12">
+          <h1 class="text-center">Settings</h1>
+        </div>
+        <!-- game type -->
+        <hr class="col-12 bg-secondary" />
+        <div class="col-12">
+          <p class="display-6">Game type</p>
+        </div>
+        <a href="/set_board/american" class="col-12 btn btn-custom mt-3"
+          >American (8x8)</a
+        >
+        <a href="/set_board/standard" class="col-12 btn btn-custom mt-3"
+          >Standard (10x10)</a
+        >
+        <a href="#" class="col-12 btn btn-custom mt-3">Your own board</a>
+        <!-- game settings -->
+        <hr class="col-12 bg-secondary" />
+        <div class="col-12">
+          <p class="display-6">Game settings</p>
+        </div>
+        <a href="#" class="col-12 btn btn-custom mt-3">Make random move</a>
+        <a href="/set_random_position" class="col-12 btn btn-custom mt-3"
+          >Set random position</a
+        >
+      </div>
     </div>
-    {% endfor %}
+    <div class="col-6">
+      <div
+        id="board"
+        class="board"
+        board="{{board}}"
+        pseudo_legal_king_moves="{{pseudo_legal_king_moves}}"
+        pseudo_legal_man_moves="{{pseudo_legal_man_moves}}"
+        draw_board="{{draw_board}}"
+        populate_board="{{populate_board}}"
+        show_pseudo_legal_moves="{{show_pseudo_legal_moves}}"
+        crown_icon="{{ url_for('static', path='img/crown-icon.svg') }}"
+      >
+        {% for i in range(size) %}
+        <div class="tile" id="tile-{{ i }}" tile-number="{{ i }}">
+          <p id="tile-{{ i }}-text" class="tile-text"></p>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+    <div class="col-2 rounded p-5">
+      <div class="row">
+        <div class="col-12">
+          <h1 class="text-center">Game info</h1>
+        </div>
+        <hr class="col-12 bg-secondary" />
+        <div class="col-12">
+          <p class="display-6">Game state</p>
+        </div>
+        <div class="col-12">
+          <p class="display-6">Turn</p>
+        </div>
+        <div class="col-12">
+          <p class="display-6">Move count</p>
+        </div>
+        <div class="col-12">
+          <p class="display-6">Move history</p>
+        </div>
+      </div>
+    </div>
   </div>
 </main>
-
 {% endblock %}
