@@ -129,6 +129,6 @@ Bibliography
 1. `notation <https://en.wikipedia.org/wiki/Portable_Draughts_Notation>`_
 2. `rules and variants <https://en.wikipedia.org/wiki/Checkers>`_
 3. `list of pdns <https://github.com/mig0/Games-Checkers/>`_
-3. `droughts online  <https://lidraughts.org/>`_
-4. `additional 1 (checkers online) <https://checkers.online/play>`_
-5. `additional 2 (chinook) <https://webdocs.cs.ualberta.ca/~chinook/play/notation.html>`_
+4. `droughts online  <https://lidraughts.org/>`_
+5. `additional 1 (checkers online) <https://checkers.online/play>`_
+6. `additional 2 (chinook) <https://webdocs.cs.ualberta.ca/~chinook/play/notation.html>`_
