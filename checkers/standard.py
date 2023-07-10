@@ -8,7 +8,7 @@ from __future__ import annotations
 from typing import Generator
 
 import numpy as np
-
+from collections import defaultdict
 from checkers.base import BaseBoard
 from checkers.models import Color, Entity
 from checkers.move import Move
@@ -39,23 +39,23 @@ def _get_all_squares_at_the_diagonal(square: int) -> list[int]:
     result = []
     squares, sq = [], square
 
-    while (sq + 1) % 10 != 0 and sq > 4:  # up right
-        sq = (sq - 5) + row_idx[sq] % 2
+    while (sq) % 10 != 4 and sq > 4:  # up right
+        sq = (sq - 5) + (row_idx[sq] + 1) % 2
         squares.append(sq)
     result.append(list(squares))
     squares, sq = [], square
-    while (sq + 1) % 10 != 0 and sq < 45:  # down right
-        sq = sq + 6 - (row_idx[sq] + 1) % 2
+    while (sq) % 10 != 4 and sq < 45:  # down right
+        sq = sq + 6 - (row_idx[sq]) % 2
         squares.append(sq)
     result.append(list(squares))
     squares, sq = [], square
-    while sq % 10 != 0 and sq > 4:  # up left
-        sq = (sq - 6) + row_idx[sq] % 2
+    while (sq) % 10 != 5 and sq > 4:  # up left
+        sq = (sq - 6) + (row_idx[sq] + 1) % 2
         squares.append(sq)
     result.append(list(squares))
     squares, sq = [], square
-    while sq % 10 != 0 and sq < 45:  # down left
-        sq = sq + 5 - (row_idx[sq] + 1) % 2
+    while (sq) % 10 != 5 and sq < 45:  # down left
+        sq = sq + 5 - (row_idx[sq]) % 2
         squares.append(sq)
     result.append(list(squares))
     return result
@@ -79,10 +79,13 @@ class Board(BaseBoard):
     PSEUDO_LEGAL_KING_MOVES = {
         k: _get_all_squares_at_the_diagonal(k) for k in range(50)
     }
-
-    PSEUDO_LEGAL_MAN_MOVES = {
-        k: d[:2] for k, v in PSEUDO_LEGAL_KING_MOVES.items() for d in v
-    }
+    PSEUDO_LEGAL_MAN_MOVES = defaultdict(list)
+    # PSEUDO_LEGAL_MAN_MOVES = {
+    #     k +d[:2] for k, v in PSEUDO_LEGAL_KING_MOVES.items() for d in v
+    # }
+    for k, v in PSEUDO_LEGAL_KING_MOVES.items():
+        for d in v:
+            PSEUDO_LEGAL_MAN_MOVES[k].append(d[:2])
 
     def __init__(self, starting_position=STARTING_POSITION) -> None:
         super().__init__(starting_position)
@@ -106,5 +109,7 @@ class Board(BaseBoard):
 
 if __name__ == "__main__":
     board = Board()
-    print(board)
-    print(board.PSEUDO_LEGAL_MAN_MOVES)
+    from pprint import pprint
+
+    pprint(board)
+    pprint(board.PSEUDO_LEGAL_KING_MOVES)

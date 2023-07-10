@@ -4,14 +4,31 @@ let light = getComputedStyle(document.body).getPropertyValue("--light");
 // get `dark` css variable
 let dark = getComputedStyle(document.body).getPropertyValue("--dark");
 
-let whitePieceColor = getComputedStyle(document.body).getPropertyValue(
+let whiteManColor = getComputedStyle(document.body).getPropertyValue(
   "--primary"
 );
-let blackPieceColor = getComputedStyle(document.body).getPropertyValue(
+let blackManColor = getComputedStyle(document.body).getPropertyValue(
   "--tertiary"
 );
+let blackKingColor = getComputedStyle(document.body).getPropertyValue(
+  "--black-king"
+);
+let whiteKingColor = getComputedStyle(document.body).getPropertyValue(
+  "--white-king"
+);
 
-// set constants
+let ceruleanColor = getComputedStyle(document.body).getPropertyValue(
+  "--cerulean"
+);
+
+const colorMap = {
+  1: whiteManColor,
+  "-1": blackManColor,
+  10: whiteKingColor,
+  "-10": blackKingColor,
+};
+
+// ######################### constants #########################
 var boardPosition = JSON.parse($("#board").attr("board"));
 const pseudoLegalKingMoves = JSON.parse(
   $("#board").attr("pseudo_legal_king_moves")
@@ -25,15 +42,7 @@ const showPseudoLegalMoves = JSON.parse(
   $("#board").attr("show_pseudo_legal_moves")
 );
 const size = Math.floor(Math.sqrt(boardPosition.length));
-
-// log constants
-console.log("boardPosition", boardPosition.length);
-console.log("pseudoLegalKingMoves", pseudoLegalKingMoves);
-console.log("pseudoLegalManMoves", pseudoLegalManMoves);
-console.log("drawBoard", drawBoard);
-console.log("populateBoard", populateBoard);
-console.log("showPseudoLegalMoves", showPseudoLegalMoves);
-console.log("size", size);
+// ######################### constants #########################
 
 const drawBoardMethod = () => {
   for (let i = 0; i < boardPosition.length; i++) {
@@ -41,76 +50,83 @@ const drawBoardMethod = () => {
     let tileText = $(`#tile-${i}-text`);
     let text = Math.floor(i / 2) + 1;
     if ((i + Math.floor(i / size)) % 2 === 0) {
+      tile.css("color", light);
+      tile.css("background-color", dark);
+    } else {
+      tileText.text(text);
       tile.css("background-color", light);
       tile.css("color", dark);
-      tileText.text(text);
-    } else {
-      tile.css("background-color", dark);
-      tile.css("color", light);
     }
   }
 };
 
 const populateBoardMethod = () => {
-  let board = $("#board").attr("board");
-  let boardArray = JSON.parse(board);
-  console.log(boardArray);
-  let colorMap = {
-    1: whitePieceColor,
-    "-1": blackPieceColor,
-    10: "#aaa",
-    "-10": "#555",
-  };
-  for (let i = 0; i < boardArray.length; i++) {
-    for (let j = 0; j < boardArray[i].length; j++) {
-      let tile = $(`#tile-${i * 8 + j}`);
-      tile.children(".piece").remove();
-      if (boardArray[i][j] !== 0) {
-        tile.append(
-          `<div class="piece" id="piece-${
-            i * 4 + j / 2
-          }" style="background-color: ${colorMap[boardArray[i][j]]}"></div>`
-        );
-      } else {
-        // remove piece if it exists but leave text
-      }
+  for (let i = 0; i < boardPosition.length; i++) {
+    let tile = $(`#tile-${i}`);
+    tile.children(".piece").remove();
+    console.log(tile.attr("tile-number"));
+    if (boardPosition[i] !== 0) {
+      tile.append(
+        `<div class="piece" id="piece-${i}" style="background-color: ${
+          colorMap[boardPosition[i]]
+        }"></div>`
+      );
     }
   }
 };
-
 // square click handler
-const squareClick = (e) => {
-  // get text of square as number
-  drawBoard();
-  let number = parseInt(e.target.innerText);
 
-  let squares_to_highlight = $("#board").attr("debug");
-  squares_to_highlight = JSON.parse(squares_to_highlight);
-  list_of_squares = squares_to_highlight[number - 1];
-  console.log(list_of_squares);
-  list_of_squares.forEach((element) => {
-    // get tile with text  attribute == element
+const showPseudoLegalMovesMethod = (square, king = false) => {
+  drawBoardMethod();
+  //  get tile number from attr
+  console.log(square);
+  let squares_to_highlight = pseudoLegalKingMoves[square - 1];
+  if (king) {
+    squares_to_highlight = pseudoLegalKingMoves[square - 1];
+  } else {
+    squares_to_highlight = pseudoLegalManMoves[square - 1];
+  }
+  console.log(squares_to_highlight.flat());
+  squares_to_highlight.flat().forEach((element) => {
     tiles = $(".tile");
     for (let i = 0; i < tiles.length; i++) {
       if (tiles[i].innerText - 1 == element) {
-        tiles[i].style.backgroundColor = "red";
+        tiles[i].style.backgroundColor = ceruleanColor;
       }
     }
   });
-
-  // Uncaught SyntaxError: Expected property name or '}' in JSON at position 1
 };
-// highlight corresponding squares
-//from this dict {0: (5, 11, 16, 22, 27, 33, 38, 44, 49), 1: (6, 12, 17, 23, 28, 34, 39, 45), 2
 
-// make half of the board light and half dark
+const showPseudoLegalMovesForPieceMethod = (e) => {
+  let number = $(e.target).parent().attr("tile-number");
+  let pieceValue = boardPosition[number];
+  let square = parseInt($(e.target).parent().text());
+  console.log(number, pieceValue, square);
+  if (Math.abs(pieceValue) < 2) {
+    showPseudoLegalMovesMethod(square, false);
+  } else {
+    showPseudoLegalMovesMethod(square, true);
+  }
+};
 
-// on document ready
-
+const init = () => {
+  // set attr     style="grid-template-columns: {{size}}; grid-template-rows: {{size}};"
+  $("#board").css("grid-template-columns", `repeat(${size}, 1fr)`);
+  $("#board").css("grid-template-rows", `repeat(${size}, 1fr)`);
+};
 // on ready
 $(document).ready(() => {
+  init();
   if (drawBoard) drawBoardMethod();
-
+  if (populateBoard) populateBoardMethod();
+  if (showPseudoLegalMoves) {
+    // $(".tile").click((e) => {
+    //   showPseudoLegalMovesMethod(parseInt($(e.target).text()), true);
+    // });
+    $(".piece").click((e) => {
+      showPseudoLegalMovesForPieceMethod(e);
+    });
+  }
   // add click handler to squares
   // $(".tile").click(squareClick);
 
@@ -169,16 +185,16 @@ function dragPiece() {
   });
 }
 
-function updateBoardPosition(sourceTile, targetTile) {
-  let board = $("#board").attr("position");
-  let boardArray = JSON.parse(board);
+// function updateBoardPosition(sourceTile, targetTile) {
+//   let board = $("#board").attr("position");
+//   let boardArray = JSON.parse(board);
 
-  let sourceIndex = sourceTile.attr("id").split("-")[1];
-  let targetIndex = targetTile.attr("id").split("-")[1];
+//   let sourceIndex = sourceTile.attr("id").split("-")[1];
+//   let targetIndex = targetTile.attr("id").split("-")[1];
 
-  let piece = boardArray[Math.floor(sourceIndex / 8)][sourceIndex % 8];
-  boardArray[Math.floor(sourceIndex / 8)][sourceIndex % 8] = 0;
-  boardArray[Math.floor(targetIndex / 8)][targetIndex % 8] = piece;
+//   let piece = boardArray[Math.floor(sourceIndex / 8)][sourceIndex % 8];
+//   boardArray[Math.floor(sourceIndex / 8)][sourceIndex % 8] = 0;
+//   boardArray[Math.floor(targetIndex / 8)][targetIndex % 8] = piece;
 
-  $("#board").attr("position", JSON.stringify(boardArray));
-}
+//   $("#board").attr("position", JSON.stringify(boardArray));
+// }

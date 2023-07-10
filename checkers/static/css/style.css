@@ -1,13 +1,15 @@
 :root {
-    --primary: #577590ff;
+    --primary: rgb(113, 180, 111);
+    --white-king: rgb(59, 94, 58);
     --red: #f94144ff;
     --secondary: #333;
     --light: #eee;
     --dark: #111;
     --code: #f8961eff;
-    --tertiary: #4d908eff;
+    --tertiary: rgb(89, 66, 190);
+    --black-king: rgb(36, 28, 73);
     --paynes-gray: #577590ff;
-    --cerulean: #277da1ff;
+    --cerulean: #c75f5f;
 }
 
 
@@ -75,6 +77,8 @@ main {
     background: var(--primary);
     box-shadow: 0.3rem 0.9rem 0.7rem rgba(0, 0, 0, 0.747);
 }
+
+
 
 .tile:hover {
     /* background */

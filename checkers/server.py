@@ -41,6 +41,7 @@ class Server:
                 "draw_board": json.dumps(self.draw_board),
                 "populate_board": json.dumps(self.populate_board),
                 "show_pseudo_legal_moves": json.dumps(self.show_pseudo_legal_moves),
+                "size": self.board.shape[0] ** 2,
             },
         )
 
@@ -49,6 +50,10 @@ class Server:
 
 
 STARTING_POSITION = np.array([10] * 15 + [0] * 20 + [-10] * 15, dtype=np.int8)
+# random starting position from 10, 0, -10,1,-1
+STARTING_POSITION = np.random.choice(
+    [10, 0, -10, 1, -1], size=50, replace=True, p=[0.1, 0.4, 0.1, 0.2, 0.2]
+)
 board = Board(STARTING_POSITION)
 # board = Board()
 
