@@ -2,19 +2,19 @@ import numpy as np
 import pytest
 
 import checkers.base as checkers
-from checkers.base import STARTING_POSITION, BaseBoard, Color, Entity, Move
+from checkers.base import BaseBoard, Color, Entity, Move
 
 
 class TestBoard:
     @pytest.fixture(autouse=True)
     def setup(self):
-        self.board = BaseBoard(STARTING_POSITION)
+        self.board = BaseBoard(BaseBoard.STARTING_POSITION)
         yield
         del self.board
 
     def test_init(self):
         assert self.board.turn == Color.WHITE
-        assert np.array_equal(self.board.position, STARTING_POSITION)
+        assert np.array_equal(self.board.position, BaseBoard.STARTING_POSITION)
 
     def test_move(self):
         m = Move([checkers.A3, checkers.B4])

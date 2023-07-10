@@ -6,7 +6,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from pprint import pprint
 from checkers import __version__
-from checkers.american import Board
+from checkers.standard import Board
 
 
 class Server:
