@@ -10,8 +10,6 @@ Fast Checkers
 Checkers
 --------
 
-**Project still under active development. Usage may be different in future versions**
-
 Efficient Modern and flexible implementation of checkers game with beautiful web interface. Supports multiple variants of the game and allows to play against AI.
 
 Documentation
@@ -104,7 +102,12 @@ Creating custom board
 UI
 --
 
-**for now UI is mostly used for debugging purposes**
+.. code-block:: python
+
+    from checkers.server import Server
+    Server().run()
+
+*It is as simple as that!*
 
 
 .. image:: https://github.com/michalskibinski109/checkers/assets/77834536/4ec36e49-38cc-45e8-a500-d0d24b21fce7

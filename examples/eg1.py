@@ -1,14 +1,15 @@
-import checkers.american as checkers
+from checkers.server import Server
 
-board = checkers.Board()
+Server().run()
 
+# board = checkers.Board()
 
 # board.push_from_str("24-19")
 # board.push_from_str("12-16")
 # board.push_from_str("23-18")
 # board.push_from_str("16-23")
 # board.push_from_str("26-19")
-print(board)
+# print(board)
 # >>> ---------------------------------
 # >>> |   | x |   | x |   | x |   | x |
 # >>> ---------------------------------
@@ -26,7 +27,7 @@ print(board)
 # >>> ---------------------------------
 # >>> | o |   | o |   | o |   | o |   |
 # board.pop()
-print(board)
+# print(board)
 # >>> ---------------------------------
 # >>> |   | x |   | x |   | x |   | x |
 # >>> ---------------------------------
@@ -43,7 +44,7 @@ print(board)
 # >>> |   | o |   | o |   | o |   | o |
 # >>> ---------------------------------
 # >>> | o |   | o |   | o |   | o |   |
-print(list(board.legal_moves))
+# print(list(board.legal_moves))
 # >>> [Move through squares: [8, 12], Move through squares: [9, 13],
 # >>>  Move through squares: [9, 14], Move through squares: [10, 14],
 # >>>  Move through squares: [10, 15], Move through squares: [11, 15],
