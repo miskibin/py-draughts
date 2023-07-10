@@ -1,8 +1,17 @@
 <!-- extends base.html -->
 {% extends "base.html" %} {% block content %}
 <main>
-  <div id="board" class="board" position="{{board}}" debug="{{debug}}">
-    {% for i in range(100) %}
+  <div
+    id="board"
+    class="board"
+    board="{{board}}"
+    pseudo_legal_king_moves="{{pseudo_legal_king_moves}}"
+    pseudo_legal_man_moves="{{pseudo_legal_man_moves}}"
+    draw_board="{{draw_board}}"
+    populate_board="{{populate_board}}"
+    show_pseudo_legal_moves="{{show_pseudo_legal_moves}}"
+  >
+    {% for i in range(board|length) %}
     <div class="tile" id="tile-{{ i }}">
       <p id="tile-{{ i }}-text" , class="tile-text"></p>
     </div>

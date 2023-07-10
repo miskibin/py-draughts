@@ -4,7 +4,7 @@ from __future__ import annotations
 **Board for Standard (international) checkers.**
 *Still in development.*
 """
-from collections import defaultdict
+
 from typing import Generator
 
 import numpy as np
@@ -27,7 +27,6 @@ SQUARES=  [ B10, D10, F10, H10, J10,
             B2, D2, F2, H2, J2,
             A1, C1, E1, G1, I1] = range(50)
 # fmt: on
-
 
 
 def _get_all_squares_at_the_diagonal(square: int) -> list[int]:
@@ -62,7 +61,6 @@ def _get_all_squares_at_the_diagonal(square: int) -> list[int]:
     return result
 
 
-
 class Board(BaseBoard):
     """
     **Board for Standard (international) checkers.**
@@ -78,16 +76,13 @@ class Board(BaseBoard):
     STARTING_POSITION = np.array([1] * 15 + [0] * 20 + [-1] * 15, dtype=np.int8)
     row_idx = {val: val // 5 for val in range(len(STARTING_POSITION))}
     col_idx = {val: val % 10 for val in range(len(STARTING_POSITION))}
-
-    """ This code runs only once. Id does not have to be fast"""
     PSEUDO_LEGAL_KING_MOVES = {
         k: _get_all_squares_at_the_diagonal(k) for k in range(50)
     }
-    PSEUDO_LEGAL_MAN_MOVES = defaultdict(list)
-    for k,directions in PSEUDO_LEGAL_KING_MOVES.items():
-        for direction in directions:
-            PSEUDO_LEGAL_MAN_MOVES[k].append(tuple(direction[:2]))
 
+    PSEUDO_LEGAL_MAN_MOVES = {
+        k: d[:2] for k, v in PSEUDO_LEGAL_KING_MOVES.items() for d in v
+    }
 
     def __init__(self, starting_position=STARTING_POSITION) -> None:
         super().__init__(starting_position)
@@ -111,6 +106,5 @@ class Board(BaseBoard):
 
 if __name__ == "__main__":
     board = Board()
-    from pprint import pprint
     print(board)
-    pprint(board.PSEUDO_LEGAL_MAN_MOVES)
+    print(board.PSEUDO_LEGAL_MAN_MOVES)

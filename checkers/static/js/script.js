@@ -11,8 +11,48 @@ let blackPieceColor = getComputedStyle(document.body).getPropertyValue(
   "--tertiary"
 );
 
-const populateBoard = () => {
-  let board = $("#board").attr("position");
+// set constants
+var boardPosition = JSON.parse($("#board").attr("board"));
+const pseudoLegalKingMoves = JSON.parse(
+  $("#board").attr("pseudo_legal_king_moves")
+);
+const pseudoLegalManMoves = JSON.parse(
+  $("#board").attr("pseudo_legal_man_moves")
+);
+const drawBoard = JSON.parse($("#board").attr("draw_board"));
+const populateBoard = JSON.parse($("#board").attr("populate_board"));
+const showPseudoLegalMoves = JSON.parse(
+  $("#board").attr("show_pseudo_legal_moves")
+);
+const size = Math.floor(Math.sqrt(boardPosition.length));
+
+// log constants
+console.log("boardPosition", boardPosition.length);
+console.log("pseudoLegalKingMoves", pseudoLegalKingMoves);
+console.log("pseudoLegalManMoves", pseudoLegalManMoves);
+console.log("drawBoard", drawBoard);
+console.log("populateBoard", populateBoard);
+console.log("showPseudoLegalMoves", showPseudoLegalMoves);
+console.log("size", size);
+
+const drawBoardMethod = () => {
+  for (let i = 0; i < boardPosition.length; i++) {
+    let tile = $(`#tile-${i}`);
+    let tileText = $(`#tile-${i}-text`);
+    let text = Math.floor(i / 2) + 1;
+    if ((i + Math.floor(i / size)) % 2 === 0) {
+      tile.css("background-color", light);
+      tile.css("color", dark);
+      tileText.text(text);
+    } else {
+      tile.css("background-color", dark);
+      tile.css("color", light);
+    }
+  }
+};
+
+const populateBoardMethod = () => {
+  let board = $("#board").attr("board");
   let boardArray = JSON.parse(board);
   console.log(boardArray);
   let colorMap = {
@@ -64,30 +104,15 @@ const squareClick = (e) => {
 //from this dict {0: (5, 11, 16, 22, 27, 33, 38, 44, 49), 1: (6, 12, 17, 23, 28, 34, 39, 45), 2
 
 // make half of the board light and half dark
-const drawBoard = () => {
-  for (let i = 0; i < 100; i++) {
-    let tile = $(`#tile-${i}`);
-    let tileText = $(`#tile-${i}-text`);
-    let text = Math.floor(i / 2) + 1;
-    if ((i + Math.floor(i / 10)) % 2 === 0) {
-      tile.css("background-color", light);
-      tile.css("color", dark);
-      tileText.text(text);
-    } else {
-      tile.css("background-color", dark);
-      tile.css("color", light);
-    }
-  }
-};
 
 // on document ready
 
 // on ready
 $(document).ready(() => {
-  drawBoard();
+  if (drawBoard) drawBoardMethod();
 
   // add click handler to squares
-  $(".tile").click(squareClick);
+  // $(".tile").click(squareClick);
 
   // populateBoard();
 
