@@ -53,8 +53,8 @@ class BaseBoard(ABC):
     VARIANT_NAME = "Abstract variant"
     STARTING_POSITION = np.array([1] * 12 + [0] * 8 + [-1] * 12, dtype=np.int8)
     STARTING_COLOR = Color.WHITE
-    PSEUDO_LEGAL_KING_MOVES = None
-    PSEUDO_LEGAL_MAN_MOVES = None
+    PSEUDO_LEGAL_KING_MOVES = get_king_pseudo_legal_moves(len(STARTING_POSITION))
+    PSEUDO_LEGAL_MAN_MOVES = get_man_pseudo_legal_moves(len(STARTING_POSITION))
 
     def __init__(self, starting_position: np.ndarray) -> None:
         """

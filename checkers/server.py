@@ -6,7 +6,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from pprint import pprint
 from checkers import __version__
-from checkers.standard import Board
+from checkers.american import Board
 
 
 class Server:
@@ -51,10 +51,13 @@ class Server:
 
 # STARTING_POSITION = np.array([10] * 15 + [0] * 20 + [-10] * 15, dtype=np.int8)
 # # random starting position from 10, 0, -10,1,-1
-# STARTING_POSITION = np.random.choice(
-#     [10, 0, -10, 1, -1], size=50, replace=True, p=[0.1, 0.4, 0.1, 0.2, 0.2]
-# )
-board = Board()
+STARTING_POSITION = np.random.choice(
+    [10, 0, -10, 1, -1],
+    size=len(Board.STARTING_POSITION),
+    replace=True,
+    p=[0.1, 0.4, 0.1, 0.2, 0.2],
+)
+board = Board(STARTING_POSITION)
 # board = Board()
 
 

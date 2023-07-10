@@ -15,23 +15,27 @@ def _get_all_squares_at_the_diagonal(square: int, position_length: int) -> list[
     result = []
     squares, sq = [], square
 
-    while (sq) % 10 != 4 and sq >= (size // 2):  # up right
-        sq = (sq - 5) + (row_idx[sq] + 1) % 2
+    while (sq) % size != ((size // 2) - 1) and sq >= (size // 2):  # up right
+        sq = (sq - (size // 2)) + (row_idx[sq] + 1) % 2
         squares.append(sq)
     result.append(list(squares))
     squares, sq = [], square
-    while (sq) % 10 != 4 and sq < 45:  # down right
-        sq = sq + 6 - (row_idx[sq]) % 2
+    while (sq) % size != ((size // 2) - 1) and sq <= position_length - (
+        size // 2
+    ):  # down right
+        sq = sq + ((size // 2) + 1) - (row_idx[sq]) % 2
         squares.append(sq)
     result.append(list(squares))
     squares, sq = [], square
-    while (sq) % 10 != 5 and sq >= (size // 2):  # up left
-        sq = (sq - 6) + (row_idx[sq] + 1) % 2
+    while (sq) % size != (size // 2) and sq >= (size // 2):  # up left
+        sq = (sq - ((size // 2) + 1)) + (row_idx[sq] + 1) % 2
         squares.append(sq)
     result.append(list(squares))
     squares, sq = [], square
-    while (sq) % 10 != 5 and sq < 45:  # down left
-        sq = sq + 5 - (row_idx[sq]) % 2
+    while (sq) % size != (size // 2) and sq < position_length - (
+        size // 2
+    ):  # down left
+        sq = sq + (size // 2) - (row_idx[sq]) % 2
         squares.append(sq)
     result.append(list(squares))
     return result
