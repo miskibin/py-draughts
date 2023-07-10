@@ -10,7 +10,7 @@ Fast Checkers
 Checkers
 --------
 
-*Project still under active developement. Still lacking some important functionality.
+*Project still under active developement. Still lacking some important functionality.*
 
 Efficient Modern and flexible implementation of checkers game with beautiful web interface. Supports multiple variants of the game and allows to play against AI.
 
