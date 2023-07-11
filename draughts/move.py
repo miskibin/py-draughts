@@ -66,6 +66,9 @@ class Move:
 
         return False
 
+    def __len__(self) -> int:
+        return len(self.square_list)
+
     def __add__(self, other: Move) -> Move:
         """Append moves"""
         if self.square_list[-1] != other.square_list[0]:

@@ -121,7 +121,10 @@ class Board(BaseBoard):
                         moves += [
                             move + m for m in self._legal_moves_from(direction[i], True)
                         ]
+                        # if one move is longer then others return only this one
                         self.pop(False)
+                        max_len = max([len(m) for m in moves])
+                        moves = [m for m in moves if len(m) == max_len]
                         i += 1
                     break
                 if (
