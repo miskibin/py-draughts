@@ -10,6 +10,7 @@ long_description = (this_directory / "readme.rst").read_text()
 with open(this_directory / "requirements.txt") as f:
     requirements = f.read().splitlines()
 
+
 setuptools.setup(
     name="py-draughts",
     version=__version__,
@@ -21,7 +22,7 @@ setuptools.setup(
     long_description_content_type="text/x-rst",
     packages=setuptools.find_packages(),
     package_data={"draughts": ["static/js/*", "static/css/*", "templates/*"]},
-    requires=requirements,
+    install_requires=requirements,
     license="GPL-3.0+",
     keywords=" draughts, checkers, AI mini-max, game, board",
     url="https://github.com/michalskibinski109/draughts",
