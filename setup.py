@@ -15,7 +15,6 @@ setuptools.setup(
     version=__version__,
     author="Michał Skibiński",
     author_email="mskibinski109@gmail.com",
-    files_to_include=["checkers"],
     description=__doc__.replace("\n", " ").strip(),
     long_description=long_description,
     # rst
@@ -23,9 +22,9 @@ setuptools.setup(
     packages=setuptools.find_packages(),
     package_data={
         'checkers': [
-        "checkers/static/js/*",
-        "checkers/static/css/*",
-        "checkers/templates/*"
+        "static/js/*",
+        "static/css/*",
+        "templates/*"
     ]
     },
     requires=requirements,
