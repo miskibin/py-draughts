@@ -5,7 +5,6 @@ from fastapi.responses import RedirectResponse
 import json
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
-from pprint import pprint
 from checkers import __version__
 from checkers.standard import Board
 from typing import Literal

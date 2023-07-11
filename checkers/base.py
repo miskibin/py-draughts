@@ -213,15 +213,3 @@ class BaseBoard(ABC):
 #     print(board)
 
 
-def foo(a):
-    return a * 2
-
-
-class A:
-    B = [1, 2, 3]
-    C = B * 2
-    for a in range(len(B)):
-        print(a)
-
-
-A()
