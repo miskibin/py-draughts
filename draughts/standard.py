@@ -152,3 +152,4 @@ if __name__ == "__main__":
 
     pprint(board)
     pprint(list(board.legal_moves))
+    print(board.fen)

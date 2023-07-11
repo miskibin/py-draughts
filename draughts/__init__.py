@@ -19,5 +19,5 @@ A draughts library for Python, with move generation and validation,
 PDN parsing and writing. Supprots multiple variants of game.
 """
 
-__version__ = "0.9.0"
+__version__ = "0.9.8"
 __author__ = "Michał Skibiński"

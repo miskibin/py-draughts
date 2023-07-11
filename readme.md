@@ -21,12 +21,23 @@ pip install py-draughts
 
 
 
-#### Initialize board
+#### Displays simple ascii board
 
 ```python
 >>> from draughts.standard import Board
 >>> board = Board()
 Board initialized with shape (10, 10). (base.py:108)
+>>> board
+ . b . b . b . b . b
+ b . b . b . b . b .
+ . b . b . b . b . b
+ . . . . . . . . . .
+ . . . . . . . . . .
+ . . . . . . . . . .
+ . . . . . . . . . .
+ w . w . w . w . w .
+ . w . w . w . w . w
+ w . w . w . w . w .
 ```
 
 #### Make and undo moves
@@ -39,57 +50,51 @@ Board initialized with shape (10, 10). (base.py:108)
 >>> board.pop() # undo last move
 >>> board.push_from_str("19-23")
 >>> board.push_from_str("28x19")
+>>> board
+ . b . b . b . b . b
+ b . b . b . b . b .
+ . b . b . b . . . b
+ . . . . . . w . . .
+ . . . . . . . . . .
+ . . . . . . . . . .
+ . . . . . . . . . .
+ w . . . w . w . w .
+ . w . w . w . w . w
+ w . w . w . w . w .
 ```
 
-#### Shows simple ascii board
+### Generate legal moves and validate moves
 
 ```python
->>> print(board)
------------------------------------------
-|   | b |   | b |   | b |   | b |   | b |
------------------------------------------
-| b |   | b |   | b |   | b |   | b |   |
------------------------------------------
-|   | b |   | b |   | b |   |   |   | b |
------------------------------------------
-|   |   |   |   |   |   | w |   |   |   |
------------------------------------------
-|   |   |   |   |   |   |   |   |   |   |
------------------------------------------
-|   |   |   |   |   |   |   |   |   |   |
------------------------------------------
-|   |   |   |   |   |   |   |   |   |   |
------------------------------------------
-| w |   |   |   | w |   | w |   | w |   |
------------------------------------------
-|   | w |   | w |   | w |   | w |   | w |
------------------------------------------
-| w |   | w |   | w |   | w |   | w |   |
+>>> board.push_from_str("10x42")
+Move: 10->42 is correct, but not legal in given position.
+ Legal moves are: [Move: 36->31, Move: 37->32, Move: 37->31, Move: 38->33, Move: 38->32, Move: 39->34, Move: 39->33, Move: 40->35, Move: 40->34]
+
+>>> list(board.legal_moves)
+[Move: 36->31, Move: 37->32, Move: 37->31, Move: 38->33, Move: 38->32, Move: 39->34, Move: 39->33, Move: 40->35, Move: 40->34]
 ```
 
+### Generate fen string
+
+```python
+>>> board.fen
+[FEN "W:W4,11,28,31,K33,K34,38,40,K41,43,K44,45,K46,47:BK3,21,27,32"]
+```
 ### American checkers
 
 ```python
 >>> from draughts.american import Board
 >>> board = Board()
 Board initialized with shape (8, 8). (base.py:108)
->>> print(board)
----------------------------------
-|   | b |   | b |   | b |   | b |
----------------------------------
-| b |   | b |   | b |   | b |   |
----------------------------------
-|   | b |   | b |   | b |   | b |
----------------------------------
-|   |   |   |   |   |   |   |   |
----------------------------------
-|   |   |   |   |   |   |   |   |
----------------------------------
-| w |   | w |   | w |   | w |   |
----------------------------------
-|   | w |   | w |   | w |   | w |
----------------------------------
-| w |   | w |   | w |   | w |   |
+>>> board
+ . b . b . b . b
+ b . b . b . b .
+ . b . b . b . b
+ . . . . . . . .
+ . . . . . . . .
+ w . w . w . w .
+ . w . w . w . w
+ w . w . w . w .
 ```
 
 
@@ -105,7 +110,7 @@ Server().run()
 _Example with simplest possible engine._
 
 ```python
->>> server = Server(get_best_move_method=lambda board: np.random.choice([board.legal_moves]))
+>>> server = Server(get_best_move_method=lambda board: np.random.choice(list(board.legal_moves)))
 >>> server.run()
 INFO:     Started server process [1617]
 INFO:     Waiting for application startup.

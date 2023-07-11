@@ -35,10 +35,9 @@ main {
     display: grid;
     grid-template-columns: repeat(10, 1fr);
     grid-template-rows: repeat(10, 1fr);
-    /* grid-gap: 5px; */
-    border: 3px;
+    grid-gap: 1px;
+    border: 2px;
     height: 95%;
-    /* height: 56rem; */
 
     margin: 20px auto;
     background-color: var(--secondary);

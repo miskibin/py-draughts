@@ -182,35 +182,38 @@ class BaseBoard(ABC):
         self.push(move)
 
     @property
-    def friendly_form(self) -> np.ndarray:
+    def fen(self):
         """
-        Really tricky method. It is used to print board in a friendly way.
-        Designed so it can be used with any board size.
+        Returns a FEN string of the board position.
+
+        ``[FEN "[Turn]:[Color 1][K][Square number][,]...]:[Color 2][K][Square number][,]...]"]``
+
+        Fen examples:
+
+        - ``[FEN "B:W18,24,27,28,K10,K15:B12,16,20,K22,K25,K29"]``
+        - ``[FEN "B:W18,19,21,23,24,26,29,30,31,32:B1,2,3,4,6,7,9,10,11,12"]``
         """
-        new_pos = [0]
-        for idx, sq in enumerate(self.position):
-            new_pos.extend([0] * (idx % (self.shape[0] // 2) != 0))
-            new_pos.extend([0, 0] * (idx % self.shape[0] == 0 and idx != 0))
-            new_pos.append(sq)
-        new_pos.append(0)
-        return np.array(new_pos)
+        COLORS_REPR = {Color.WHITE: "W", Color.BLACK: "B"}
+        fen_components = [
+            f'[FEN "{COLORS_REPR[self.turn]}:W',
+            ",".join(
+                "K" * bool(self._pos[sq] < -1) + str(sq + 1)
+                for sq in np.where(self.position < 0)[0]
+            ),
+            ":B",
+            ",".join(
+                "K" * bool(self._pos[sq] > 1) + str(sq + 1)
+                for sq in np.where(self.position > 0)[0]
+            ),
+            '"]',
+        ]
+        return "".join(fen_components)
 
-    def __repr__(self) -> str:
-        board = ""
-        position = self.friendly_form
-        for i in range(self.shape[0]):
-            board += f"{'-' * (self.shape[0]*4 + 1) }\n|"
-            for j in range(self.shape[0]):
-                board += f" {ENTITY_REPR[position[i*self.shape[0] + j]]} |"
-            board += "\n"
-        return board
-
-    def __iter__(self) -> Generator[Entity, None, None]:
-        for sq in self.position:
-            yield sq
-
-    def __getitem__(self, key: SquareT) -> Entity:
-        return self.position[key]
+    @classmethod
+    def from_fen(cls, fen: str) -> BaseBoard:
+        # [FEN "W:W4,11,28,31,K33,K34,38,40,K41,43,K44,45,K46,47:BK3,21,27,32"]
+        # remove everthing before W or B
+        raise NotImplementedError("Not implemented yet")
 
     @classmethod
     @property
@@ -224,10 +227,46 @@ class BaseBoard(ABC):
         )
         return data
 
+    @property
+    def friendly_form(self) -> np.ndarray:
+        """
+        Returns a board position in a friendly form.
+        *Makes board with size n x n from a board with size n x n/2*
+        """
+        new_pos = [0]
+        for idx, sq in enumerate(self.position):
+            new_pos.extend([0] * (idx % (self.shape[0] // 2) != 0))
+            new_pos.extend([0, 0] * (idx % self.shape[0] == 0 and idx != 0))
+            new_pos.append(sq)
+        new_pos.append(0)
+        return np.array(new_pos)
 
-# if __name__ == "__main__":
-#     board = BaseBoard(STARTING_POSITION)
-#     print(board.info)
+    def __repr__(self) -> str:
+        board = ""
+        position = self.friendly_form
+        for i in range(self.shape[0]):
+            # board += f"{'-' * (self.shape[0]*4 + 1) }\n|"
+            for j in range(self.shape[0]):
+                board += f" {ENTITY_REPR[position[i*self.shape[0] + j]]}"
+            board += "\n"
+        return board
+
+    def __iter__(self) -> Generator[Entity, None, None]:
+        for sq in self.position:
+            yield sq
+
+    def __getitem__(self, key: SquareT) -> Entity:
+        return self.position[key]
+
+
+if __name__ == "__main__":
+    board = BaseBoard(BaseBoard.STARTING_POSITION)
+    print(board)
+    # BaseBoard.from_fen(
+    #     '[FEN "W:W4,11,28,31,K33,K34,38,40,K41,43,K44,45,K46,47:BK3,21,27,32"]'
+    # )
+
+# print(board.info)
 #     m1 = Move([C3, B4])
 #     board.push(m1)
 
