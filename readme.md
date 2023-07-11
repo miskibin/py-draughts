@@ -20,7 +20,8 @@ pip install py-draughts
 ## Usage
 
 
-### Standard draughts
+
+#### Initialize board
 
 ```python
 >>> from draughts.standard import Board
@@ -28,14 +29,21 @@ pip install py-draughts
 Board initialized with shape (10, 10). (base.py:108)
 ```
 
-#### Moving pieces
+#### Make and undo moves
 
 ```python
 >>> board.push_from_str("37-32")
 >>> board.push_from_str("14-19")
 >>> board.push_from_str("32-28")
 >>> board.push_from_str("19-23")
+>>> board.pop() # undo last move
+>>> board.push_from_str("19-23")
 >>> board.push_from_str("28x19")
+```
+
+#### Shows simple ascii board
+
+```python
 >>> print(board)
 -----------------------------------------
 |   | b |   | b |   | b |   | b |   | b |
@@ -92,13 +100,29 @@ from draughts.server import Server
 Server().run()
 ```
 
-![UI 1](https://github.com/michalskibinski109/py-draughts/assets/77834536/a5e2ca89-28e1-4dcc-96ae-b18fc602c9bc)
+### Use for testing your engine.
 
-![UI 2](https://github.com/michalskibinski109/py-draughts/assets/77834536/b14523ea-4bc4-45e1-b5c0-5deea3ed5328)
+_Example with simplest possible engine._
+
+```python
+>>> server = Server(get_best_move_method=lambda board: np.random.choice([board.legal_moves]))
+>>> server.run()
+INFO:     Started server process [1617]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://127.0.0.1:8000 (Press CTRL+C to quit)
+```
+
+_It is as simple as that!_
+
+<img src="https://github.com/michalskibinski109/py-draughts/assets/77834536/a5e2ca89-28e1-4dcc-96ae-b18fc602c9bc" width="600" />
+
+<img src="https://github.com/michalskibinski109/py-draughts/assets/77834536/b14523ea-4bc4-45e1-b5c0-5deea3ed5328" width="600" />
 
 *Legal moves for selected square (on image "16")*
 
-![UI 3](https://github.com/michalskibinski109/py-draughts/assets/77834536/c8245cbc-06ec-4623-81ab-c9aaa9302627)
+<img src="https://github.com/michalskibinski109/py-draughts/assets/77834536/c8245cbc-06ec-4623-81ab-c9aaa9302627" width="600" />
+
 
 ## Contributing
 

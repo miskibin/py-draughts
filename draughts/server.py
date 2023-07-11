@@ -9,27 +9,34 @@ from draughts import __version__
 from draughts.standard import Board
 from typing import Literal
 from collections import defaultdict
+from pathlib import Path
 
 
 class Server:
     def __init__(
         self,
         board=Board(),
+        get_best_move_method: callable = None,
         draw_board=True,
         populate_board=True,
         show_pseudo_legal_moves=True,
     ):
         self.app = FastAPI(title="py-draughts", version=__version__)
-        self.app.mount(
-            "/static", StaticFiles(directory="draughts/static/"), name="static"
-        )
-        self.templates = Jinja2Templates(directory="draughts/templates/")
+        static_dir = Path(__file__).parent / "static"
+        templates_dir = Path(__file__).parent / "templates"
+        self.app.mount("/static", StaticFiles(directory=static_dir), name="static")
+        self.get_best_move_method = get_best_move_method
+        if not get_best_move_method:
+            self.get_best_move_method = lambda board: np.random.choice(
+                list(board.legal_moves)
+            )
+        self.templates = Jinja2Templates(directory=templates_dir)
         self.board = board
         self.router = APIRouter()
         self.router.add_api_route("/", self.index)
         self.router.add_api_route("/set_board/{board_type}", self.set_board)
         self.router.add_api_route("/set_random_position", self.set_random_position)
-        self.router.add_api_route("/random_move", self.random_move)
+        self.router.add_api_route("/random_move", self.get_best_move)
         self.router.add_api_route("/get_board_info", self.get_board_info)
         self.router.add_api_route("/get_legal_moves", self.get_legal_moves)
         self.app.include_router(self.router)
@@ -88,11 +95,11 @@ class Server:
         self.board._pos = STARTING_POSITION
         return RedirectResponse(url="/")
 
-    def random_move(self, request: Request):
+    def get_best_move(self, request: Request):
         legal_moves = list(self.board.legal_moves)
         # print longest capture chain
         print(max(legal_moves, key=lambda x: len(x.captured_list)))
-        move = np.random.choice(legal_moves)
+        move = self.get_best_move_method(self.board)
         print(move)
         self.board.push(move)
         return {"position": self.board.friendly_form.tolist()}
