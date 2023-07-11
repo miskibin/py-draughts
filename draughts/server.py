@@ -21,7 +21,7 @@ class Server:
     ):
         self.app = FastAPI(title="py-draughts", version=__version__)
         self.app.mount(
-            "/static", StaticFiles(directory="draughts/static"), name="static"
+            "/static", StaticFiles(directory="draughts/static/"), name="static"
         )
         self.templates = Jinja2Templates(directory="draughts/templates/")
         self.board = board
