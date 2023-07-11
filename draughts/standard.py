@@ -9,10 +9,10 @@ from typing import Generator
 
 import numpy as np
 from collections import defaultdict
-from checkers.base import BaseBoard
-from checkers.models import Color, Entity
-from checkers.move import Move
-from checkers.utils import (
+from draughts.base import BaseBoard
+from draughts.models import Color, Entity
+from draughts.move import Move
+from draughts.utils import (
     logger,
     get_king_pseudo_legal_moves,
     get_man_pseudo_legal_moves,
@@ -66,7 +66,6 @@ class Board(BaseBoard):
             # ):
             #     is_capture_mandatory = True
             all_moves.extend(moves)
-        # if there is a capture move, return only capture moves
         if any([len(move.captured_list) > 0 for move in all_moves]):
             all_moves = [move for move in all_moves if len(move.captured_list) > 0]
         return all_moves

@@ -10,9 +10,9 @@ from typing import Generator
 from collections import defaultdict
 import numpy as np
 
-from checkers.models import ENTITY_REPR, Color, Entity, SquareT
-from checkers.move import Move
-from checkers.utils import (
+from draughts.models import ENTITY_REPR, Color, Entity, SquareT
+from draughts.move import Move
+from draughts.utils import (
     logger,
     get_king_pseudo_legal_moves,
     get_man_pseudo_legal_moves,
@@ -32,7 +32,12 @@ SQUARES = [_, B8, D8, F8, H8,
 
 class BaseBoard(ABC):
     """
-    The class is designed to support checkers boards of any size.
+    Abstact class for all draughts variants.
+
+    .. important::
+        All boards contain all methods from this class.
+
+    Class is designed to support checkers boards of any size.
     By specifying the starting position, the user can create a board of any size.
 
 
@@ -44,17 +49,42 @@ class BaseBoard(ABC):
     - override the ``STARTING_POSITION`` to specify the starting position
 
     Constraints:
-    - There are only two colors: ``Color.WHITE`` and ``Color.BLACK``
-    - There are only two types of pieces: ``PieceType.MAN`` and ``PieceType.KING``
-    - Board should always be square.
+    - There are only two colors:
+        - ``Color.WHITE``
+        - ``Color.BLACK``
+
+    - There are only two types of pieces:
+        - ``PieceType.MAN``
+        - ``PieceType.KING``
+    - **Board should always be square.**
     """
 
     GAME_TYPE = -1
+    """
+    PDN game type. See `PDN specification <https://en.wikipedia.org/wiki/Portable_Draughts_Notation>`_.
+    """
     VARIANT_NAME = "Abstract variant"
     STARTING_POSITION = np.array([1] * 12 + [0] * 8 + [-1] * 12, dtype=np.int8)
     STARTING_COLOR = Color.WHITE
-    PSEUDO_LEGAL_KING_MOVES = get_king_pseudo_legal_moves(len(STARTING_POSITION))
-    PSEUDO_LEGAL_MAN_MOVES = get_man_pseudo_legal_moves(len(STARTING_POSITION))
+    """
+    Starting color. ``Color.WHITE`` or ``Color.BLACK``.
+    """
+
+    PSEUDO_LEGAL_KING_MOVES = None
+    """
+    Dictionary of pseudo-legal moves for king pieces. Generated only on module import.
+    This dictionary contains all possible moves for king piece (as if there were no other pieces on the board).
+    
+    **Structure:**
+    
+    ``[(right-up moves), (left-up moves), (right-down moves), (left-down moves)]``
+    
+    """
+    PSEUDO_LEGAL_MAN_MOVES = None
+    """ 
+    Same as ``PSEUDO_LEGAL_KING_MOVES`` but contains only first 2 squares of the move.
+    (one for move and one for capture)
+    """
 
     def __init__(self, starting_position: np.ndarray) -> None:
         """

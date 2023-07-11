@@ -3,10 +3,10 @@ from __future__ import annotations
 from typing import Generator
 
 import numpy as np
-from checkers.base import BaseBoard
-from checkers.models import Color, Entity
-from checkers.move import Move
-from checkers.utils import logger
+from draughts.base import BaseBoard
+from draughts.models import Color, Entity
+from draughts.move import Move
+from draughts.utils import logger
 
 
 # fmt: off

@@ -1,4 +1,4 @@
-from checkers.server import Server
+from draughts.server import Server
 
 Server().run()
 

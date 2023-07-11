@@ -1,5 +1,5 @@
 Move object
 ==========================================
 
-.. autoclass:: checkers.move.Move
+.. autoclass:: draughts.move.Move
     :members:

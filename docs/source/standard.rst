@@ -1,6 +1,6 @@
 Standard draughts 
 ==========================================
 
-.. automodule:: checkers.standard
-    :members:
+.. autoclass:: draughts.standard.Board
+    :members: GAME_TYPE
     :noindex:

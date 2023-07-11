@@ -1,4 +1,4 @@
-Fast Checkers
+py-draughts
 =============
 
 .. image:: https://github.com/michalskibinski109/checkers/actions/workflows/python-app.yml/badge.svg
@@ -7,24 +7,25 @@ Fast Checkers
 .. image:: https://badge.fury.io/py/fast_checkers.svg
    :target: https://badge.fury.io/py/fast_checkers
 
-Checkers
+Draughts
 --------
 
 *Project still under active developement. Still lacking some important functionality.*
 
-Efficient Modern and flexible implementation of checkers game with beautiful web interface. Supports multiple variants of the game and allows to play against AI.
+Efficient Modern and flexible implementation of draughts game with beautiful web interface. Supports multiple variants of the game and allows to play against AI.
 
-Documentation
--------------
 
-`Documentation <https://michalskibinski109.github.io/checkers/>`_
+
+
+`Documentation <https://michalskibinski109.github.io/draughts/>`_
+-----------------------------------------------------------------
 
 Installation
 ------------
 
 .. code-block:: bash
 
-    python -m pip install fast-checkers
+    python -m pip install py-draughts
 
 Usage
 -----
@@ -34,9 +35,9 @@ simple
 
 .. code-block:: python
 
-    >>> import checkers.american as checkers
+    >>> import draughts.american as draughts
 
-    >>> board = checkers.Board()
+    >>> board = draughts.Board()
     ---------------------------------
     |   | x |   | x |   | x |   | x |
     ---------------------------------
@@ -95,10 +96,10 @@ Creating custom board
 
 .. code-block:: python
 
-    import checkers.base as checkers
+    import draughts.base as draughts
     import numpy as np
     CUSTOM_POSITION = np.array([1] * 20 + [-1] * 12, dtype=np.int8)
-    board = checkers.BaseBoard(starting_position=CUSTOM_POSITION)
+    board = draughts.BaseBoard(starting_position=CUSTOM_POSITION)
     board.legal_moves = ... # create your own custom legal_moves method (property)
 
 UI
@@ -106,21 +107,21 @@ UI
 
 .. code-block:: python
 
-    from checkers.server import Server
+    from draughts.server import Server
     Server().run()
 
 *It is as simple as that!*
 
 
-.. image:: https://github.com/michalskibinski109/checkers/assets/77834536/4ec36e49-38cc-45e8-a500-d0d24b21fce7
+.. image:: https://github.com/michalskibinski109/draughts/assets/77834536/4ec36e49-38cc-45e8-a500-d0d24b21fce7
    :width: 600
 
-.. image:: https://github.com/michalskibinski109/checkers/assets/77834536/b7e0bf73-1bc5-4769-8f82-a22cde3b7e90
+.. image:: https://github.com/michalskibinski109/draughts/assets/77834536/b7e0bf73-1bc5-4769-8f82-a22cde3b7e90
    :width: 600
 
 *pseudo legal moves for selected square* 
 
-.. image:: https://github.com/michalskibinski109/checkers/assets/77834536/ef64179a-1e7d-46d4-991e-5a34fc803d7e
+.. image:: https://github.com/michalskibinski109/draughts/assets/77834536/ef64179a-1e7d-46d4-991e-5a34fc803d7e
    :width: 600
 
 Contributing

@@ -1,9 +1,9 @@
 import numpy as np
 import pytest
 
-import checkers.american as checkers
-from checkers.american import Board, Move, Color
-from checkers.models import Entity
+import draughts.american as checkers
+from draughts.american import Board, Move, Color
+from draughts.models import Entity
 
 
 class TestAmericanBoard:

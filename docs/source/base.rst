@@ -1,5 +1,5 @@
 Base Board
 ==========================================
 
-.. autoclass:: checkers.base.BaseBoard
+.. autoclass:: draughts.base.BaseBoard
     :members:

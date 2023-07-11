@@ -1,8 +1,8 @@
 import numpy as np
 import pytest
 
-import checkers.base as checkers
-from checkers.base import BaseBoard, Color, Entity, Move
+import draughts.base as checkers
+from draughts.base import BaseBoard, Color, Entity, Move
 
 
 class TestBoard:

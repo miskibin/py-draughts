@@ -3,7 +3,7 @@ import sys
 
 # Import the chess module.
 sys.path.insert(0, os.path.abspath(".."))
-import checkers
+import draughts
 
 # Do not resolve these.
 # autodoc_type_aliases = {
@@ -33,12 +33,12 @@ source_suffix = ".rst"
 master_doc = "index"
 
 # General information about the project.
-project = "fast-checkers"
+project = "py-draughts"
 copyright = "2023, Michal Skibinski"
 
 # The version.
-version = checkers.__version__
-release = checkers.__version__
+version = draughts.__version__
+release = draughts.__version__
 
 # List of patterns, relative to source directory, that match files and
 # directories to ignore when looking for source files.

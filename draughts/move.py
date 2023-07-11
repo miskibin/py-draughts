@@ -4,7 +4,7 @@ from typing import Generator, NewType
 
 import numpy as np
 
-from checkers.models import Color, Entity, SquareT
+from draughts.models import Color, Entity, SquareT
 
 
 class Move:

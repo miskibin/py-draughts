@@ -2,16 +2,16 @@ from pathlib import Path
 
 import setuptools
 
-from checkers.__init__ import __doc__, __version__
+from draughts.__init__ import __doc__, __version__
 
 this_directory = Path(__file__).parent
 long_description = (this_directory / "readme.rst").read_text()
 
-with open(this_directory /'requirements.txt') as f:
+with open(this_directory / "requirements.txt") as f:
     requirements = f.read().splitlines()
 
 setuptools.setup(
-    name="fast-checkers",
+    name="py-draughts",
     version=__version__,
     author="Michał Skibiński",
     author_email="mskibinski109@gmail.com",
@@ -20,17 +20,11 @@ setuptools.setup(
     # rst
     long_description_content_type="text/x-rst",
     packages=setuptools.find_packages(),
-    package_data={
-        'checkers': [
-        "static/js/*",
-        "static/css/*",
-        "templates/*"
-    ]
-    },
+    package_data={"draughts": ["static/js/*", "static/css/*", "templates/*"]},
     requires=requirements,
     license="GPL-3.0+",
-    keywords="checkers AI mini-max droughts, game, board",
-    url="https://github.com/michalskibinski109/checkers",
+    keywords=" draughts, checkers, AI mini-max, game, board",
+    url="https://github.com/michalskibinski109/draughts",
     classifiers=[
         "Development Status :: 5 - Production/Stable",
         "Intended Audience :: Developers",
@@ -49,7 +43,7 @@ setuptools.setup(
         "Typing :: Typed",
     ],
     project_urls={
-        "Documentation": "https://michalskibinski109.github.io/checkers/index.html",
+        "Documentation": "https://michalskibinski109.github.io/draughts/index.html",
     },
     python_requires=">=3.10",
 )

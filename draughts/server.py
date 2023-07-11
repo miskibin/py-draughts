@@ -5,8 +5,8 @@ from fastapi.responses import RedirectResponse
 import json
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
-from checkers import __version__
-from checkers.standard import Board
+from draughts import __version__
+from draughts.standard import Board
 from typing import Literal
 from collections import defaultdict
 
@@ -19,11 +19,11 @@ class Server:
         populate_board=True,
         show_pseudo_legal_moves=True,
     ):
-        self.app = FastAPI(title="fast-checkers", version=__version__)
+        self.app = FastAPI(title="py-draughts", version=__version__)
         self.app.mount(
-            "/static", StaticFiles(directory="checkers/static"), name="static"
+            "/static", StaticFiles(directory="draughts/static"), name="static"
         )
-        self.templates = Jinja2Templates(directory="checkers/templates/")
+        self.templates = Jinja2Templates(directory="draughts/templates/")
         self.board = board
         self.router = APIRouter()
         self.router.add_api_route("/", self.index)
@@ -39,11 +39,11 @@ class Server:
 
     def set_board(self, request: Request, board_type: Literal["standard", "american"]):
         if board_type == "standard":
-            from checkers.standard import Board
+            from draughts.standard import Board
 
             self.board = Board()
         elif board_type == "american":
-            from checkers.american import Board
+            from draughts.american import Board
 
             self.board = Board()
 
