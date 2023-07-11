@@ -51,7 +51,7 @@ class Server:
             [10, 0, -10, 1, -1],
             size=len(self.board.STARTING_POSITION),
             replace=True,
-            p=[0.1, 0.4, 0.1, 0.2, 0.2],
+            p=[0.1, 0.6, 0.1, 0.1, 0.1],
         )
         self.board._pos = STARTING_POSITION
         return RedirectResponse(url="/")

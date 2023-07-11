@@ -56,10 +56,7 @@ class Board(BaseBoard):
 
     @property
     def legal_moves(self) -> Generator[Move, None, None]:
-        if self.turn == Color.BLACK:
-            squares_list = np.transpose(np.nonzero(self._pos > 0))
-        else:
-            squares_list = np.transpose(np.nonzero(self._pos < 0))
+        squares_list = np.transpose(np.nonzero(self._pos*self.turn.value > 0))
         for square in squares_list.flatten():
             moves = self._legal_moves_from(square)
             for move in moves:
