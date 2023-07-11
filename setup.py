@@ -5,7 +5,7 @@ import setuptools
 from draughts.__init__ import __doc__, __version__
 
 this_directory = Path(__file__).parent
-long_description = (this_directory / "readme.rst").read_text()
+long_description = (this_directory / "readme.md").read_text()
 
 with open(this_directory / "requirements.txt") as f:
     requirements = f.read().splitlines()
@@ -19,7 +19,7 @@ setuptools.setup(
     description=__doc__.replace("\n", " ").strip(),
     long_description=long_description,
     # rst
-    long_description_content_type="text/x-rst",
+    long_description_content_type="text/markdown",
     packages=setuptools.find_packages(),
     package_data={"draughts": ["static/js/*", "static/css/*", "templates/*"]},
     install_requires=requirements,

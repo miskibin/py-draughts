@@ -1,5 +1,5 @@
-.. include:: ../../readme.rst
-
+.. include:: ../../readme.md
+   :parser: myst_parser.sphinx_
 
 Contents
 ========

@@ -20,6 +20,7 @@ extensions = [
     "sphinx.ext.viewcode",
     "sphinx.ext.intersphinx",
     "sphinxcontrib.jquery",
+    "myst_parser",
 ]
 autodoc_member_order = "bysource"
 intersphinx_mapping = {
@@ -27,7 +28,11 @@ intersphinx_mapping = {
 }
 
 # The suffix of source filenames.
-source_suffix = ".rst"
+source_suffix = {
+    ".rst": "restructuredtext",
+    ".txt": "markdown",
+    ".md": "markdown",
+}
 
 # The master toctree document.
 master_doc = "index"
@@ -40,6 +45,16 @@ copyright = "2023, Michal Skibinski"
 version = draughts.__version__
 release = draughts.__version__
 
+
+myst_enable_extensions = [
+    "attrs_inline",
+    "colon_fence",
+    "deflist",
+    "dollarmath",
+    "fieldlist",
+    "html_admonition",
+    "html_image",
+]
 # List of patterns, relative to source directory, that match files and
 # directories to ignore when looking for source files.
 exclude_patterns = ["_build"]
