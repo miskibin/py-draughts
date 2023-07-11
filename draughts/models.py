@@ -25,9 +25,9 @@ class Entity(IntEnum):
 
 
 ENTITY_REPR = {
-    Entity.BLACK_MAN: "x",
-    Entity.WHITE_MAN: "o",
+    Entity.BLACK_MAN: "b",
+    Entity.WHITE_MAN: "w",
     Entity.EMPTY: " ",
-    Entity.BLACK_KING: "X",
-    Entity.WHITE_KING: "O",
+    Entity.BLACK_KING: "B",
+    Entity.WHITE_KING: "W",
 }
