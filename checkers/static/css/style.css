@@ -37,11 +37,12 @@ main {
     grid-template-rows: repeat(10, 1fr);
     /* grid-gap: 5px; */
     border: 3px;
-    width: 56rem;
-    height: 56rem;
-    margin: 10px auto;
+    height: 95%;
+    /* height: 56rem; */
+    
+    margin: 20px auto;
     background-color: var(--secondary);
-    padding: 2px;
+    padding: 10px;
     border-radius: 10px;
     color: var(--light);
 
