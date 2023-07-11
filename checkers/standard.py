@@ -103,11 +103,9 @@ class Board(BaseBoard):
         self, square: int, is_capture_mandatory: bool
     ) -> list[Move]:
         moves = []
-        for idx, direction in enumerate(self.PSEUDO_LEGAL_KING_MOVES[square]):
-            for target in direction:
-                if self._pos[target] == Entity.EMPTY and not is_capture_mandatory:
-                    moves.append(Move([square, target]))
-                elif (
+        for direction in self.PSEUDO_LEGAL_KING_MOVES[square]:
+            for idx, target in enumerate(direction):
+                if (
                     len(direction) > idx + 1
                     and self._pos[target] * self.turn.value < 0
                     and self._pos[direction[idx + 1]] == Entity.EMPTY
@@ -127,6 +125,10 @@ class Board(BaseBoard):
                         self.pop(False)
                         i += 1
                     break
+                if (
+                    self._pos[target] == Entity.EMPTY.value and not is_capture_mandatory
+                ):  # casual move
+                    moves.append(Move([square, target]))
                 else:
                     break
         return moves
@@ -137,6 +139,8 @@ class Board(BaseBoard):
             moves = self._get_man_legal_moves_from(square, is_capture_mandatory)
         else:
             moves = self._get_king_legal_moves_from(square, is_capture_mandatory)
+        if is_capture_mandatory:
+            moves = [move for move in moves if len(move.captured_list) > 0]
         return moves
 
 

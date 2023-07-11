@@ -51,6 +51,9 @@ class Server:
 
     def get_legal_moves(self):
         legal_moves = list(self.board.legal_moves)
+        from pprint import pprint
+
+        pprint(legal_moves)
         moves_dict = defaultdict(list)
         for move in legal_moves:
             moves_dict[int(move.square_list[0])].extend(move.square_list[1:])
