@@ -7,15 +7,22 @@
 Efficient modern and flexible implementation of the draughts game with a beautiful web interface. 
 Supports multiple variants of the game and allows playing against AI.
 
-
-
 ## Installation
 
 ```bash
 pip install py-draughts
 ```
 
-## [Documentation](https://michalskibinski109.github.io/py-draughts/)
+## Key features
+1. Provides beautiful web interface for testing your engine/playing against AI.
+2. Supports multiple variants of the game (with different board size). `standard`, `american` etc.
+3. Follows international draughts standards. like `fen` `pdn` etc.
+4. Allows to easily create new variants of the game. by extending the `Board` class.
+5. Accurate documentation generated from code.
+
+
+
+### [Documentation](https://michalskibinski109.github.io/py-draughts/)
 
 ## Usage
 
