@@ -10,7 +10,6 @@ py-draughts
 Draughts
 --------
 
-*Project still under active developement. Still lacking some important functionality.*
 
 Efficient Modern and flexible implementation of draughts game with beautiful web interface. Supports multiple variants of the game and allows to play against AI.
 
@@ -113,7 +112,7 @@ UI
 *It is as simple as that!*
 
 
-.. image:: https://github.com/michalskibinski109/draughts/assets/77834536/4ec36e49-38cc-45e8-a500-d0d24b21fce7
+.. image:: https://github.com/michalskibinski109/py-draughts/assets/77834536/4ec36e49-38cc-45e8-a500-d0d24b21fce7
    :width: 600
 
 .. image:: https://github.com/michalskibinski109/draughts/assets/77834536/b7e0bf73-1bc5-4769-8f82-a22cde3b7e90

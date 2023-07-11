@@ -55,8 +55,8 @@ class Server:
 
         pprint(legal_moves)
         moves_dict = defaultdict(list)
-        for move in legal_moves:
-            moves_dict[int(move.square_list[0])].extend(move.square_list[1:])
+        for move in list(legal_moves):
+            moves_dict[int(move.square_list[0])].extend(map(int, move.square_list[1:]))
         print(moves_dict)
         return {
             "legal_moves": json.dumps(moves_dict),
