@@ -11,7 +11,8 @@ Draughts
 --------
 
 
-Efficient Modern and flexible implementation of draughts game with beautiful web interface. Supports multiple variants of the game and allows to play against AI.
+Efficient Modern and flexible implementation of draughts game with beautiful web interface. 
+Supports multiple variants of the game and allows to play against AI.
 
 
 
@@ -112,15 +113,15 @@ UI
 *It is as simple as that!*
 
 
-.. image:: https://github.com/michalskibinski109/py-draughts/assets/77834536/4ec36e49-38cc-45e8-a500-d0d24b21fce7
+.. image:: https://github.com/michalskibinski109/py-draughts/assets/77834536/a5e2ca89-28e1-4dcc-96ae-b18fc602c9bc
    :width: 600
 
-.. image:: https://github.com/michalskibinski109/draughts/assets/77834536/b7e0bf73-1bc5-4769-8f82-a22cde3b7e90
+.. image:: https://github.com/michalskibinski109/py-draughts/assets/77834536/b14523ea-4bc4-45e1-b5c0-5deea3ed5328
    :width: 600
 
 *pseudo legal moves for selected square* 
 
-.. image:: https://github.com/michalskibinski109/draughts/assets/77834536/ef64179a-1e7d-46d4-991e-5a34fc803d7e
+.. image:: https://github.com/michalskibinski109/py-draughts/assets/77834536/c8245cbc-06ec-4623-81ab-c9aaa9302627
    :width: 600
 
 Contributing
