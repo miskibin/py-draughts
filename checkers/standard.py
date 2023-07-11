@@ -55,17 +55,89 @@ class Board(BaseBoard):
         super().__init__(starting_position)
 
     @property
-    def legal_moves(self) -> Generator[Move, None, None]:
-        squares_list = np.transpose(np.nonzero(self._pos*self.turn.value > 0))
+    def legal_moves(self) -> list[Move]:
+        all_moves = []
+        is_capture_mandatory = False
+        squares_list = np.transpose(np.nonzero(self._pos * self.turn.value > 0))
         for square in squares_list.flatten():
-            moves = self._legal_moves_from(square)
-            for move in moves:
-                yield move
+            moves = self._legal_moves_from(square, is_capture_mandatory)
+            # if not is_capture_mandatory and any( # TODO this should optimize the search
+            #     [len(move.square_list) > 0 for move in moves]
+            # ):
+            #     is_capture_mandatory = True
+            all_moves.extend(moves)
+        # if there is a capture move, return only capture moves
+        if any([len(move.captured_list) > 0 for move in all_moves]):
+            all_moves = [move for move in all_moves if len(move.captured_list) > 0]
+        return all_moves
 
-    def _legal_moves_from(
-        self, square: int, is_after_capture=False
-    ) -> Generator[Move, None, None]:
-        ...
+    def _get_man_legal_moves_from(
+        self, square: int, is_capture_mandatory: bool
+    ) -> list:
+        moves = []
+        # white can move only on even directions
+        for idx, direction in enumerate(self.PSEUDO_LEGAL_MAN_MOVES[square]):
+            if (
+                len(direction) > 0
+                and (self.turn.value + idx)
+                in [-1, 0, 3, 4]  # TERRIBLE HACK get only directions for given piece
+                and self._pos[direction[0]] == Entity.EMPTY
+                and not is_capture_mandatory
+            ):
+                moves.append(Move([square, direction[0]]))
+            elif (
+                len(direction) > 1
+                and self._pos[direction[0]] * self.turn.value < 0
+                and self._pos[direction[1]] == Entity.EMPTY
+            ):
+                move = Move(
+                    [square, direction[1]], [direction[0]], [self._pos[direction[0]]]
+                )
+                moves.append(move)
+                self.push(move, False)
+                moves += [move + m for m in self._legal_moves_from(direction[1], True)]
+                self.pop(False)
+        return moves
+
+    def _get_king_legal_moves_from(
+        self, square: int, is_capture_mandatory: bool
+    ) -> list[Move]:
+        moves = []
+        for idx, direction in enumerate(self.PSEUDO_LEGAL_KING_MOVES[square]):
+            for target in direction:
+                if self._pos[target] == Entity.EMPTY and not is_capture_mandatory:
+                    moves.append(Move([square, target]))
+                elif (
+                    len(direction) > idx + 1
+                    and self._pos[target] * self.turn.value < 0
+                    and self._pos[direction[idx + 1]] == Entity.EMPTY
+                ):
+                    i = idx + 1
+                    while (
+                        i < len(direction) and self._pos[direction[i]] == Entity.EMPTY
+                    ):
+                        move = Move(
+                            [square, direction[i]], [target], [self._pos[target]]
+                        )
+                        moves.append(move)
+                        self.push(move, False)
+                        moves += [
+                            move + m for m in self._legal_moves_from(direction[i], True)
+                        ]
+                        self.pop(False)
+                        i += 1
+                    break
+                else:
+                    break
+        return moves
+
+    def _legal_moves_from(self, square: int, is_capture_mandatory=False) -> list[Move]:
+        entity = Entity(self._pos[square])
+        if abs(entity) == Entity.MAN:
+            moves = self._get_man_legal_moves_from(square, is_capture_mandatory)
+        else:
+            moves = self._get_king_legal_moves_from(square, is_capture_mandatory)
+        return moves
 
 
 if __name__ == "__main__":
@@ -73,4 +145,4 @@ if __name__ == "__main__":
     from pprint import pprint
 
     pprint(board)
-    pprint(board.PSEUDO_LEGAL_KING_MOVES)
+    pprint(list(board.legal_moves))

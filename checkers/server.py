@@ -8,6 +8,7 @@ from fastapi.templating import Jinja2Templates
 from checkers import __version__
 from checkers.standard import Board
 from typing import Literal
+from collections import defaultdict
 
 
 class Server:
@@ -28,6 +29,9 @@ class Server:
         self.router.add_api_route("/", self.index)
         self.router.add_api_route("/set_board/{board_type}", self.set_board)
         self.router.add_api_route("/set_random_position", self.set_random_position)
+        self.router.add_api_route("/random_move", self.random_move)
+        self.router.add_api_route("/get_board_info", self.get_board_info)
+        self.router.add_api_route("/get_legal_moves", self.get_legal_moves)
         self.app.include_router(self.router)
         self.draw_board = draw_board
         self.populate_board = populate_board
@@ -45,6 +49,32 @@ class Server:
 
         return RedirectResponse(url="/")
 
+    def get_legal_moves(self):
+        legal_moves = list(self.board.legal_moves)
+        moves_dict = defaultdict(list)
+        for move in legal_moves:
+            moves_dict[int(move.square_list[0])].extend(move.square_list[1:])
+        print(moves_dict)
+        return {
+            "legal_moves": json.dumps(moves_dict),
+        }
+
+    def get_board_info(self, request: Request):
+        return (
+            {
+                "request": request,
+                "position": json.dumps(self.board.friendly_form.tolist()),
+                "pseudo_legal_king_moves": json.dumps(
+                    self.board.PSEUDO_LEGAL_KING_MOVES
+                ),
+                "pseudo_legal_man_moves": json.dumps(self.board.PSEUDO_LEGAL_MAN_MOVES),
+                "draw_board": json.dumps(self.draw_board),
+                "populate_board": json.dumps(self.populate_board),
+                "show_pseudo_legal_moves": json.dumps(self.show_pseudo_legal_moves),
+                "size": self.board.shape[0] ** 2,
+            },
+        )
+
     def set_random_position(self, request: Request):
         STARTING_POSITION = np.random.choice(
             [10, 0, -10, 1, -1],
@@ -54,6 +84,15 @@ class Server:
         )
         self.board._pos = STARTING_POSITION
         return RedirectResponse(url="/")
+
+    def random_move(self, request: Request):
+        legal_moves = list(self.board.legal_moves)
+        # print longest capture chain
+        print(max(legal_moves, key=lambda x: len(x.captured_list)))
+        move = np.random.choice(legal_moves)
+        print(move)
+        self.board.push(move)
+        return {"position": self.board.friendly_form.tolist()}
 
     def index(self, request: Request):
         return self.templates.TemplateResponse(

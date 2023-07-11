@@ -211,5 +211,3 @@ class BaseBoard(ABC):
 #     m4 = Move([A5, C3], captured_list=[B4])
 #     board.push(m4)
 #     print(board)
-
-

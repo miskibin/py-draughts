@@ -1,7 +1,7 @@
 <!-- extends base.html -->
 {% extends "base.html" %} {% block content %}
 <main>
-  <div class="row  h-100">
+  <div class="row h-100">
     <div class="col-3 rounded p-5">
       <div class="row">
         <div class="col-12">
@@ -24,7 +24,9 @@
         <div class="col-12">
           <p class="display-6">Game settings</p>
         </div>
-        <a href="#" class="col-12 btn btn-custom mt-3">Make random move</a>
+        <button id="makeRandomMove" class="col-12 btn btn-custom mt-3">
+          Make random move
+        </button>
         <a href="/set_random_position" class="col-12 btn btn-custom mt-3"
           >Set random position</a
         >

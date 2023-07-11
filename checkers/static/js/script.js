@@ -28,12 +28,8 @@ const colorMap = {
 
 // ######################### constants #########################
 var boardArray = JSON.parse($("#board").attr("board"));
-const pseudoLegalKingMoves = JSON.parse(
-  $("#board").attr("pseudo_legal_king_moves")
-);
-const pseudoLegalManMoves = JSON.parse(
-  $("#board").attr("pseudo_legal_man_moves")
-);
+var legalMoves = null;
+
 const drawBoard = JSON.parse($("#board").attr("draw_board"));
 const populateBoard = JSON.parse($("#board").attr("populate_board"));
 const showPseudoLegalMoves = JSON.parse(
@@ -60,11 +56,21 @@ const drawBoardMethod = () => {
   }
 };
 
+const getLegalMoves = () => {
+  $.ajax({
+    url: "/get_legal_moves",
+    type: "GET",
+    success: (data) => {
+      legalMoves = JSON.parse(data["legal_moves"]);
+    },
+  });
+};
+
 const populateBoardMethod = () => {
   for (let i = 0; i < boardArray.length; i++) {
     let tile = $(`#tile-${i}`);
     tile.children(".piece").remove();
-    console.log(tile.attr("tile-number"));
+    tile.children(".crown").remove();
     if (boardArray[i] !== 0) {
       tile.append(
         `<div class="piece" id="piece-${i}" style="background-color: ${
@@ -76,19 +82,21 @@ const populateBoardMethod = () => {
       }
     }
   }
+  $(".piece").click((e) => {
+    showLegalMovesForPieceMethod(e);
+  });
+  getLegalMoves();
 };
 // square click handler
 
-const showPseudoLegalMovesMethod = (square, king = false) => {
-  drawBoardMethod();
+const showLegalMovesMethod = (square) => {
   //  get tile number from attr
-  console.log(square);
-  if (king) {
-    squares_to_highlight = pseudoLegalKingMoves[square - 1];
-  } else {
-    squares_to_highlight = pseudoLegalManMoves[square - 1];
-  }
-  squares_to_highlight.flat().forEach((element) => {
+  // if not square - 1 in legalMoves keys return
+
+  if (!(square - 1 in legalMoves)) return;
+
+  let squaresToHighlight = legalMoves[square - 1].flat();
+  squaresToHighlight.forEach((element) => {
     tiles = $(".tile");
     for (let i = 0; i < tiles.length; i++) {
       if (tiles[i].innerText - 1 == element) {
@@ -98,11 +106,12 @@ const showPseudoLegalMovesMethod = (square, king = false) => {
   });
 };
 
-const showPseudoLegalMovesForPieceMethod = (e) => {
+const showLegalMovesForPieceMethod = (e) => {
+  drawBoardMethod();
   let number = $(e.target).parent().attr("tile-number");
   let pieceValue = boardArray[number];
   let square = parseInt($(e.target).parent().text());
-  showPseudoLegalMovesMethod(square, Math.abs(pieceValue) > 2);
+  showLegalMovesMethod(square);
 };
 
 const init = () => {
@@ -110,14 +119,30 @@ const init = () => {
   $("#board").css("grid-template-columns", `repeat(${size}, 1fr)`);
   $("#board").css("grid-template-rows", `repeat(${size}, 1fr)`);
 };
+
+const makeRandomMove = (e) => {
+  e.preventDefault();
+  $.ajax({
+    url: "/random_move",
+    type: "GET",
+    success: (data) => {
+      drawBoardMethod();
+      $("#board").attr("board", JSON.stringify(data["position"]));
+      boardArray = JSON.parse($("#board").attr("board"));
+      populateBoardMethod();
+    },
+  });
+};
 // on ready
 $(document).ready(() => {
   init();
   if (drawBoard) drawBoardMethod();
   if (populateBoard) populateBoardMethod();
+  $("#makeRandomMove").click(makeRandomMove);
   if (showPseudoLegalMoves) {
+    getLegalMoves();
     $(".piece").click((e) => {
-      showPseudoLegalMovesForPieceMethod(e);
+      showLegalMovesForPieceMethod(e);
     });
   }
   // add click handler to squares

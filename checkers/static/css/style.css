@@ -6,7 +6,7 @@
     --dark: #669BBC;
     --dark: #003049;
     --secondary: #333;
-    --red: #3bb845a6;
+    --red: #3bce4575;
     --tetriary: #669BBC;
 }
 
@@ -39,7 +39,7 @@ main {
     border: 3px;
     height: 95%;
     /* height: 56rem; */
-    
+
     margin: 20px auto;
     background-color: var(--secondary);
     padding: 10px;
@@ -137,7 +137,7 @@ main {
     border-radius: 10px;
     font-weight: bold;
     cursor: pointer;
-    transition: 0.1s ease-in-out;
+    transition: 0.01s ease-in-out;
     user-select: none;
 }
 
