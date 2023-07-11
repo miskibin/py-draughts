@@ -70,7 +70,7 @@ Board initialized with shape (10, 10). (base.py:108)
  w . w . w . w . w .
 ```
 
-### Generate legal moves and validate moves
+#### Generate legal moves and validate moves
 
 ```python
 >>> board.push_from_str("10x42")
@@ -81,13 +81,13 @@ Move: 10->42 is correct, but not legal in given position.
 [Move: 36->31, Move: 37->32, Move: 37->31, Move: 38->33, Move: 38->32, Move: 39->34, Move: 39->33, Move: 40->35, Move: 40->34]
 ```
 
-### Generate fen string
+#### Generate fen string
 
 ```python
 >>> board.fen
 [FEN "W:W4,11,28,31,K33,K34,38,40,K41,43,K44,45,K46,47:BK3,21,27,32"]
 ```
-### American checkers
+#### American checkers
 
 ```python
 >>> from draughts.american import Board
@@ -112,7 +112,7 @@ from draughts.server import Server
 Server().run()
 ```
 
-### Use for testing your engine.
+#### Use for testing your engine.
 
 _Example with simplest possible engine._
 
