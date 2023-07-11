@@ -7,6 +7,9 @@ from checkers.__init__ import __doc__, __version__
 this_directory = Path(__file__).parent
 long_description = (this_directory / "readme.rst").read_text()
 
+with open(this_directory /'requirements.txt') as f:
+    requirements = f.read().splitlines()
+
 setuptools.setup(
     name="fast-checkers",
     version=__version__,
@@ -18,6 +21,14 @@ setuptools.setup(
     # rst
     long_description_content_type="text/x-rst",
     packages=setuptools.find_packages(),
+    package_data={
+        'checkers': [
+        "checkers/static/js/*",
+        "checkers/static/css/*",
+        "checkers/templates/*"
+    ]
+    },
+    requires=requirements,
     license="GPL-3.0+",
     keywords="checkers AI mini-max droughts, game, board",
     url="https://github.com/michalskibinski109/checkers",
