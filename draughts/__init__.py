@@ -1,4 +1,4 @@
-# This file is part of the py-draughts library.
+0.0  # This file is part of the py-draughts library.
 # Copyright (C) 2023-2023 Michał Skibiński
 #
 # This program is free software: you can redistribute it and/or modify

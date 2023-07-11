@@ -110,6 +110,15 @@ class BaseBoard(ABC):
     # @abstractmethod
     @property
     def legal_moves(self) -> Generator[Move, None, None]:
+        """
+        Return list legal moves for the current position.
+        *For every concrete variant of draughts this method should be overriden.*
+
+        .. warning::
+            Depending of implementation method can return generator or list.
+
+
+        """
         pass
 
     @property
