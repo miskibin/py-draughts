@@ -1,4 +1,4 @@
-# This file is part of the fast-checkers library.
+# This file is part of the py-draughts library.
 # Copyright (C) 2023-2023 Michał Skibiński
 #
 # This program is free software: you can redistribute it and/or modify
@@ -15,7 +15,7 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 """
-A checkers library for Python, with move generation and validation,
+A draughts library for Python, with move generation and validation,
 PDN parsing and writing. Supprots multiple variants of game.
 """
 

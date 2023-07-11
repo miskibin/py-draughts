@@ -37,12 +37,12 @@ class BaseBoard(ABC):
     .. important::
         All boards contain all methods from this class.
 
-    Class is designed to support checkers boards of any size.
+    Class is designed to support draughts boards of any size.
     By specifying the starting position, the user can create a board of any size.
 
 
 
-    To create new variants of checkers, inherit from this class and:
+    To create new variants of draughts, inherit from this class and:
 
     - override the ``legal_moves`` property
     - override the ``SQUARES`` list to match the new board size

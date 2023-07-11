@@ -17,7 +17,7 @@ Efficient Modern and flexible implementation of draughts game with beautiful web
 
 
 
-`Documentation <https://michalskibinski109.github.io/draughts/>`_
+`Documentation <https://michalskibinski109.github.io/py-draughts/>`_
 -----------------------------------------------------------------
 
 Installation
