@@ -131,13 +131,13 @@ INFO:     Uvicorn running on http://127.0.0.1:8000 (Press CTRL+C to quit)
 
 _It is as simple as that!_
 
-<img src="https://github.com/michalskibinski109/py-draughts/assets/77834536/a5e2ca89-28e1-4dcc-96ae-b18fc602c9bc" width="600" />
+<img src="https://github.com/michalskibinski109/py-draughts/assets/77834536/53b220f3-8544-4fdb-8f35-b5a78cb7eca0" width="600" />
 
-<img src="https://github.com/michalskibinski109/py-draughts/assets/77834536/b14523ea-4bc4-45e1-b5c0-5deea3ed5328" width="600" />
+<img src="https://github.com/michalskibinski109/py-draughts/assets/77834536/b5327f3b-893c-4e85-a7f2-48607487e110" width="600" />
 
-*Legal moves for selected square (on image "16")*
+*Legal moves for selected square (on image "13")*
 
-<img src="https://github.com/michalskibinski109/py-draughts/assets/77834536/c8245cbc-06ec-4623-81ab-c9aaa9302627" width="600" />
+<img src="https://github.com/michalskibinski109/py-draughts/assets/77834536/a4f81795-8f6c-4df3-b90a-a9360dbe4af9" width="600" />
 
 
 ## Contributing
