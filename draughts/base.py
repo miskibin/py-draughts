@@ -9,6 +9,7 @@ from abc import ABC
 from typing import Generator
 from collections import defaultdict
 import numpy as np
+import re
 
 from draughts.models import ENTITY_REPR, Color, Entity, SquareT
 from draughts.move import Move
@@ -220,9 +221,37 @@ class BaseBoard(ABC):
 
     @classmethod
     def from_fen(cls, fen: str) -> BaseBoard:
-        # [FEN "W:W4,11,28,31,K33,K34,38,40,K41,43,K44,45,K46,47:BK3,21,27,32"]
-        # remove everthing before W or B
-        raise NotImplementedError("Not implemented yet")
+        """
+        Creates a board from a FEN string by using regular expressions.
+        """
+        fen = fen.upper()
+        re_turn = re.compile(r"[WB]:")
+        re_white = re.compile(r"W[0-9K,]+")
+        re_black = re.compile(r"B[0-9K,]+")
+        turn = re_turn.search(fen).group(0)[0]
+        white = re_white.search(fen).group(0).replace("W", "")
+        black = re_black.search(fen).group(0).replace("B", "")
+        cls.STARTING_POSITION = np.zeros(cls.STARTING_POSITION.shape, dtype=np.int8)
+        if len(turn) != 1 or (len(white) == 0 and len(black) == 0):
+            raise ValueError(f"Wrong FEN: {fen}")
+        cls.__populate_from_list(white.split(","), Color.WHITE)
+        cls.__populate_from_list(black.split(","), Color.BLACK)
+        cls.turn = Color.WHITE if turn == "W" else Color.BLACK
+        return cls(starting_position=cls.STARTING_POSITION)
+
+    @classmethod
+    def __populate_from_list(cls, fen_list: list[str], color: Color) -> None:
+        board_range = range(1, cls.STARTING_POSITION.shape[0] + 1)
+        for sq in fen_list:
+            if sq.isdigit() and int(sq) in board_range:
+                cls.STARTING_POSITION[int(sq) - 1] = color.value
+            elif sq.startswith("K") and sq[1:].isdigit() and int(sq[1:]) in board_range:
+                cls.STARTING_POSITION[int(sq[1:]) - 1] = color.value * Entity.KING.value
+            else:
+                raise ValueError(
+                    f"Wrong FEN: invalid square value: {sq} for board with length\
+                        {cls.STARTING_POSITION.shape[0]}"
+                )
 
     @classmethod
     @property
@@ -269,11 +298,12 @@ class BaseBoard(ABC):
 
 
 if __name__ == "__main__":
-    board = BaseBoard(BaseBoard.STARTING_POSITION)
-    print(board)
-    # BaseBoard.from_fen(
-    #     '[FEN "W:W4,11,28,31,K33,K34,38,40,K41,43,K44,45,K46,47:BK3,21,27,32"]'
-    # )
+    # board = BaseBoard(BaseBoard.STARTING_POSITION)
+    # print(board)
+    BaseBoard.from_fen(
+        '[FEN "W:W4,11,28,31,K33,K34,38,40,K41,43,K44,45,K46,47:BK3,21,27,32"]'
+    )
+    BaseBoard.from_fen("W:W4,11,28,31,K33,K34,38,40,K41,43,K44,45,K46,47:BK3,21,27,32")
 
 # print(board.info)
 #     m1 = Move([C3, B4])

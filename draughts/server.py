@@ -32,6 +32,9 @@ class Server:
             )
         self.templates = Jinja2Templates(directory=templates_dir)
         self.board = board
+        self.board = Board.from_fen(
+            "W:WK5,K6,12,K21,22,32,K46:B1,K3,18,29,K33,34,40,K42,45,K50"
+        )
         self.router = APIRouter()
         self.router.add_api_route("/", self.index)
         self.router.add_api_route("/set_board/{board_type}", self.set_board)

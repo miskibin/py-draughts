@@ -81,11 +81,15 @@ Move: 10->42 is correct, but not legal in given position.
 [Move: 36->31, Move: 37->32, Move: 37->31, Move: 38->33, Move: 38->32, Move: 39->34, Move: 39->33, Move: 40->35, Move: 40->34]
 ```
 
-#### Generate fen string
+#### Generate fen string and load board from fen string
+
 
 ```python
+>>> board =Board.from_fen("W:W4,11,28,31,K33,K34,38,40,K41,43,K44,45,K46,47:BK3,21,27,32")
+Board initialized with shape (10, 10). (base.py:109)
+>>> board.push_from_str("28-37")
 >>> board.fen
-[FEN "W:W4,11,28,31,K33,K34,38,40,K41,43,K44,45,K46,47:BK3,21,27,32"]
+'[FEN "B:W4,11,31,K33,K34,37,38,40,K41,43,K44,45,K46,47:BK3,21,27"]'
 ```
 #### American checkers
 
