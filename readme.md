@@ -131,13 +131,13 @@ INFO:     Uvicorn running on http://127.0.0.1:8000 (Press CTRL+C to quit)
 
 _It is as simple as that!_
 
-<img src="https://github.com/michalskibinski109/py-draughts/assets/77834536/53b220f3-8544-4fdb-8f35-b5a78cb7eca0" width="800" />
+<img src="https://github.com/michalskibinski109/py-draughts/assets/77834536/5712f27f-b3fd-44e5-9f6e-08e32b9eddd2" width="800" />
 
-<img src="https://github.com/michalskibinski109/py-draughts/assets/77834536/b5327f3b-893c-4e85-a7f2-48607487e110" width="800" />
+<img src="https://github.com/michalskibinski109/py-draughts/assets/77834536/4de34033-fff5-41e8-a8d8-b1b1ff399149" width="800" />
 
-*Legal moves for selected square (on image "13")*
+*Legal moves for selected square (on image "11")*
 
-<img src="https://github.com/michalskibinski109/py-draughts/assets/77834536/a4f81795-8f6c-4df3-b90a-a9360dbe4af9" width="800" />
+<img src="https://github.com/michalskibinski109/py-draughts/assets/77834536/5f9c0b41-6bce-4c1d-ac47-042a9e28f61e" width="800" />
 
 
 ### testing best moves finding methods:
