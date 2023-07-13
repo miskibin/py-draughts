@@ -6,7 +6,7 @@ import json
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from draughts import __version__
-from draughts.base import BaseBoard
+from draughts.base import BaseBoard, Color
 from typing import Literal
 from collections import defaultdict
 from pathlib import Path
@@ -16,6 +16,8 @@ from draughts.standard import Board
 
 class PositionResponse(BaseModel):
     position: list = Field(description="Current board position")
+    history: list = Field(description="History of moves")
+    turn: Literal["white", "black"] = Field(description="Current turn")
 
 
 class Server:
@@ -75,7 +77,20 @@ class Server:
 
     @property
     def position_json(self) -> PositionResponse:
-        return PositionResponse(position=self.board.friendly_form.tolist())
+        history = []  # (numver, white, black)
+        stack = self.board._moves_stack
+        for idx in range(len(stack)):
+            src, tg = stack[idx].square_list[0] + 1, stack[idx].square_list[-1]
+            if idx % 2 == 0:
+                history.append([(idx // 2) + 1, f"{src}-{tg}"])
+            else:
+                history[-1].append(f"{src}-{tg}")
+        turn = "white" if self.board.turn == Color.WHITE else "black"
+        return PositionResponse(
+            position=self.board.friendly_form.tolist(),
+            history=history,
+            turn=turn,
+        )
 
     def get_position(self, request: Request) -> PositionResponse:
         return self.position_json
@@ -87,6 +102,7 @@ class Server:
             replace=True,
             p=[0.1, 0.6, 0.1, 0.1, 0.1],
         )
+        self.board._moves_stack = []
         self.board._pos = STARTING_POSITION
         return self.position_json
 

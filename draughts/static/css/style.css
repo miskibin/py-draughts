@@ -76,6 +76,7 @@ main {
 .higlight {
     background-color: var(--red) !important;
     border-radius: 70px;
+    transition: 0.1s ease-in-out;
 }
 
 .dark-tile {
@@ -119,9 +120,7 @@ main {
     border-radius: 6px;
 }
 
-.tile:active {
-    /* background */
-}
+
 
 .tile:active .piece {
     /* background */
@@ -157,4 +156,49 @@ main {
     background-color: var(--dark);
     color: var(--primary);
     border: 2px solid var(--primary);
+}
+
+.history-container {
+    position: relative;
+    overflow-y: scroll;
+    max-height: 500px;
+    background-color: var(--secondary) !important;
+    border: 0 2px solid var(--primary);
+    border-radius: 10px;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+table {
+    color: var(--light) !important;
+    border: var(--light) !important;
+    font-size: medium;
+}
+
+tr {
+    border: 1px solid var(--light) !important;
+}
+
+/* width */
+::-webkit-scrollbar {
+    width: 10px;
+    /* background: var(--primary); */
+    border-radius: 0px;
+}
+
+/* Track */
+::-webkit-scrollbar-track {
+    border-radius: 0px;
+    background: var(--secondary);
+}
+
+/* Handle */
+::-webkit-scrollbar-thumb {
+    background: var(--primary);
+    /* border-radius: inherit; */
+}
+
+/* auto scroll to bottom */
+.history-container {
+    scroll-behavior: smooth;
 }

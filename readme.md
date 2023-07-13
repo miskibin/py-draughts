@@ -140,7 +140,7 @@ _It is as simple as that!_
 <img src="https://github.com/michalskibinski109/py-draughts/assets/77834536/a4f81795-8f6c-4df3-b90a-a9360dbe4af9" width="800" />
 
 
-## testing custom engines:
+### testing best moves finding methods:
 
 [Example](examples/engine.py)
 

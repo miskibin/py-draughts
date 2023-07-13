@@ -51,23 +51,33 @@
         {% endfor %}
       </div>
     </div>
-    <div class="col-2 rounded p-5">
+    <div class="col-2 pl-5 pr-0 pb-5 pt-5 rounded">
       <div class="row">
         <div class="col-12">
           <h1 class="text-center">Game info</h1>
         </div>
         <hr class="col-12 bg-secondary" />
+
         <div class="col-12">
-          <p class="display-6">Game state</p>
-        </div>
-        <div class="col-12">
-          <p class="display-6">Turn</p>
-        </div>
-        <div class="col-12">
-          <p class="display-6">Move count</p>
+          <p class="display-6">Turn: <code id="turn">White</code></p>
         </div>
         <div class="col-12">
           <p class="display-6">Move history</p>
+          <table class="table m-0">
+            <thead>
+              <tr>
+                <th scope="col">Nr</th>
+                <th scope="col">White</th>
+                <th scope="col">Black</th>
+              </tr>
+            </thead>
+          </table>
+
+          <div class="history-container m-0">
+            <table class="table">
+              <tbody id="historyTableBody"></tbody>
+            </table>
+          </div>
         </div>
       </div>
     </div>

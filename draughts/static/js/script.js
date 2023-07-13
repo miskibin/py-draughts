@@ -27,6 +27,8 @@ const colorMap = {
 // ######################### constants #########################
 var boardArray = null;
 var legalMoves = null;
+var historyData = null;
+var turn = null;
 var size = null;
 const crown_icon = $("#board").attr("crown_icon");
 var sourceSquare = null;
@@ -48,6 +50,8 @@ const postMove = (source, target) =>
     type: "POST",
     success: (data) => {
       boardArray = data["position"];
+      historyData = data["history"];
+      turn = data["turn"];
       upadateBoard();
     },
   });
@@ -68,6 +72,8 @@ const makeBestMove = () => {
     type: "GET",
     success: (data) => {
       boardArray = data["position"];
+      historyData = data["history"];
+      turn = data["turn"];
       upadateBoard();
     },
   });
@@ -79,6 +85,8 @@ const pop = () => {
     type: "GET",
     success: (data) => {
       boardArray = data["position"];
+      historyData = data["history"];
+      turn = data["turn"];
       upadateBoard();
     },
   });
@@ -89,6 +97,8 @@ const getRandomPos = () => {
     type: "GET",
     success: (data) => {
       boardArray = data["position"];
+      historyData = data["history"];
+      turn = data["turn"];
       upadateBoard();
     },
   });
@@ -132,6 +142,19 @@ const showLegalMoves = async (e) => {
   });
 };
 
+const updatehistory = () => {
+  let tbody = $("#historyTableBody");
+  tbody.empty();
+  console.log(historyData);
+  if (!historyData) return;
+  for (let i = 0; i < historyData.length; i++) {
+    if (!historyData[i][2]) historyData[i][2] = "-";
+    tbody.append(
+      `<tr><td>${historyData[i][0]}</td><td>${historyData[i][1]}</td><td>${historyData[i][2]}</td></tr>`
+    );
+  }
+};
+
 const upadateBoard = () => {
   for (let i = 0; i < boardArray.length; i++) {
     let tile = $(`#tile-${i}`);
@@ -150,6 +173,8 @@ const upadateBoard = () => {
       }
     }
   }
+  updatehistory();
+  $("#turn").text(turn);
 };
 
 const init = (boardArray) => {
