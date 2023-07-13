@@ -138,7 +138,7 @@ _It is as simple as that!_
 <img src="https://github.com/michalskibinski109/py-draughts/assets/77834536/b5b3c1fe-3e08-4114-b73b-2b136e3c1c9b" width="800" />
 
 
-<img src="https://github.com/michalskibinski109/py-draughts/assets/77834536/e6ae7861-624d-497a-b617-e499d817f6a3" width="800" />
+<img src="https://github.com/michalskibinski109/py-draughts/assets/77834536/4deead2a-adf1-4a7a-9422-c8da43f31a53" width="800" />
 
 
 ### testing best moves finding methods:
