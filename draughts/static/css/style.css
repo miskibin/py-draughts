@@ -73,6 +73,18 @@ main {
     user-select: none;
 }
 
+.higlight {
+    background-color: var(--red) !important;
+}
+
+.dark-tile {
+    background-color: var(--dark);
+}
+
+.light-tile {
+    background-color: var(--light);
+    color: var(--dark);
+}
 
 .piece {
     position: absolute;

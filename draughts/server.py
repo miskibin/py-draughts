@@ -41,7 +41,7 @@ class Server:
         self.router.add_api_route(
             "/set_random_position", self.set_random_position, methods=["GET"]
         )
-        self.router.add_api_route("/get_best_move", self.get_best_move, methods=["GET"])
+        self.router.add_api_route("/best_move", self.get_best_move, methods=["GET"])
         self.router.add_api_route("/position", self.get_position, methods=["GET"])
         self.router.add_api_route("/move/{move}", self.move, methods=["POST"])
         self.router.add_api_route("/pop", self.pop, methods=["GET"])

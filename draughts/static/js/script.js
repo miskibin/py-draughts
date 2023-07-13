@@ -28,18 +28,19 @@ const colorMap = {
 var boardArray = null;
 var legalMoves = null;
 var size = null;
+const crown_icon = $("#board").attr("crown_icon");
 // ######################### constants #########################
 
 // ####################### REQUESTS ############################
-const getLegalMoves = () => {
-  $.ajax({
-    url: "/get_legal_moves",
-    type: "GET",
-    success: (data) => {
-      legalMoves = JSON.parse(data["legal_moves"]);
-    },
-  });
-};
+const getLegalMoves = () =>
+  new Promise((resolve, reject) =>
+    $.ajax({
+      url: "/legal_moves",
+      type: "GET",
+      success: (data) => resolve(JSON.parse(data["legal_moves"])),
+      error: reject,
+    })
+  );
 
 const getPosition = () =>
   new Promise((resolve, reject) =>
@@ -51,39 +52,52 @@ const getPosition = () =>
     })
   );
 
+const makeBestMove = () => {
+  $.ajax({
+    url: "best_move",
+    type: "GET",
+    success: (data) => {
+      boardArray = data["position"];
+      upadateBoard();
+    },
+  });
+};
+
+const pop = () => {
+  $.ajax({
+    url: "pop",
+    type: "GET",
+    success: (data) => {
+      boardArray = data["position"];
+      upadateBoard();
+    },
+  });
+};
+
 // ####################### REQUESTS ############################
 
-// square click handler
-
-const showLegalMovesMethod = (square) => {
-  //  get tile number from attr
-  // if not square - 1 in legalMoves keys return
-
+const showLegalMoves = async (e) => {
+  let square = parseInt($(e.target).parent().text());
+  $(".higlight").removeClass("higlight");
+  let legalMoves = await getLegalMoves();
   if (!(square - 1 in legalMoves)) return;
-
   let squaresToHighlight = legalMoves[square - 1].flat();
   squaresToHighlight.forEach((element) => {
     tiles = $(".tile");
     for (let i = 0; i < tiles.length; i++) {
       if (tiles[i].innerText - 1 == element) {
-        tiles[i].style.backgroundColor = redColor;
+        $(tiles[i]).addClass("higlight");
       }
     }
   });
 };
 
-const showLegalMovesForPieceMethod = (e) => {
-  drawBoardMethod();
-  let number = $(e.target).parent().attr("tile-number");
-  let pieceValue = boardArray[number];
-  let square = parseInt($(e.target).parent().text());
-  showLegalMovesMethod(square);
-};
 // ############### MANIPULATING DOM ############################
 
 const upadateBoard = () => {
   for (let i = 0; i < boardArray.length; i++) {
     let tile = $(`#tile-${i}`);
+    $(".higlight").removeClass("higlight");
     tile.children(".piece").remove();
     tile.children(".crown").remove();
     if (boardArray[i] !== 0) {
@@ -92,6 +106,7 @@ const upadateBoard = () => {
           colorMap[boardArray[i]]
         }"></div>`
       );
+      $(`#piece-${i}`).click(showLegalMoves);
       if (Math.abs(boardArray[i]) > 1) {
         $(`#tile-${i}`).append(`<img src="${crown_icon}" class="crown" />`);
       }
@@ -108,11 +123,10 @@ const init = (boardArray) => {
     let tileText = $(`#tile-${i}-text`);
     let text = Math.floor(i / 2) + 1;
     if ((i + Math.floor(i / size)) % 2 === 0) {
-      tile.css("background-color", dark);
+      tile.addClass("dark-tile");
     } else {
       tileText.text(text);
-      tile.css("background-color", light);
-      tile.css("color", dark);
+      tile.addClass("light-tile");
     }
   }
 };
@@ -123,4 +137,6 @@ $(document).ready(async () => {
   boardArray = await getPosition();
   init(boardArray);
   upadateBoard();
+  $("#makeMove").click(makeBestMove);
+  $("#popBtn").click(pop);
 });
