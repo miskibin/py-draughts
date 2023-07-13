@@ -29,6 +29,7 @@ var boardArray = null;
 var legalMoves = null;
 var size = null;
 const crown_icon = $("#board").attr("crown_icon");
+var sourceSquare = null;
 // ######################### constants #########################
 
 // ####################### REQUESTS ############################
@@ -41,6 +42,15 @@ const getLegalMoves = () =>
       error: reject,
     })
   );
+const postMove = (source, target) =>
+  $.ajax({
+    url: `move/${source}/${target}`,
+    type: "POST",
+    success: (data) => {
+      boardArray = data["position"];
+      upadateBoard();
+    },
+  });
 
 const getPosition = () =>
   new Promise((resolve, reject) =>
@@ -76,11 +86,30 @@ const pop = () => {
 
 // ####################### REQUESTS ############################
 
+// ############### MANIPULATING DOM ############################
+
+const handleSquareClick = (e) => {
+  if (!sourceSquare) {
+    sourceSquare = null;
+    return;
+  }
+  let targetSquare = parseInt($(e.target).text());
+  console.log(sourceSquare, targetSquare);
+  console.log(legalMoves);
+  if (
+    sourceSquare - 1 in legalMoves &&
+    legalMoves[sourceSquare - 1].includes(targetSquare - 1)
+  ) {
+    postMove(sourceSquare, targetSquare);
+  }
+};
+
 const showLegalMoves = async (e) => {
   let square = parseInt($(e.target).parent().text());
   $(".higlight").removeClass("higlight");
-  let legalMoves = await getLegalMoves();
+  legalMoves = await getLegalMoves();
   if (!(square - 1 in legalMoves)) return;
+  sourceSquare = square; // for handling move
   let squaresToHighlight = legalMoves[square - 1].flat();
   squaresToHighlight.forEach((element) => {
     tiles = $(".tile");
@@ -91,8 +120,6 @@ const showLegalMoves = async (e) => {
     }
   });
 };
-
-// ############### MANIPULATING DOM ############################
 
 const upadateBoard = () => {
   for (let i = 0; i < boardArray.length; i++) {
@@ -120,6 +147,7 @@ const init = (boardArray) => {
   $("#board").css("grid-template-rows", `repeat(${size}, 1fr)`);
   for (let i = 0; i < boardArray.length; i++) {
     let tile = $(`#tile-${i}`);
+    tile.click(handleSquareClick);
     let tileText = $(`#tile-${i}-text`);
     let text = Math.floor(i / 2) + 1;
     if ((i + Math.floor(i / size)) % 2 === 0) {

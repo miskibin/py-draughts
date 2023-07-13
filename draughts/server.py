@@ -43,7 +43,9 @@ class Server:
         )
         self.router.add_api_route("/best_move", self.get_best_move, methods=["GET"])
         self.router.add_api_route("/position", self.get_position, methods=["GET"])
-        self.router.add_api_route("/move/{move}", self.move, methods=["POST"])
+        self.router.add_api_route(
+            "/move/{source}/{target}", self.move, methods=["POST"]
+        )
         self.router.add_api_route("/pop", self.pop, methods=["GET"])
         self.APP.include_router(self.router)
         if not get_best_move_method:
@@ -93,8 +95,10 @@ class Server:
         self.board.push(move)
         return self.position_json
 
-    def move(self, request: Request, move: str) -> PositionResponse:
-        self.board.push_from_str(move)
+    def move(self, request: Request, source: str, target: str) -> PositionResponse:
+        move_str = f"{source}-{target}"
+        print(move_str)
+        self.board.push_from_str(move_str)
         return self.position_json
 
     def pop(self, request: Request) -> PositionResponse:
