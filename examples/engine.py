@@ -27,8 +27,7 @@ class AlphaBetaEngine(Engine):
         self.inspected_nodes = 0
 
     def evaluate(self, board: Board):
-        pos = board.position
-        return -pos.sum()
+        return -board._pos.sum()
 
     def get_best_move(self, board: Board = None) -> tuple:
         self.inspected_nodes = 0
@@ -70,6 +69,8 @@ class AlphaBetaEngine(Engine):
     def __alpha_beta_puring(
         self, board: Board, depth: int, alpha: float, beta: float
     ) -> float:
+        if board.game_over:
+            return -100 if board.turn == Color.WHITE else 100
         if depth == 0:
             self.inspected_nodes += 1
             return self.evaluate(board)
@@ -79,17 +80,17 @@ class AlphaBetaEngine(Engine):
             board.push(move)
             evaluation = self.__alpha_beta_puring(board, depth - 1, alpha, beta)
             board.pop()
-            if board.turn:
+            if board.turn == Color.WHITE:
                 alpha = max(alpha, evaluation)
             else:
                 beta = min(beta, evaluation)
             if beta <= alpha:
                 break
-        return alpha if board.turn else beta
+        return alpha if board.turn == Color.WHITE else beta
 
 
 if __name__ == "__main__":
     board = Board()
-    engine = AlphaBetaEngine(2)
+    engine = AlphaBetaEngine(6)
     server = Server(board=board, get_best_move_method=engine.get_best_move)
     server.run()

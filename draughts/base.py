@@ -128,8 +128,16 @@ class BaseBoard(ABC):
         return self._pos
 
     @property
-    def is_game_over(self) -> bool:
+    def game_over(self) -> bool:
         """Returns ``True`` if the game is over."""
+        # check if threefold repetition
+        if len(self._moves_stack) >= 8:
+            if (
+                self._moves_stack[-1].square_list
+                == self._moves_stack[-5].square_list
+                == self._moves_stack[-9].square_list
+            ):
+                return True
         return not bool(list(self.legal_moves))
 
     def push(self, move: Move, is_finished: bool = True) -> None:

@@ -1,6 +1,6 @@
 import numpy as np
 import uvicorn
-from fastapi import FastAPI, Request, APIRouter
+from fastapi import FastAPI, Request, APIRouter, BackgroundTasks
 from fastapi.responses import RedirectResponse
 import json
 from fastapi.staticfiles import StaticFiles
@@ -117,7 +117,6 @@ class Server:
 
     def move(self, request: Request, source: str, target: str) -> PositionResponse:
         move_str = f"{source}-{target}"
-        print(move_str)
         self.board.push_from_str(move_str)
         return self.position_json
 
