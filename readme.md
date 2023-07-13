@@ -111,6 +111,10 @@ Board initialized with shape (8, 8). (base.py:108)
 
 ## UI
 
+1. Allows to play against AI.
+2. Allows to play vs another player. (on the same computer)
+3. Allows to test and find bugs in your engine.
+
 ```python
 from draughts.server import Server
 Server().run()

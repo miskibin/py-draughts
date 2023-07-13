@@ -15,9 +15,9 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 """
-A draughts library for Python, with move generation and validation,
-PDN parsing and writing. Supprots multiple variants of game.
+A draughts library with advenced (customizable) WEB UI move generation and validation,
+PDN parsing and writing. Supports multiple variants of game.
 """
 
-__version__ = "1.0.0"
+__version__ = "1.0.1"
 __author__ = "Michał Skibiński"
