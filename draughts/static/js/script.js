@@ -83,6 +83,16 @@ const pop = () => {
     },
   });
 };
+const getRandomPos = () => {
+  $.ajax({
+    url: "set_random_position",
+    type: "GET",
+    success: (data) => {
+      boardArray = data["position"];
+      upadateBoard();
+    },
+  });
+};
 
 // ####################### REQUESTS ############################
 
@@ -101,6 +111,7 @@ const handleSquareClick = (e) => {
     legalMoves[sourceSquare - 1].includes(targetSquare - 1)
   ) {
     postMove(sourceSquare, targetSquare);
+    sourceSquare = null;
   }
 };
 
@@ -167,4 +178,5 @@ $(document).ready(async () => {
   upadateBoard();
   $("#makeMove").click(makeBestMove);
   $("#popBtn").click(pop);
+  $("#randomPos").click(getRandomPos);
 });

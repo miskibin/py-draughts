@@ -1,4 +1,5 @@
 from draughts.standard import Board, Color
+from draughts.server import Server
 
 
 class AlphaBetaEngine:
@@ -10,7 +11,9 @@ class AlphaBetaEngine:
         return -pos.sum()
 
     def get_move(self, board: Board):
-        return self._alpha_beta(board, self.depth)[1]
+        (evaluation, move) = self._alpha_beta(board, self.depth)
+        print(evaluation, move)
+        return move
 
     def _alpha_beta(self, board: Board, depth, alpha=-100, beta=100, color=Color.WHITE):
         if depth == 0 or board.is_game_over:
@@ -44,17 +47,19 @@ class AlphaBetaEngine:
 if __name__ == "__main__":
     board = Board()
     engine = AlphaBetaEngine(5)
-    while not board.is_game_over:
-        if board.turn == Color.WHITE:
-            move = engine.get_move(board)
-            board.push(move)
-        else:
-            move = input("Enter your move: ")
-            try:
-                board.push_from_str(move)
-            except ValueError as e:
-                print(e)
-                move = input("Enter your move: ")
-                board.push_from_str(move)
+    server = Server(board=board, get_best_move_method=engine.get_move)
+    server.run()
+    # while not board.is_game_over:
+    #     if board.turn == Color.WHITE:
+    #         move = engine.get_move(board)
+    #         board.push(move)
+    #     else:
+    #         move = input("Enter your move: ")
+    #         try:
+    #             board.push_from_str(move)
+    #         except ValueError as e:
+    #             print(e)
+    #             move = input("Enter your move: ")
+    #             board.push_from_str(move)
 
-        print(board)
+    #     print(board)
