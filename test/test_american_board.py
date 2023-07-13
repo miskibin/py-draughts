@@ -3,7 +3,7 @@ import pytest
 
 import draughts.american as checkers
 from draughts.american import Board, Move, Color
-from draughts.models import Entity
+from draughts.models import Figure
 
 
 class TestAmericanBoard:
@@ -32,4 +32,4 @@ class TestAmericanBoard:
         moves = ["24-20", "11-16", "20x11", "7x16"]
         for m in moves:
             self.board.push_from_str(m)
-        assert self.board[checkers.F6] == Entity.EMPTY.value
+        assert self.board[checkers.F6] == Figure.EMPTY.value

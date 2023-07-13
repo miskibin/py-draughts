@@ -11,7 +11,7 @@ from collections import defaultdict
 import numpy as np
 import re
 
-from draughts.models import ENTITY_REPR, Color, Entity, SquareT
+from draughts.models import ENTITY_REPR, Color, Figure, SquareT
 from draughts.move import Move
 from draughts.utils import (
     logger,
@@ -145,13 +145,17 @@ class BaseBoard(ABC):
         )
         self._pos[src], self._pos[tg] = self._pos[tg], self._pos[src]
         # is promotion
-        if (tg // (self.shape[0] // 2)) in (0, self.shape[0] - 1) and abs(
-            self._pos[tg]
-        ) == 1:
-            self._pos[tg] *= Entity.KING.value
+        if (
+            (tg // (self.shape[0] // 2)) == 0
+            and self._pos[tg] == Figure.WHITE_MAN.value
+        ) or (
+            (tg // (self.shape[0] // 2)) == (self.shape[0] - 1)
+            and self._pos[tg] == Figure.BLACK_MAN.value
+        ):
+            self._pos[tg] *= Figure.KING.value
             move.is_promotion = True
         if move.captured_list:
-            self._pos[np.array([sq for sq in move.captured_list])] = Entity.EMPTY
+            self._pos[np.array([sq for sq in move.captured_list])] = Figure.EMPTY
         self._moves_stack.append(move)
         if is_finished:
             self.turn = Color.WHITE if self.turn == Color.BLACK else Color.BLACK
@@ -168,7 +172,7 @@ class BaseBoard(ABC):
             move.square_list[-1],
         )
         if move.is_promotion:
-            self._pos[tg] //= Entity.KING.value
+            self._pos[tg] //= Figure.KING.value
         self._pos[src], self._pos[tg] = self._pos[tg], self._pos[src]
         for sq, entity in zip(move.captured_list, move.captured_entities):
             self._pos[sq] = entity  # Dangerous line
@@ -245,7 +249,7 @@ class BaseBoard(ABC):
             if sq.isdigit() and int(sq) in board_range:
                 cls.STARTING_POSITION[int(sq) - 1] = color.value
             elif sq.startswith("K") and sq[1:].isdigit() and int(sq[1:]) in board_range:
-                cls.STARTING_POSITION[int(sq[1:]) - 1] = color.value * Entity.KING.value
+                cls.STARTING_POSITION[int(sq[1:]) - 1] = color.value * Figure.KING.value
             else:
                 raise ValueError(
                     f"Wrong FEN: invalid square value: {sq} for board with length\
@@ -278,6 +282,13 @@ class BaseBoard(ABC):
         new_pos.append(0)
         return np.array(new_pos)
 
+    @staticmethod
+    def is_capture(move: Move) -> bool:
+        """
+        Checks if a move is a capture.
+        """
+        return len(move.captured_list) > 0
+
     def __repr__(self) -> str:
         board = ""
         position = self.friendly_form
@@ -288,11 +299,11 @@ class BaseBoard(ABC):
             board += "\n"
         return board
 
-    def __iter__(self) -> Generator[Entity, None, None]:
+    def __iter__(self) -> Generator[Figure, None, None]:
         for sq in self.position:
             yield sq
 
-    def __getitem__(self, key: SquareT) -> Entity:
+    def __getitem__(self, key: SquareT) -> Figure:
         return self.position[key]
 
 

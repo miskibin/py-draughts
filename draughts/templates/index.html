@@ -36,6 +36,9 @@
         <button id="randomPos" class="col-12 btn btn-custom mt-3">
           Set random position
         </button>
+        <button id="copyFen" class="col-12 btn btn-custom mt-3">
+          Copy FEN <small>to clipboard</small>
+        </button>
       </div>
     </div>
     <div class="col-6 h-100">
@@ -73,7 +76,7 @@
             </thead>
           </table>
 
-          <div class="history-container m-0">
+          <div id="historyContainer" class="history-container m-0">
             <table class="table">
               <tbody id="historyTableBody"></tbody>
             </table>

@@ -40,6 +40,7 @@ class Server:
             "/set_board/{board_type}", self.set_board, methods=["GET"]
         )
         self.router.add_api_route("/legal_moves", self.get_legal_moves, methods=["GET"])
+        self.router.add_api_route("/fen", self.get_fen, methods=["GET"])
         self.router.add_api_route(
             "/set_random_position", self.set_random_position, methods=["GET"]
         )
@@ -54,6 +55,9 @@ class Server:
             self.get_best_move_method = lambda board: np.random.choice(
                 list(board.legal_moves)
             )
+
+    def get_fen(self):
+        return {"fen": self.board.fen}
 
     def set_board(self, request: Request, board_type: Literal["standard", "american"]):
         if board_type == "standard":
@@ -97,7 +101,7 @@ class Server:
 
     def set_random_position(self, request: Request) -> PositionResponse:
         STARTING_POSITION = np.random.choice(
-            [10, 0, -10, 1, -1],
+            [2, 0, -2, 1, -1],
             size=len(self.board.STARTING_POSITION),
             replace=True,
             p=[0.1, 0.6, 0.1, 0.1, 0.1],

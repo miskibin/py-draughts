@@ -4,7 +4,7 @@ from typing import Generator, NewType
 
 import numpy as np
 
-from draughts.models import Color, Entity, SquareT
+from draughts.models import Color, Figure, SquareT
 
 
 class Move:
@@ -30,7 +30,7 @@ class Move:
         self,
         visited_squares: list[int],
         captured_list: list[int] = [],
-        captured_entities: list[Entity.value] = [],
+        captured_entities: list[Figure.value] = [],
         is_promotion: bool = False,
     ) -> None:
         self.square_list = visited_squares
@@ -67,7 +67,7 @@ class Move:
         return False
 
     def __len__(self) -> int:
-        return len(self.square_list) + 1
+        return len(self.captured_list) + 1
 
     def __add__(self, other: Move) -> Move:
         """Append moves"""

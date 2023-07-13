@@ -10,7 +10,7 @@ from typing import Generator
 import numpy as np
 from collections import defaultdict
 from draughts.base import BaseBoard
-from draughts.models import Color, Entity
+from draughts.models import Color, Figure
 from draughts.move import Move
 from draughts.utils import (
     logger,
@@ -80,14 +80,14 @@ class Board(BaseBoard):
                 len(direction) > 0
                 and (self.turn.value + idx)
                 in [-1, 0, 3, 4]  # TERRIBLE HACK get only directions for given piece
-                and self._pos[direction[0]] == Entity.EMPTY
+                and self._pos[direction[0]] == Figure.EMPTY
                 and not is_capture_mandatory
             ):
                 moves.append(Move([square, direction[0]]))
             elif (
                 len(direction) > 1
                 and self._pos[direction[0]] * self.turn.value < 0
-                and self._pos[direction[1]] == Entity.EMPTY
+                and self._pos[direction[1]] == Figure.EMPTY
             ):
                 move = Move(
                     [square, direction[1]], [direction[0]], [self._pos[direction[0]]]
@@ -107,11 +107,11 @@ class Board(BaseBoard):
                 if (
                     len(direction) > idx + 1
                     and self._pos[target] * self.turn.value < 0
-                    and self._pos[direction[idx + 1]] == Entity.EMPTY
+                    and self._pos[direction[idx + 1]] == Figure.EMPTY
                 ):
                     i = idx + 1
                     while (
-                        i < len(direction) and self._pos[direction[i]] == Entity.EMPTY
+                        i < len(direction) and self._pos[direction[i]] == Figure.EMPTY
                     ):
                         move = Move(
                             [square, direction[i]], [target], [self._pos[target]]
@@ -128,7 +128,7 @@ class Board(BaseBoard):
                         i += 1
                     break
                 if (
-                    self._pos[target] == Entity.EMPTY.value and not is_capture_mandatory
+                    self._pos[target] == Figure.EMPTY.value and not is_capture_mandatory
                 ):  # casual move
                     moves.append(Move([square, target]))
                 else:
@@ -136,8 +136,8 @@ class Board(BaseBoard):
         return moves
 
     def _legal_moves_from(self, square: int, is_capture_mandatory=False) -> list[Move]:
-        entity = Entity(self._pos[square])
-        if abs(entity) == Entity.MAN:
+        entity = Figure(self._pos[square])
+        if abs(entity) == Figure.MAN:
             moves = self._get_man_legal_moves_from(square, is_capture_mandatory)
         else:
             moves = self._get_king_legal_moves_from(square, is_capture_mandatory)

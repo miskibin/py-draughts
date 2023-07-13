@@ -2,7 +2,7 @@ import numpy as np
 import pytest
 
 import draughts.base as checkers
-from draughts.base import BaseBoard, Color, Entity, Move
+from draughts.base import BaseBoard, Color, Figure, Move
 
 
 class TestBoard:
@@ -20,13 +20,13 @@ class TestBoard:
         m = Move([checkers.A3, checkers.B4])
         self.board.push(m)
         assert self.board.turn == Color.BLACK
-        assert self.board[checkers.A3] == Entity.EMPTY
-        assert self.board[checkers.B4] == Entity.WHITE_MAN
+        assert self.board[checkers.A3] == Figure.EMPTY
+        assert self.board[checkers.B4] == Figure.WHITE_MAN
         m = Move([checkers.F6, checkers.G5])
         self.board.push(m)
         assert self.board.turn == Color.WHITE
-        assert self.board[checkers.F6] == Entity.EMPTY
-        assert self.board[checkers.G5] == Entity.BLACK_MAN
+        assert self.board[checkers.F6] == Figure.EMPTY
+        assert self.board[checkers.G5] == Figure.BLACK_MAN
 
     def test_capture(self):
         m1 = Move([checkers.C3, checkers.B4])
@@ -41,26 +41,26 @@ class TestBoard:
         m4 = Move([checkers.A5, checkers.C3], captured_list=[checkers.B4])
         self.board.push(m4)
 
-        assert self.board[checkers.B4] == Entity.EMPTY
-        assert self.board[checkers.C3] == Entity.BLACK_MAN
+        assert self.board[checkers.B4] == Figure.EMPTY
+        assert self.board[checkers.C3] == Figure.BLACK_MAN
 
         m5 = Move([checkers.B2, checkers.D4], captured_list=[checkers.C3])
         self.board.push(m5)
-        assert self.board[checkers.B2] == Entity.EMPTY
-        assert self.board[checkers.C3] == Entity.EMPTY
-        assert self.board[checkers.D4] == Entity.WHITE_MAN
+        assert self.board[checkers.B2] == Figure.EMPTY
+        assert self.board[checkers.C3] == Figure.EMPTY
+        assert self.board[checkers.D4] == Figure.WHITE_MAN
 
     def test_pop(self):
         m = Move([checkers.A3, checkers.B4])
         self.board.push(m)
         assert self.board.turn == Color.BLACK
-        assert self.board[checkers.A3] == Entity.EMPTY
-        assert self.board[checkers.B4] == Entity.WHITE_MAN
+        assert self.board[checkers.A3] == Figure.EMPTY
+        assert self.board[checkers.B4] == Figure.WHITE_MAN
         m = Move([checkers.F6, checkers.G5])
         self.board.push(m)
         self.board.pop()
         assert self.board.turn == Color.BLACK
-        assert self.board[checkers.F6] == Entity.BLACK_MAN
-        assert self.board[checkers.G5] == Entity.EMPTY
-        assert self.board[checkers.A3] == Entity.EMPTY
-        assert self.board[checkers.B4] == Entity.WHITE_MAN
+        assert self.board[checkers.F6] == Figure.BLACK_MAN
+        assert self.board[checkers.G5] == Figure.EMPTY
+        assert self.board[checkers.A3] == Figure.EMPTY
+        assert self.board[checkers.B4] == Figure.WHITE_MAN

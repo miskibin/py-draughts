@@ -4,7 +4,7 @@ from typing import Generator
 
 import numpy as np
 from draughts.base import BaseBoard
-from draughts.models import Color, Entity
+from draughts.models import Color, Figure
 from draughts.move import Move
 from draughts.utils import logger
 
@@ -61,7 +61,7 @@ class Board(BaseBoard):
         odd = bool(row % 2 != 0 and self.turn == Color.BLACK) or (
             row % 2 == 0 and self.turn == Color.WHITE
         )
-        is_king = bool(self[square] == self.turn.value * Entity.KING)
+        is_king = bool(self[square] == self.turn.value * Figure.KING)
         # is_king = False  # DEBUG
         for mv_offset, cap_offset, dir in [
             (4 - odd, 7, self.turn.value),

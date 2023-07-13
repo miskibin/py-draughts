@@ -20,8 +20,8 @@ let redColor = getComputedStyle(document.body).getPropertyValue("--red");
 const colorMap = {
   1: whiteManColor,
   "-1": blackManColor,
-  10: whiteManColor,
-  "-10": blackManColor,
+  2: whiteManColor,
+  "-2": blackManColor,
 };
 
 // ######################### constants #########################
@@ -53,6 +53,16 @@ const postMove = (source, target) =>
       historyData = data["history"];
       turn = data["turn"];
       upadateBoard();
+    },
+  });
+
+const getFen = () =>
+  $.ajax({
+    url: "fen",
+    type: "GET",
+    success: (data) => {
+      navigator.clipboard.writeText(data["fen"]);
+      alert("Copied the text: " + data["fen"]);
     },
   });
 
@@ -145,7 +155,6 @@ const showLegalMoves = async (e) => {
 const updatehistory = () => {
   let tbody = $("#historyTableBody");
   tbody.empty();
-  console.log(historyData);
   if (!historyData) return;
   for (let i = 0; i < historyData.length; i++) {
     if (!historyData[i][2]) historyData[i][2] = "-";
@@ -153,6 +162,7 @@ const updatehistory = () => {
       `<tr><td>${historyData[i][0]}</td><td>${historyData[i][1]}</td><td>${historyData[i][2]}</td></tr>`
     );
   }
+  $("#historyContainer").scrollTop($("#historyContainer")[0].scrollHeight);
 };
 
 const upadateBoard = () => {
@@ -169,7 +179,9 @@ const upadateBoard = () => {
       );
       $(`#piece-${i}`).click(showLegalMoves);
       if (Math.abs(boardArray[i]) > 1) {
-        $(`#tile-${i}`).append(`<img src="${crown_icon}" class="crown" />`);
+        $(`#tile-${i}`).append(
+          `<img src="${crown_icon}" alt="crown" class="crown" />`
+        );
       }
     }
   }
@@ -204,4 +216,5 @@ $(document).ready(async () => {
   $("#makeMove").click(makeBestMove);
   $("#popBtn").click(pop);
   $("#randomPos").click(getRandomPos);
+  $("#copyFen").click(getFen);
 });
