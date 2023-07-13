@@ -143,7 +143,7 @@ _It is as simple as that!_
 
 ### testing best moves finding methods:
 
-[Example](examples/engine.py)
+[Example]([examples/engine.py](https://github.com/michalskibinski109/py-draughts/blob/main/examples/engine.py))
 
 ## Contributing
 
