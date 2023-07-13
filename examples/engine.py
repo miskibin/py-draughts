@@ -49,17 +49,3 @@ if __name__ == "__main__":
     engine = AlphaBetaEngine(5)
     server = Server(board=board, get_best_move_method=engine.get_move)
     server.run()
-    # while not board.is_game_over:
-    #     if board.turn == Color.WHITE:
-    #         move = engine.get_move(board)
-    #         board.push(move)
-    #     else:
-    #         move = input("Enter your move: ")
-    #         try:
-    #             board.push_from_str(move)
-    #         except ValueError as e:
-    #             print(e)
-    #             move = input("Enter your move: ")
-    #             board.push_from_str(move)
-
-    #     print(board)
