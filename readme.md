@@ -137,11 +137,11 @@ _It is as simple as that!_
 
 <img src="https://github.com/michalskibinski109/py-draughts/assets/77834536/5712f27f-b3fd-44e5-9f6e-08e32b9eddd2" width="800" />
 
-<img src="https://github.com/michalskibinski109/py-draughts/assets/77834536/4de34033-fff5-41e8-a8d8-b1b1ff399149" width="800" />
+<img src="https://github.com/michalskibinski109/py-draughts/assets/77834536/b5b3c1fe-3e08-4114-b73b-2b136e3c1c9b" width="800" />
 
 *Legal moves for selected square (on image "11")*
 
-<img src="https://github.com/michalskibinski109/py-draughts/assets/77834536/5f9c0b41-6bce-4c1d-ac47-042a9e28f61e" width="800" />
+<img src="https://github.com/michalskibinski109/py-draughts/assets/77834536/e6ae7861-624d-497a-b617-e499d817f6a3" width="800" />
 
 
 ### testing best moves finding methods:
