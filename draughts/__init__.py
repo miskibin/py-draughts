@@ -19,5 +19,5 @@ A draughts library with advenced (customizable) WEB UI move generation and valid
 PDN parsing and writing. Supports multiple variants of game.
 """
 
-__version__ = "1.0.3"
+__version__ = "1.0.4"
 __author__ = "Michał Skibiński"
