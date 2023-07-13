@@ -75,6 +75,7 @@ main {
 
 .higlight {
     background-color: var(--red) !important;
+    border-radius: 70px;
 }
 
 .dark-tile {
