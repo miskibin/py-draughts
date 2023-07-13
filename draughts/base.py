@@ -150,7 +150,6 @@ class BaseBoard(ABC):
         ) == 1:
             self._pos[tg] *= Entity.KING.value
             move.is_promotion = True
-            logger.warning(f"Kinged: {tg} on row {tg // self.shape[0]}")
         if move.captured_list:
             self._pos[np.array([sq for sq in move.captured_list])] = Entity.EMPTY
         self._moves_stack.append(move)
