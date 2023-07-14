@@ -21,6 +21,47 @@ class Engine(ABC):
         ...
 
 
+class SimpleEngine:
+    def __init__(self, depth):
+        self.depth = depth
+
+    def evaluate(self, board: Board) -> int:
+        return -board._pos.sum()
+
+    def get_best_move(self, board: Board = None) -> tuple:
+        best_move = None
+        for move in board.legal_moves:
+            board.push(move)
+            evaluation = self.__alpha_beta_puring(board, self.depth, -100, 100)
+            board.pop()
+            if best_move is None or evaluation > best_evaluation:
+                best_move = move
+                best_evaluation = evaluation
+        logger.info(f"best move: {move}, evaluation: {evaluation:.2f}")
+        return move
+
+    def __alpha_beta_puring(
+        self, board: Board, depth: int, alpha: float, beta: float
+    ) -> float:
+        if board.game_over:
+            return -100 if board.turn == Color.WHITE else 100
+        if depth == 0:
+            return self.evaluate(board)
+        legal_moves = list(board.legal_moves)
+        legal_moves.sort(key=lambda move: board.is_capture(move), reverse=True)
+        for move in legal_moves:
+            board.push(move)
+            evaluation = self.__alpha_beta_puring(board, depth - 1, alpha, beta)
+            board.pop()
+            if board.turn == Color.WHITE:
+                alpha = max(alpha, evaluation)
+            else:
+                beta = min(beta, evaluation)
+            if beta <= alpha:
+                break
+        return alpha if board.turn == Color.WHITE else beta
+
+
 class AlphaBetaEngine(Engine):
     def __init__(self, depth):
         self.depth = depth
@@ -91,6 +132,3 @@ class AlphaBetaEngine(Engine):
 
 if __name__ == "__main__":
     board = Board()
-    engine = AlphaBetaEngine(6)
-    server = Server(board=board, get_best_move_method=engine.get_best_move)
-    server.run()
