@@ -124,11 +124,6 @@ _It is as simple as that!_
 <img src="https://github.com/michalskibinski109/py-draughts/assets/77834536/a7d67a8a-a325-437e-90b5-ba443d1b0874" width="800" />
 
 
-
-### testing best moves finding methods:
-
-[Example](https://github.com/michalskibinski109/py-draughts/blob/main/examples/engine.py)
-
 ## Contributing
 
 Contributions to this project are welcome. If you encounter any issues or have suggestions for improvements, please open an issue or submit a pull request on the project repository.
