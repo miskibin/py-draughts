@@ -21,7 +21,7 @@ PDN parsing and writing. Supports multiple variants of game.
 
 from typing import Literal
 
-__version__ = "1.1.3"
+__version__ = "1.1.5"
 __author__ = "Michał Skibiński"
 
 
