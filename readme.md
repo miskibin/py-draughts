@@ -13,6 +13,13 @@ Supports multiple variants of the game and allows playing against AI.
 ```bash
 pip install py-draughts
 ```
+
+## Running UI with default AI
+
+```bash
+python -m draughts
+```
+
 ### [Documentation](https://michalskibinski109.github.io/py-draughts/)
 
 ## Key features
