@@ -2,8 +2,9 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 import json
 from draughts.standard import Board, Color
-from engine import SimpleEngine, AlphaBetaEngine, Engine
+from engine import SimpleEngine, AlphaBetaEngine, Engine, RandomEngine
 import numpy as np
+from time import time
 
 path_to_games = Path().cwd() / "tools/random_positions.json"
 
@@ -12,22 +13,27 @@ with open(path_to_games, "r") as f:
 from pprint import pprint
 
 
-def play_game(fen, engine1: Engine, engine2: Engine) -> int:
+def play_game(fen, engine1: Engine, engine2: Engine) -> list[int, float, float]:
     board = Board.from_fen(fen)
+    engine1_time = []
+    engine2_time = []
     while not board.game_over:
+        start = time()
         if board.turn == Color.WHITE:
             move = engine1.get_best_move(board)
+            engine1_time.append(time() - start)
         else:
             move = engine2.get_best_move(board)
+            engine2_time.append(time() - start)
         board.push(move)
-
+    engine1_time = sum(engine1_time) / len(engine1_time)
+    engine2_time = sum(engine2_time) / len(engine2_time)
     if board.is_threefold_repetition:
-        return 1
+        return 1, engine1_time, engine2_time
     if board.turn == Color.WHITE:
-        return 2
+        return 2, engine1_time, engine2_time
     if board.turn == Color.BLACK:
-        return 0
-    return -1
+        return 0, engine1_time, engine2_time
 
 
 def plot_grouped_bar(results, labels):
@@ -35,40 +41,72 @@ def plot_grouped_bar(results, labels):
     results = np.array(results)
     results = dict(zip(bar_labels, results.T))
     x = np.arange(len(labels))  # the label locations
-    width = 0.25  # the width of the bars
+    width = 0.3  # the width of the bars
     multiplier = 0
 
     fig, ax = plt.subplots(layout="constrained")
 
     for attribute, measurement in results.items():
+        measurement = np.array(measurement, dtype=np.int8)
         offset = width * multiplier
         rects = ax.bar(x + offset, measurement, width, label=attribute)
-        ax.bar_label(rects, padding=3)
+        ax.bar_label(rects, padding=2)
         multiplier += 1
 
     # Add some text for labels, title and custom x-axis tick labels, etc.
-    ax.set_ylabel("Length (mm)")
-    ax.set_title("Penguin attributes by species")
-    ax.set_xticks(x + width, labels)
+    ax.set_ylabel("Number of games")
+    ax.set_title("Results of games")
     ax.legend(loc="upper left")
+    ax.set_xticks(x)
+    ax.set_xticklabels(labels)
+    ax.set_ylim(0, 100)
 
     plt.show()
 
 
-simple = SimpleEngine(3)
-advanced = AlphaBetaEngine(3)
+random = RandomEngine()
+simple = SimpleEngine(2)
+advanced = AlphaBetaEngine(2)
 
 
 # Play games and update results
 labels = ["White Wins", "Draws", "Black Wins"]
-results_simple_vs_simple = [0, 0, 0]
+results_random_vs_simple = [0, 0, 0]
 results_simple_vs_advanced = [0, 0, 0]
-for game in games:
-    results_simple_vs_simple[play_game(game, simple, simple)] += 1
-    results_simple_vs_advanced[play_game(game, simple, advanced)] += 1
+results_simple_vs_simple = [0, 0, 0]
+random_t, simple_t, advanced_t = [], [], []
+for game in games[:]:
+    # start = time()
+    result, engine1_time, engine2_time = play_game(game, random, simple)
+    results_random_vs_simple[result] += 1
+    random_t.append(engine1_time)
+    simple_t.append(engine2_time)
+    result, engine1_time, engine2_time = play_game(game, simple, simple)
+    results_simple_vs_simple[result] += 1
 
+    result, engine1_time, engine2_time = play_game(game, simple, advanced)
+    results_simple_vs_advanced[result] += 1
+    results_simple_vs_advanced[-1] += engine2_time
+    advanced_t.append(engine2_time)
 # Plot the grouped bar chart
 plot_grouped_bar(
-    [results_simple_vs_simple, results_simple_vs_advanced],
-    ["Simple vs Simple", "Simple vs Advanced"],
+    [results_random_vs_simple, results_simple_vs_simple, results_simple_vs_advanced],
+    ["Random vs Simple", "simple vs simple", "Simple vs Advanced"],
 )
+
+# plot all average times in bar chart
+
+data = {
+    "Random": random_t,
+    "Simple": simple_t,
+    "Advanced": advanced_t,
+}
+
+fig, ax = plt.subplots()
+ax.boxplot(data.values())
+ax.set_xticklabels(data.keys())
+ax.set_ylabel("Time (s)")
+ax.set_title("Average time per move")
+
+
+plt.show()

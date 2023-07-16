@@ -1,4 +1,4 @@
-# I created a game engine in `python` that plays board games without knowing the rules of the game.  
+# I created AI that plays board games without knowing rules.  
 
 Developing a game engine for board games is a fascinating challenge that often requires a deep understanding of the game's rules, strategies, and nuances. However, what if I told you that you could create a game engine without actually having to understand the intricacies of the game itself? In this article, we'll explore a code implementation that demonstrates this concept by using an engine for a game of draughts (checkers) as an example.
 
