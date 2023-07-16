@@ -1,6 +1,5 @@
-from typing import Literal
-from easy_logs import get_logger
 import numpy as np
+from easy_logs import get_logger
 
 logger = get_logger(lvl=10)
 

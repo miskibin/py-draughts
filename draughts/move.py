@@ -1,10 +1,9 @@
 from __future__ import annotations
 
-from typing import Generator, NewType
+from typing import Generator
 
-import numpy as np
 
-from draughts.models import Color, Figure, SquareT
+from draughts.models import Figure
 
 
 class Move:

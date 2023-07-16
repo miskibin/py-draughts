@@ -1,9 +1,9 @@
-from draughts.utils import logger
-from draughts.standard import Board
-from pathlib import Path
-import requests
-from time import sleep
 import json
+from pathlib import Path
+
+import requests
+
+from draughts.utils import logger
 
 target_file = Path(__file__).parent / "random_positions.json"
 

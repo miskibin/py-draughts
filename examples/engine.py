@@ -1,9 +1,11 @@
-from draughts.standard import Board, Color, Move
-from draughts.server import Server
 from abc import ABC, abstractmethod
-from draughts.utils import logger
-from tqdm import tqdm
+
 import numpy as np
+from tqdm import tqdm
+
+from draughts.server import Server
+from draughts.standard import Board, Color, Move
+from draughts.utils import logger
 
 
 class Engine(ABC):

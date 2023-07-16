@@ -1,16 +1,18 @@
-import numpy as np
-import uvicorn
-from fastapi import FastAPI, Request, APIRouter, BackgroundTasks
-from fastapi.responses import RedirectResponse
 import json
-from fastapi.staticfiles import StaticFiles
-from fastapi.templating import Jinja2Templates
-from draughts import __version__
-from draughts.base import BaseBoard, Color
-from typing import Literal
 from collections import defaultdict
 from pathlib import Path
+from typing import Literal
+
+import numpy as np
+import uvicorn
+from fastapi import APIRouter, FastAPI, Request
+from fastapi.responses import RedirectResponse
+from fastapi.staticfiles import StaticFiles
+from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel, Field
+
+from draughts import __version__
+from draughts.base import BaseBoard, Color
 from draughts.standard import Board
 
 

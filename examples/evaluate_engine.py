@@ -1,10 +1,12 @@
-from pathlib import Path
-import matplotlib.pyplot as plt
 import json
-from draughts.standard import Board, Color
-from engine import MiniMaxEngine, AlphaBetaEngine, Engine, RandomEngine
-import numpy as np
+from pathlib import Path
 from time import time
+
+import matplotlib.pyplot as plt
+import numpy as np
+from engine import AlphaBetaEngine, Engine, MiniMaxEngine, RandomEngine
+
+from draughts.standard import Board, Color
 
 path_to_games = Path().cwd() / "tools/random_positions.json"
 

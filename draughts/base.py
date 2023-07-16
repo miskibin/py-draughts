@@ -5,19 +5,15 @@
 
 from __future__ import annotations
 
+import re
 from abc import ABC
 from typing import Generator
-from collections import defaultdict
+
 import numpy as np
-import re
 
 from draughts.models import ENTITY_REPR, Color, Figure, SquareT
 from draughts.move import Move
-from draughts.utils import (
-    logger,
-    get_king_pseudo_legal_moves,
-    get_man_pseudo_legal_moves,
-)
+from draughts.utils import logger
 
 # fmt: off
 SQUARES = [_, B8, D8, F8, H8,
@@ -66,6 +62,8 @@ class BaseBoard(ABC):
     """
     VARIANT_NAME = "Abstract variant"
     STARTING_POSITION = np.array([1] * 12 + [0] * 8 + [-1] * 12, dtype=np.int8)
+    row_idx = {val: val // 5 for val in range(len(STARTING_POSITION))}
+    col_idx = {val: val % 10 for val in range(len(STARTING_POSITION))}
     STARTING_COLOR = Color.WHITE
     """
     Starting color. ``Color.WHITE`` or ``Color.BLACK``.

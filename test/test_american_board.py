@@ -2,7 +2,7 @@ import numpy as np
 import pytest
 
 import draughts.american as checkers
-from draughts.american import Board, Move, Color
+from draughts.american import Board, Color, Move
 from draughts.models import Figure
 
 

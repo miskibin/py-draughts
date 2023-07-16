@@ -1,23 +1,12 @@
 from __future__ import annotations
-
-"""
-**Board for Standard (international) checkers.**
-*Still in development.*
-"""
-
-from typing import Generator
-
 import numpy as np
-from collections import defaultdict
 from draughts.base import BaseBoard
-from draughts.models import Color, Figure
+from draughts.models import Figure
 from draughts.move import Move
 from draughts.utils import (
-    logger,
     get_king_pseudo_legal_moves,
     get_man_pseudo_legal_moves,
 )
-
 
 # fmt: off
 SQUARES=  [ B10, D10, F10, H10, J10,
@@ -46,8 +35,6 @@ class Board(BaseBoard):
 
     GAME_TYPE = 20
     STARTING_POSITION = np.array([1] * 15 + [0] * 20 + [-1] * 15, dtype=np.int8)
-    row_idx = {val: val // 5 for val in range(len(STARTING_POSITION))}
-    col_idx = {val: val % 10 for val in range(len(STARTING_POSITION))}
     PSEUDO_LEGAL_KING_MOVES = get_king_pseudo_legal_moves(len(STARTING_POSITION))
     PSEUDO_LEGAL_MAN_MOVES = get_man_pseudo_legal_moves(len(STARTING_POSITION))
 
@@ -148,7 +135,6 @@ class Board(BaseBoard):
 
 if __name__ == "__main__":
     board = Board()
-    from pprint import pprint
 
     b = Board.from_fen("B:B:WG8,18,24,28,34,37,42,44,49:B2,10,12,15,25,26")
     print(b)

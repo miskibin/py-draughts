@@ -86,7 +86,7 @@ Move: 10->42 is correct, but not legal in given position.
 
 
 ```python
->>> board =Board.from_fen("W:W4,11,28,31,K33,K34,38,40,K41,43,K44,45,K46,47:BK3,21,27,32")
+>>> board =get_board('standard', "W:W4,11,28,31,K33,K34,38,40,K41,43,K44,45,K46,47:BK3,21,27,32")
 Board initialized with shape (10, 10). (base.py:109)
 >>> board.push_from_str("28-37")
 >>> board.fen

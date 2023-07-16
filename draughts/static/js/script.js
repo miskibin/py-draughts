@@ -152,9 +152,11 @@ const showLegalMoves = async (e) => {
   });
 };
 
-const autoPlay = () => {
-  setInterval(makeBestMove, 700);
-};
+async function autoPlay() {
+  setInterval(() => {
+    makeBestMove();
+  }, 700);
+}
 
 const updatehistory = () => {
   let tbody = $("#historyTableBody");

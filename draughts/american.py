@@ -3,11 +3,10 @@ from __future__ import annotations
 from typing import Generator
 
 import numpy as np
+
 from draughts.base import BaseBoard
 from draughts.models import Color, Figure
 from draughts.move import Move
-from draughts.utils import logger
-
 
 # fmt: off
 SQUARES = [B8, D8, F8, H8,
