@@ -2,7 +2,7 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 import json
 from draughts.standard import Board, Color
-from engine import SimpleEngine, AlphaBetaEngine, Engine
+from engine import MiniMaxEngine, AlphaBetaEngine, Engine
 import numpy as np
 
 path_to_games = Path().cwd() / "tools/random_positions.json"
@@ -55,7 +55,7 @@ def plot_grouped_bar(results, labels):
     plt.show()
 
 
-simple = SimpleEngine(3)
+simple = MiniMaxEngine(3)
 advanced = AlphaBetaEngine(3)
 
 

@@ -21,7 +21,11 @@ class Engine(ABC):
         ...
 
 
-class SimpleEngine:
+class MiniMaxEngine:
+    """
+    Simple minimax engine
+    """
+
     def __init__(self, depth):
         self.depth = depth
 
@@ -32,7 +36,7 @@ class SimpleEngine:
         best_move = None
         for move in board.legal_moves:
             board.push(move)
-            evaluation = self.__alpha_beta_puring(board, self.depth, -100, 100)
+            evaluation = self.__minimax(board, self.depth)
             board.pop()
             if best_move is None or evaluation > best_evaluation:
                 best_move = move
@@ -40,26 +44,27 @@ class SimpleEngine:
         logger.info(f"best move: {move}, evaluation: {evaluation:.2f}")
         return move
 
-    def __alpha_beta_puring(
-        self, board: Board, depth: int, alpha: float, beta: float
-    ) -> float:
+    def __minimax(self, board: Board, depth: int) -> float:
         if board.game_over:
             return -100 if board.turn == Color.WHITE else 100
         if depth == 0:
             return self.evaluate(board)
-        legal_moves = list(board.legal_moves)
-        legal_moves.sort(key=lambda move: board.is_capture(move), reverse=True)
-        for move in legal_moves:
-            board.push(move)
-            evaluation = self.__alpha_beta_puring(board, depth - 1, alpha, beta)
-            board.pop()
-            if board.turn == Color.WHITE:
-                alpha = max(alpha, evaluation)
-            else:
-                beta = min(beta, evaluation)
-            if beta <= alpha:
-                break
-        return alpha if board.turn == Color.WHITE else beta
+        if board.turn == Color.WHITE:
+            best_evaluation = -100
+            for move in board.legal_moves:
+                board.push(move)
+                evaluation = self.__minimax(board, depth - 1)
+                board.pop()
+                best_evaluation = max(best_evaluation, evaluation)
+            return best_evaluation
+        else:
+            best_evaluation = 100
+            for move in board.legal_moves:
+                board.push(move)
+                evaluation = self.__minimax(board, depth - 1)
+                board.pop()
+                best_evaluation = min(best_evaluation, evaluation)
+            return best_evaluation
 
 
 class AlphaBetaEngine(Engine):
