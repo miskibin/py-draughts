@@ -59,7 +59,6 @@ def plot_grouped_bar(results, labels):
     ax.legend(loc="upper left")
     ax.set_xticks(x)
     ax.set_xticklabels(labels)
-    ax.set_ylim(0, 100)
 
     plt.show()
 

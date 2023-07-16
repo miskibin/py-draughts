@@ -242,16 +242,32 @@ class BaseBoard(ABC):
         """
         fen = fen.upper()
         re_turn = re.compile(r"[WB]:")
+        re_premove = re.compile(r"(G[0-9]+|P[0-9]+)(,|)")
+        re_prefix = re.compile(r"[WB]:[WB]:[WB]:")
         re_white = re.compile(r"W[0-9K,]+")
         re_black = re.compile(r"B[0-9K,]+")
-        turn = re_turn.search(fen).group(0)[0]
-        white = re_white.search(fen).group(0).replace("W", "")
-        black = re_black.search(fen).group(0).replace("B", "")
+        # remove premoves from fen
+        # remove first 2 letters from prefix
+        fen = re_premove.sub("", fen)
+        prefix = re_prefix.search(fen)
+        if prefix:
+            prefix = prefix.group(0)
+            fen = fen.replace(prefix, prefix[2:])
+        try:
+            turn = re_turn.search(fen).group(0)[0]
+            white = re_white.search(fen).group(0).replace("W", "")
+            black = re_black.search(fen).group(0).replace("B", "")
+        except AttributeError as e:
+            raise AttributeError(f"Invalid FEN: {fen} \n {e}")
+        logger.debug(f"turn: {turn}, white: {white}, black: {black}")
         cls.STARTING_POSITION = np.zeros(cls.STARTING_POSITION.shape, dtype=np.int8)
         if len(turn) != 1 or (len(white) == 0 and len(black) == 0):
-            raise ValueError(f"Wrong FEN: {fen}")
-        cls.__populate_from_list(white.split(","), Color.WHITE)
-        cls.__populate_from_list(black.split(","), Color.BLACK)
+            raise ValueError(f"Invalid FEN: {fen}")
+        try:
+            cls.__populate_from_list(white.split(","), Color.WHITE)
+            cls.__populate_from_list(black.split(","), Color.BLACK)
+        except ValueError as e:
+            logger.error(f"Invalid FEN: {fen} \n {e}")
         cls.turn = Color.WHITE if turn == "W" else Color.BLACK
         return cls(starting_position=cls.STARTING_POSITION)
 
@@ -265,7 +281,7 @@ class BaseBoard(ABC):
                 cls.STARTING_POSITION[int(sq[1:]) - 1] = color.value * Figure.KING.value
             else:
                 raise ValueError(
-                    f"Wrong FEN: invalid square value: {sq} for board with length\
+                    f"invalid square value: {sq} for board with length\
                         {cls.STARTING_POSITION.shape[0]}"
                 )
 
@@ -323,9 +339,8 @@ class BaseBoard(ABC):
 if __name__ == "__main__":
     # board = BaseBoard(BaseBoard.STARTING_POSITION)
     # print(board)
-    BaseBoard.from_fen(
-        '[FEN "W:W4,11,28,31,K33,K34,38,40,K41,43,K44,45,K46,47:BK3,21,27,32"]'
-    )
+    board = BaseBoard.from_fen("W:W:WG23:BP12,K19,K28")
+    print(board)
     BaseBoard.from_fen("W:W4,11,28,31,K33,K34,38,40,K41,43,K44,45,K46,47:BK3,21,27,32")
 
 # print(board.info)

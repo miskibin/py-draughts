@@ -9,18 +9,13 @@ target_file = Path(__file__).parent / "random_positions.json"
 
 ENDPOINT = "https://lidraughts.org/tv/feed"
 
-proxies = {
-    "https": "http://proxy-lab.krk-lab.nsn-rdnet.net:8080",
-    "http": "http://proxy-lab.krk-lab.nsn-rdnet.net:8080",
-}
-
 
 def get_games_fens():
     s = requests.Session()
     a = 5
     max_val = 30
     input_data = {"positions": []}
-    with s.get(ENDPOINT, proxies=proxies, stream=True) as resp:
+    with s.get(ENDPOINT, stream=True) as resp:
         for line in resp.iter_lines():
             if 1000 < len(line) or len(line) < 10:
                 logger.info(len(line))
