@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from typing import Generator
 
-
 from draughts.models import Figure
 
 

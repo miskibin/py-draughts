@@ -1,12 +1,12 @@
 from __future__ import annotations
+
 import numpy as np
+
 from draughts.base import BaseBoard
 from draughts.models import Figure
 from draughts.move import Move
-from draughts.utils import (
-    get_king_pseudo_legal_moves,
-    get_man_pseudo_legal_moves,
-)
+from draughts.utils import (get_king_pseudo_legal_moves,
+                            get_man_pseudo_legal_moves)
 
 # fmt: off
 SQUARES=  [ B10, D10, F10, H10, J10,
