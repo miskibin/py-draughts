@@ -1,3 +1,4 @@
+from typing import Literal
 from easy_logs import get_logger
 import numpy as np
 

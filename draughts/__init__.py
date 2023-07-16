@@ -19,5 +19,23 @@ A draughts library with advenced (customizable) WEB UI move generation and valid
 PDN parsing and writing. Supports multiple variants of game.
 """
 
+from typing import Literal
+from draughts.standard import Board as StandardBoard
+from draughts.american import Board as AmericanBoard
+from draughts.base import BaseBoard
+
 __version__ = "1.0.3"
 __author__ = "Michał Skibiński"
+
+
+def get_board(variant: Literal["standard", "american"]) -> BaseBoard:
+    """
+    Board factory method.
+    - ``standard`` - standard draughts board
+    - ``american`` - american checkers board
+    """
+    BOARDS = {
+        "standard": StandardBoard,
+        "american": AmericanBoard,
+    }
+    return BOARDS[variant]

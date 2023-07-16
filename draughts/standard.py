@@ -150,7 +150,6 @@ if __name__ == "__main__":
     board = Board()
     from pprint import pprint
 
-    Board.from_fen(
-        '[FEN "W:W4,11,28,31,K33,K34,38,40,K41,43,K44,45,K46,47:BK3,21,27,32"]'
-    )
+    b = Board.from_fen("B:B:WG8,18,24,28,34,37,42,44,49:B2,10,12,15,25,26")
+    print(b)
     Board.from_fen("W:W4,11,28,31,K33,K34,38,40,K41,43,K44,45,K46,47:BK3,21,27,32")

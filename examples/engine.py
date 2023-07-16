@@ -3,6 +3,7 @@ from draughts.server import Server
 from abc import ABC, abstractmethod
 from draughts.utils import logger
 from tqdm import tqdm
+import numpy as np
 
 
 class Engine(ABC):
@@ -19,6 +20,57 @@ class Engine(ABC):
         to get list of legal moves use ``board.legal_moves``
         """
         ...
+
+
+class RandomEngine(Engine):
+    def get_best_move(self, board: Board = None) -> tuple:
+        return np.random.choice(list(board.legal_moves))
+
+
+class MiniMaxEngine:
+    """
+    Simple minimax engine
+    """
+
+    def __init__(self, depth):
+        self.depth = depth
+
+    def evaluate(self, board: Board) -> int:
+        return -board._pos.sum()
+
+    def get_best_move(self, board: Board = None) -> tuple:
+        best_move = None
+        for move in board.legal_moves:
+            board.push(move)
+            evaluation = self.__minimax(board, self.depth)
+            board.pop()
+            if best_move is None or evaluation > best_evaluation:
+                best_move = move
+                best_evaluation = evaluation
+        logger.info(f"best move: {move}, evaluation: {evaluation:.2f}")
+        return move
+
+    def __minimax(self, board: Board, depth: int) -> float:
+        if board.game_over:
+            return -100 if board.turn == Color.WHITE else 100
+        if depth == 0:
+            return self.evaluate(board)
+        if board.turn == Color.WHITE:
+            best_evaluation = -100
+            for move in board.legal_moves:
+                board.push(move)
+                evaluation = self.__minimax(board, depth - 1)
+                board.pop()
+                best_evaluation = max(best_evaluation, evaluation)
+            return best_evaluation
+        else:
+            best_evaluation = 100
+            for move in board.legal_moves:
+                board.push(move)
+                evaluation = self.__minimax(board, depth - 1)
+                board.pop()
+                best_evaluation = min(best_evaluation, evaluation)
+            return best_evaluation
 
 
 class AlphaBetaEngine(Engine):
@@ -40,7 +92,7 @@ class AlphaBetaEngine(Engine):
         depth = self.depth
         legal_moves = list(board.legal_moves)
         legal_moves.sort(key=lambda move: board.is_capture(move), reverse=True)
-        bar = tqdm(legal_moves)
+        # bar = tqdm(legal_moves)
         evals = []
         alpha, beta = -100, 100
         for move in legal_moves:
@@ -54,7 +106,7 @@ class AlphaBetaEngine(Engine):
                 )
             )
             board.pop()
-            bar.update(1)
+            # bar.update(1)
             if board.turn == Color.WHITE:
                 alpha = max(alpha, evals[-1])
             else:
@@ -91,6 +143,3 @@ class AlphaBetaEngine(Engine):
 
 if __name__ == "__main__":
     board = Board()
-    engine = AlphaBetaEngine(6)
-    server = Server(board=board, get_best_move_method=engine.get_best_move)
-    server.run()

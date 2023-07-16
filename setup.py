@@ -44,7 +44,7 @@ setuptools.setup(
         "Typing :: Typed",
     ],
     project_urls={
-        "Documentation": "https://michalskibinski109.github.io/draughts/index.html",
+        "Documentation": "https://michalskibinski109.github.io/py-draughts/index.html",
     },
-    python_requires=">=3.10",
+    python_requires=">=3.8",
 )
