@@ -3,6 +3,7 @@ from draughts.server import Server
 from abc import ABC, abstractmethod
 from draughts.utils import logger
 from tqdm import tqdm
+import numpy as np
 
 
 class Engine(ABC):
@@ -19,6 +20,11 @@ class Engine(ABC):
         to get list of legal moves use ``board.legal_moves``
         """
         ...
+
+
+class RandomEngine(Engine):
+    def get_best_move(self, board: Board = None) -> tuple:
+        return np.random.choice(list(board.legal_moves))
 
 
 class MiniMaxEngine:
@@ -86,7 +92,7 @@ class AlphaBetaEngine(Engine):
         depth = self.depth
         legal_moves = list(board.legal_moves)
         legal_moves.sort(key=lambda move: board.is_capture(move), reverse=True)
-        bar = tqdm(legal_moves)
+        # bar = tqdm(legal_moves)
         evals = []
         alpha, beta = -100, 100
         for move in legal_moves:
@@ -100,7 +106,7 @@ class AlphaBetaEngine(Engine):
                 )
             )
             board.pop()
-            bar.update(1)
+            # bar.update(1)
             if board.turn == Color.WHITE:
                 alpha = max(alpha, evals[-1])
             else:
