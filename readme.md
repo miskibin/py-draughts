@@ -14,7 +14,7 @@ Supports multiple variants of the game and allows playing against AI.
 pip install py-draughts
 ```
 
-## Running UI with default AI
+### Running UI with default AI
 
 ```bash
 python -m draughts.server
@@ -119,10 +119,7 @@ INFO:     Uvicorn running on http://127.0.0.1:8000 (Press CTRL+C to quit)
 
 _It is as simple as that!_
 
-<img src="https://github.com/michalskibinski109/py-draughts/assets/77834536/b5b3c1fe-3e08-4114-b73b-2b136e3c1c9b" width="800" />
-
-
-<img src="https://github.com/michalskibinski109/py-draughts/assets/77834536/4deead2a-adf1-4a7a-9422-c8da43f31a53" width="800" />
+<img src="https://github.com/michalskibinski109/py-draughts/assets/77834536/a7d67a8a-a325-437e-90b5-ba443d1b0874" width="800" />
 
 
 ### testing best moves finding methods:
