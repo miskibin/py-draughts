@@ -67,9 +67,9 @@ class Board(BaseBoard):
     def is_draw(self) -> bool:
         return (
             self.is_threefold_repetition
+            or self.is_5_moves_rule
+            or self.is_16_moves_rule
             or self.is_25_moves_rule
-            # or self.is_16_moves_rule # TODO  to be implemented
-            # or self.is_5_moves_rule  # TODO to be implemented
         )
 
     @property
@@ -80,6 +80,29 @@ class Board(BaseBoard):
             if move.captured_list:
                 return False
         logger.debug("25 moves rule")
+        return True
+
+    @property
+    def is_16_moves_rule(self) -> bool:
+        if len(self._moves_stack) < 16:
+            return False
+        for move in self._moves_stack[-16:]:
+            if move.captured_list or move.is_promotion:
+                return False
+        logger.debug("16 moves rule")
+        return True
+
+    @property
+    def is_5_moves_rule(self) -> bool:
+        # if count of pieces is not 3 or 4
+        if len(self._pos[self._pos != Figure.EMPTY]) > 4:
+            return False
+        if len(self._moves_stack) < 5:
+            return False
+        for move in self._moves_stack[-5:]:
+            if move.captured_list or move.is_promotion:
+                return False
+        logger.debug("5 moves rule")
         return True
 
     @property
