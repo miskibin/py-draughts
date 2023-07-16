@@ -152,6 +152,10 @@ const showLegalMoves = async (e) => {
   });
 };
 
+const autoPlay = () => {
+  setInterval(makeBestMove, 700);
+};
+
 const updatehistory = () => {
   let tbody = $("#historyTableBody");
   tbody.empty();
@@ -217,4 +221,5 @@ $(document).ready(async () => {
   $("#popBtn").click(pop);
   $("#randomPos").click(getRandomPos);
   $("#copyFen").click(getFen);
+  $("#autoPlay").click(autoPlay);
 });

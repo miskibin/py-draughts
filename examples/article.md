@@ -8,15 +8,6 @@ The key to developing a game engine without deep game-specific knowledge lies in
 
 The provided code showcases an engine implementation based on the Alpha-Beta Pruning algorithm. This algorithm is widely used in game-playing AI systems to determine the best move in a given game state. By designing the engine to interact with a game server through a standardized interface, we can separate the game-specific details from the engine's logic.
 
-
-## The Alpha-Beta Engine Implementation
-
-The `AlphaBetaEngine` class demonstrates the concrete implementation of the engine using the Alpha-Beta Pruning algorithm. It includes methods for move evaluation, determining the best move, and performing the pruning process. While the code itself focuses on the specific game of draughts, the underlying principles can be applied to other board games as well.
-
-The `evaluate()` method assigns a score to a given board configuration, representing its desirability. In the provided implementation, the score is simply calculated by negating the sum of the board positions. This simplistic evaluation function can be refined and customized for each game to reflect the specific strategies and objectives.
-
-The `get_best_move()` method orchestrates the move calculation process. It iterates over the legal moves, evaluates each move's outcome using the Alpha-Beta Pruning algorithm, and selects the move with the highest or lowest evaluation, depending on the current player. By doing so, it identifies the move that is expected to lead to the most favorable game state.
-
 ## Environment
 For draughts environment I will be use [py-draughts](https://github.com/michalskibinski109/py-draughts) library. It allows to play different variants of checkers using same interface.
 Board is representen as `n` squares with values:
@@ -28,18 +19,148 @@ Board is representen as `n` squares with values:
 
 
 ## Implementation
+### Implementation
 
-### Evaluation
-Our evaluation function can evaluate position like this regardless size of the board, **without understanding it**
+The provided code demonstrates the implementation of a game engine for the game of draughts (checkers) using the Alpha-Beta Pruning algorithm. Let's analyze the code to understand how the engine functions.
+
+#### Evaluation Function
+
+The evaluation function is responsible for assigning a value to a given board position, indicating how favorable it is for the player. In the code, the evaluation function is implemented as follows:
+
 ```python
-    def evaluate(self, board: Board) -> int:
-        return -board._pos.sum()
+def evaluate(self, board: Board) -> int:
+    return -board._pos.sum()
 ```
 
-### searching alghoritm (_alpha_beta_puring_)
+#### Random Engine
+
+A simple example implementation of the `Engine` interface is provided by the `RandomEngine` class. This engine selects a random move from the list of legal moves available for the current board state:
+
+```python
+class RandomEngine(Engine):
+    def get_best_move(self, board: Board = None) -> tuple:
+        return np.random.choice(list(board.legal_moves))
+```
+
+This engine can be used as a baseline for testing purposes or as a starting point for developing more sophisticated engines.
+
+#### Minimax Engine
+
+The `MiniMaxEngine` class implements the minimax algorithm, a widely used approach for game-playing AI. It explores the game tree up to a specified depth, evaluating the leaf nodes using the provided evaluation function. The engine then selects the move that leads to the best evaluation score:
+
+```python
+class MiniMaxEngine:
+    def __init__(self, depth):
+        self.depth = depth
+
+    def get_best_move(self, board: Board = None) -> tuple:
+        best_move = None
+        best_evaluation = -100 if board.turn == Color.WHITE else 100
+        for move in board.legal_moves:
+            board.push(move)
+            evaluation = self.__minimax(board, self.depth)
+            board.pop()
+            if best_move is None or evaluation > best_evaluation:
+                best_move = move
+                best_evaluation = evaluation
+        return move
+
+    def __minimax(self, board: Board, depth: int) -> float:
+        if board.game_over:
+            return -100 if board.turn == Color.WHITE else 100
+        if depth == 0:
+            return self.evaluate(board)
+        if board.turn == Color.WHITE:
+            best_evaluation = -100
+            for move in board.legal_moves:
+                board.push(move)
+                evaluation = self.__minimax(board, depth - 1)
+                board.pop()
+                best_evaluation = max(best_evaluation, evaluation)
+            return best_evaluation
+        else:
+            best_evaluation = 100
+            for move in board.legal_moves:
+                board.push(move)
+                evaluation = self.__minimax(board, depth - 1)
+                board.pop()
+                best_evaluation = min(best_evaluation, evaluation)
+            return best_evaluation
+```
+
+The minimax engine recursively explores the game tree by alternating between maximizing and minimizing players. It keeps track of the best evaluation value found so far and selects the move associated with that value.
+
+#### Alpha-Beta Engine
+
+The `AlphaBetaEngine` class implements the Alpha-Beta Pruning algorithm, an optimization over the minimax algorithm. It avoids exploring certain branches of the game tree that are guaranteed to be worse than previously explored branches, reducing the number of evaluations:
+
+```python
+class AlphaBetaEngine:
+    def __init__(self, depth):
+        self.depth = depth
+        self.inspected_nodes = 0
+
+    def get_best_move(self, board: Board = None) -> tuple:
+        self.inspected_nodes = 0
+        move, evaluation = self.__get_engine_move(board)
+        return move
+
+    def __get_engine_move(self, board: Board) -> tuple:
+        depth = self.depth
+        legal_moves = list(board.legal_moves)
+        legal_moves.sort(key=lambda move: board.is_capture(move), reverse=True)
+        evals = []
+        alpha, beta = -100, 100
+        for move in legal_moves:
+            board.push(move)
+            evals.append(
+                self.__alpha_beta_pruning(
+                    board,
+                    depth - 1,
+                    alpha,
+                    beta,
+                )
+            )
+            board.pop()
+            if board.turn == Color.WHITE:
+                alpha = max(alpha, evals[-1])
+            else:
+                beta = min(beta, evals[-1])
+        index = (
+            evals.index(max(evals))
+            if board.turn == Color.WHITE
+            else evals.index(min(evals))
+        )
+        return legal_moves[index], evals[index]
+
+    def __alpha_beta_pruning(
+        self, board: Board, depth: int, alpha: float, beta: float
+    ) -> float:
+        if board.game_over:
+            return -100 if board.turn == Color.WHITE else 100
+        if depth == 0:
+            self.inspected_nodes += 1
+            return self.evaluate(board)
+        legal_moves = list(board.legal_moves)
+        legal_moves.sort(key=lambda move: board.is_capture(move), reverse=True)
+        for move in legal_moves:
+            board.push(move)
+            evaluation = self.__alpha_beta_pruning(board, depth - 1, alpha, beta)
+            board.pop()
+            if board.turn == Color.WHITE:
+                alpha = max(alpha, evaluation)
+            else:
+                beta = min(beta, evaluation)
+            if beta <= alpha:
+                break
+        return alpha if board.turn == Color.WHITE else beta
+```
+
+The AlphaBetaEngine class extends the Engine interface and provides an implementation for the get_best_move method. It uses the alpha-beta pruning technique to improve the efficiency of the search algorithm by eliminating unnecessary evaluations.
 
 
-For evalutating position we will just sum all pieces on the board
+## Results:
+
 
 ## The Potential of Game Engines
 

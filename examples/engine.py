@@ -144,3 +144,6 @@ class AlphaBetaEngine(Engine):
 
 if __name__ == "__main__":
     board = Board()
+    engine = AlphaBetaEngine(4)
+    server = Server(board, get_best_move_method=engine.get_best_move)
+    server.run()

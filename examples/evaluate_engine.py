@@ -74,7 +74,7 @@ results_random_vs_simple = [0, 0, 0]
 results_simple_vs_advanced = [0, 0, 0]
 results_simple_vs_simple = [0, 0, 0]
 random_t, simple_t, advanced_t = [], [], []
-for game in games[:]:
+for game in games[:10]:
     # start = time()
     result, engine1_time, engine2_time = play_game(game, random, simple)
     results_random_vs_simple[result] += 1
@@ -106,6 +106,13 @@ ax.boxplot(data.values())
 ax.set_xticklabels(data.keys())
 ax.set_ylabel("Time (s)")
 ax.set_title("Average time per move")
+# make font size bigger
+for item in (
+    [ax.title, ax.xaxis.label, ax.yaxis.label]
+    + ax.get_xticklabels()
+    + ax.get_yticklabels()
+):
+    item.set_fontsize(16)
 
 
 plt.show()
