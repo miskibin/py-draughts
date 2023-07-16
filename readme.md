@@ -13,91 +13,27 @@ Supports multiple variants of the game and allows playing against AI.
 ```bash
 pip install py-draughts
 ```
-
-## Key features
-1. Provides beautiful web interface for testing your engine/playing against AI.
-2. Supports multiple variants of the game (with different board size). `standard`, `american` etc.
-3. Follows international draughts standards. like `fen` `pdn` etc.
-4. Allows to easily create new variants of the game. by extending the `Board` class.
-5. Accurate documentation generated from code.
-
-
-
 ### [Documentation](https://michalskibinski109.github.io/py-draughts/)
 
-## Usage
+## Key features
 
-
-
-#### Displays simple ascii board
+-  Displays simple ascii board for different variants of the game.
 
 ```python
->>> from draughts import get_board
->>> board = get_board("standard")
-Board initialized with shape (10, 10). (base.py:108)
+>>> board = get_board('standard', "W:W4,11,28,31,K33,K34,38,40,K41,43,K44,45,K46,47:BK3,21,27,32")
 >>> board
- . b . b . b . b . b
- b . b . b . b . b .
- . b . b . b . b . b
+ . . . . . B . w . .
  . . . . . . . . . .
+ . w . . . . . . . .
  . . . . . . . . . .
- . . . . . . . . . .
- . . . . . . . . . .
- w . w . w . w . w .
- . w . w . w . w . w
- w . w . w . w . w .
-```
+ . b . . . . . . . .
+ . . b . w . . . . .
+ . w . b . W . W . .
+ . . . . w . . . w .
+ . W . . . w . W . w
+ W . w . . . . . . .
 
-#### Make and undo moves
-
-```python
->>> board.push_from_str("37-32")
->>> board.push_from_str("14-19")
->>> board.push_from_str("32-28")
->>> board.push_from_str("19-23")
->>> board.pop() # undo last move
->>> board.push_from_str("19-23")
->>> board.push_from_str("28x19")
->>> board
- . b . b . b . b . b
- b . b . b . b . b .
- . b . b . b . . . b
- . . . . . . w . . .
- . . . . . . . . . .
- . . . . . . . . . .
- . . . . . . . . . .
- w . . . w . w . w .
- . w . w . w . w . w
- w . w . w . w . w .
-```
-
-#### Generate legal moves and validate moves
-
-```python
->>> board.push_from_str("10x42")
-Move: 10->42 is correct, but not legal in given position.
- Legal moves are: [Move: 36->31, Move: 37->32, Move: 37->31, Move: 38->33, Move: 38->32, Move: 39->34, Move: 39->33, Move: 40->35, Move: 40->34]
-
->>> list(board.legal_moves)
-[Move: 36->31, Move: 37->32, Move: 37->31, Move: 38->33, Move: 38->32, Move: 39->34, Move: 39->33, Move: 40->35, Move: 40->34]
-```
-
-#### Generate fen string and load board from fen string
-
-
-```python
->>> board =get_board('standard', "W:W4,11,28,31,K33,K34,38,40,K41,43,K44,45,K46,47:BK3,21,27,32")
-Board initialized with shape (10, 10). (base.py:109)
->>> board.push_from_str("28-37")
->>> board.fen
-'[FEN "B:W4,11,31,K33,K34,37,38,40,K41,43,K44,45,K46,47:BK3,21,27"]'
-```
-#### American checkers
-
-```python
->>> from draughts import get_board
 >>> board = get_board("american")
-Board initialized with shape (8, 8). (base.py:108)
 >>> board
  . b . b . b . b
  b . b . b . b .
@@ -107,8 +43,43 @@ Board initialized with shape (8, 8). (base.py:108)
  w . w . w . w .
  . w . w . w . w
  w . w . w . w .
+
 ```
 
+- Make and undo moves
+
+```python
+>>> board.push_uci("37-32")
+>>> board.pop() # undo last move
+Move: 37->32
+```
+
+- detects draws and wins
+
+```python
+>>> board.game_over
+False
+>>> board.is_threefold_repetition
+False
+```
+- Validate and generate moves
+
+```python
+>>> board.push_uci("10x42")
+Move: 37->32 is correct, but not legal in given position.
+Legal moves are: [Move: 28->37, Move: 31->22]
+
+>>> list(board.legal_moves)
+[Move: 28->37, Move: 31->22]
+```
+
+- Reads and writes fen strings
+
+```python
+>>> board = get_board('standard', "W:W4,11,28,31,K33,K34,38,40,K41,43,K44,45,K46,47:BK3,21,27,32")
+>>> board.fen
+'[FEN "W:W4,11,28,31,K33,K34,38,40,K41,43,K44,45,K46,47:BK3,21,27,32"]'
+```
 
 ## UI
 
@@ -123,10 +94,15 @@ Server().run()
 
 #### Use for testing your engine.
 
+
+
 _Example with simplest possible engine._
 
+
+
 ```python
->>> server = Server(get_best_move_method=lambda board: np.random.choice(list(board.legal_moves)))
+>>> get_best_mv = lambda board: np.random.choice(list(board.legal_moves))
+>>> server = Server(get_best_move_method=get_best_mv)
 >>> server.run()
 INFO:     Started server process [1617]
 INFO:     Waiting for application startup.

@@ -191,7 +191,7 @@ class BaseBoard(ABC):
             self.turn = Color.WHITE if self.turn == Color.BLACK else Color.BLACK
         return move
 
-    def push_from_str(self, str_move: str) -> None:
+    def push_uci(self, str_move: str) -> None:
         """
         Allows to push a move from a string.
 

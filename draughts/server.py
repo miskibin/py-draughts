@@ -119,7 +119,7 @@ class Server:
 
     def move(self, request: Request, source: str, target: str) -> PositionResponse:
         move_str = f"{source}-{target}"
-        self.board.push_from_str(move_str)
+        self.board.push_uci(move_str)
         return self.position_json
 
     def pop(self, request: Request) -> PositionResponse:

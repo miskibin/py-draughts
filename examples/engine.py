@@ -4,7 +4,8 @@ import numpy as np
 from tqdm import tqdm
 
 from draughts.server import Server
-from draughts.standard import Board, Color, Move
+from draughts.standard import Board, Move
+from draughts.models import Color
 from draughts.utils import logger
 
 
