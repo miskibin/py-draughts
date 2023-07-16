@@ -98,8 +98,7 @@ Move: 28->37, 3.0
 3. Allows to test and find bugs in your engine.
 
 ```python
-from draughts.server import Server
-Server().run()
+python -m draughts.server
 ```
 
 #### Use for testing your engine.
