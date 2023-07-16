@@ -1,17 +1,12 @@
-# documentation in rst format
-"""
-
-"""
-
 from __future__ import annotations
 
 import re
-from abc import ABC
+from abc import ABC, abstractproperty
 from typing import Generator
 
 import numpy as np
 
-from draughts.models import ENTITY_REPR, Color, Figure, SquareT
+from draughts.models import FIGURE_REPR, Color, Figure, SquareT
 from draughts.move import Move
 from draughts.utils import logger
 
@@ -62,8 +57,17 @@ class BaseBoard(ABC):
     """
     VARIANT_NAME = "Abstract variant"
     STARTING_POSITION = np.array([1] * 12 + [0] * 8 + [-1] * 12, dtype=np.int8)
-    row_idx = {val: val // 5 for val in range(len(STARTING_POSITION))}
-    col_idx = {val: val % 10 for val in range(len(STARTING_POSITION))}
+    ROW_IDX = ...
+    """ 
+    Dictionary of row indexes for every square. Generated only on module import. 
+    Used to calculate legal moves.
+    """
+
+    COL_IDX = ...
+    """
+    Same as ``ROW_IDX`` but for columns.
+    """
+
     STARTING_COLOR = Color.WHITE
     """
     Starting color. ``Color.WHITE`` or ``Color.BLACK``.
@@ -137,11 +141,15 @@ class BaseBoard(ABC):
         return False
 
     @property
+    def is_draw(self) -> bool:
+        raise NotImplementedError
+
+    @property
     def game_over(self) -> bool:
         """Returns ``True`` if the game is over."""
         # check if threefold repetition
 
-        return self.is_threefold_repetition or not bool(list(self.legal_moves))
+        return self.is_draw or not bool(list(self.legal_moves))
 
     def push(self, move: Move, is_finished: bool = True) -> None:
         """Pushes a move to the board.
@@ -199,7 +207,7 @@ class BaseBoard(ABC):
         * calls ``BaseBoard.push`` method
         """
         try:
-            move = Move.from_string(str_move, self.legal_moves)
+            move = Move.from_uci(str_move, self.legal_moves)
         except ValueError as e:
             logger.error(f"{e} \n {str(self)}")
             raise e
@@ -322,7 +330,7 @@ class BaseBoard(ABC):
         for i in range(self.shape[0]):
             # board += f"{'-' * (self.shape[0]*4 + 1) }\n|"
             for j in range(self.shape[0]):
-                board += f" {ENTITY_REPR[position[i*self.shape[0] + j]]}"
+                board += f" {FIGURE_REPR[position[i*self.shape[0] + j]]}"
             board += "\n"
         return board
 

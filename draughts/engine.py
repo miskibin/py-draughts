@@ -23,11 +23,22 @@ class Engine(ABC):
 
 
 class AlphaBetaEngine(Engine):
+    """
+    Engine using alpha-beta puring algorithm.
+    *Alpha-beta puring is a minimax algorithm with optimization. Algorithm
+    will not inspect nodes that are worse than already inspected nodes.
+    Additionaly, this engine will inspect capture moves first.
+    Usually, those moves are better than non-capture moves.*
+    """
+
     def __init__(self, depth):
         self.depth = depth
         self.inspected_nodes = 0
 
     def evaluate(self, board: Board):
+        """
+        Evaluation function for given board.
+        """
         return -board._pos.sum()
 
     def get_best_move(

@@ -5,8 +5,11 @@ import numpy as np
 from draughts.base import BaseBoard
 from draughts.models import Figure
 from draughts.move import Move
-from draughts.utils import (get_king_pseudo_legal_moves,
-                            get_man_pseudo_legal_moves)
+from draughts.utils import (
+    get_king_pseudo_legal_moves,
+    get_man_pseudo_legal_moves,
+    logger,
+)
 
 # fmt: off
 SQUARES=  [ B10, D10, F10, H10, J10,
@@ -31,15 +34,51 @@ class Board(BaseBoard):
      - Any piece can capture backwards and forwards
      - Capture is mandatory
      - King can move along the diagonal any number of squares
+
+     **Winning and drawing**
+     - A player wins the game when the opponent no longer has any valid moves.
+        This can be either because all of the player's pieces have been captured,
+        or because they are all blocked and thus have no more squares available.
+     - If the same position appears on the board for the third time,
+        with the same side to move, the game is considered drawn by threefold repetition.
+     - The game is drawn when both players make 25 consecutive king moves without capturing.
+        When one player has only a king left, and the other player three pieces including at least
+        one king (three kings, two kings and a man, or one king and two men),
+        the game is drawn after both players made 16 moves.
+     - When one player has only a king left, and the other player two pieces
+        or less including at least one king (one king, two kings, or one king and a man),
+        the game is drawn after both players made 5 moves.
+
     """
 
     GAME_TYPE = 20
     STARTING_POSITION = np.array([1] * 15 + [0] * 20 + [-1] * 15, dtype=np.int8)
     PSEUDO_LEGAL_KING_MOVES = get_king_pseudo_legal_moves(len(STARTING_POSITION))
     PSEUDO_LEGAL_MAN_MOVES = get_man_pseudo_legal_moves(len(STARTING_POSITION))
+    ROW_IDX = {val: val // 5 for val in range(len(STARTING_POSITION))}
+    COL_IDX = {val: val % 10 for val in range(len(STARTING_POSITION))}
 
     def __init__(self, starting_position=STARTING_POSITION) -> None:
         super().__init__(starting_position)
+
+    @property
+    def is_draw(self) -> bool:
+        return (
+            self.is_threefold_repetition
+            or self.is_25_moves_rule
+            # or self.is_16_moves_rule # TODO  to be implemented
+            # or self.is_5_moves_rule  # TODO to be implemented
+        )
+
+    @property
+    def is_25_moves_rule(self) -> bool:
+        if len(self._moves_stack) < 25:
+            return False
+        for move in self._moves_stack[-25:]:
+            if move.captured_list:
+                return False
+        logger.debug("25 moves rule")
+        return True
 
     @property
     def legal_moves(self) -> list[Move]:

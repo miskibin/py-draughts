@@ -80,7 +80,7 @@ class Move:
         )
 
     @classmethod
-    def from_string(cls, move: str, legal_moves: Generator) -> Move:
+    def from_uci(cls, move: str, legal_moves: Generator) -> Move:
         """
 
         Converts string representation of move to ``Move`` object.

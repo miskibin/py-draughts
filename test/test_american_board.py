@@ -15,14 +15,14 @@ class TestAmericanBoard:
 
     def test_move_from_str_method(self):
         legal_moves = self.board.legal_moves
-        m1 = Move.from_string("24-20", legal_moves)
+        m1 = Move.from_uci("24-20", legal_moves)
         assert m1 == Move([checkers.G3, checkers.H4])
 
         with pytest.raises(ValueError):
-            Move.from_string("25-20", [])
+            Move.from_uci("25-20", [])
 
     def test_push_from_string(self):
-        m1 = Move.from_string("24-20", self.board.legal_moves)
+        m1 = Move.from_uci("24-20", self.board.legal_moves)
         self.board.push_uci("24-20")
         assert self.board.turn == Color.BLACK
         assert self.board.pop() == m1

@@ -34,12 +34,17 @@ class Board(BaseBoard):
     GAME_TYPE = 23
     STARTING_POSITION = np.array([1] * 12 + [0] * 8 + [-1] * 12, dtype=np.int8)
     VARIANT_NAME = "American checkers"
+    ROW_IDX = {val: val // 4 for val in range(len(STARTING_POSITION))}
+    COL_IDX = {val: val % 8 for val in range(len(STARTING_POSITION))}
+
     size = int(np.sqrt(len(STARTING_POSITION) * 2))
-    row_idx = {val: val // 4 for val in range(len(STARTING_POSITION))}
-    col_idx = {val: val % 8 for val in range(len(STARTING_POSITION))}
 
     def __init__(self, starting_position=STARTING_POSITION) -> None:
         super().__init__(starting_position)
+
+    @property
+    def is_draw(self) -> bool:
+        return self.is_threefold_repetition
 
     @property
     def legal_moves(self) -> Generator[Move, None, None]:
@@ -55,7 +60,7 @@ class Board(BaseBoard):
     def _legal_moves_from(
         self, square: int, is_after_capture=False
     ) -> Generator[Move, None, None]:
-        row = self.row_idx[square]
+        row = self.ROW_IDX[square]
         moves = []
         odd = bool(row % 2 != 0 and self.turn == Color.BLACK) or (
             row % 2 == 0 and self.turn == Color.WHITE
@@ -74,14 +79,14 @@ class Board(BaseBoard):
 
             if (
                 0 <= move_sq < len(self._pos)
-                and row + 1 * (dir) == self.row_idx[move_sq]
+                and row + 1 * (dir) == self.ROW_IDX[move_sq]
                 and self[move_sq] == 0
                 and not is_after_capture
             ):
                 moves.append(Move([square, move_sq]))
             elif (
                 0 <= capture_sq < len(self._pos)
-                and row + 2 * (dir) == self.row_idx[capture_sq]
+                and row + 2 * (dir) == self.ROW_IDX[capture_sq]
                 and self[capture_sq] == 0
                 and self[move_sq] * self.turn.value < 0
             ):
@@ -100,19 +105,11 @@ class Board(BaseBoard):
 
 if __name__ == "__main__":
     board = Board()
-    print(list(board.legal_moves))
-    # board.push_from_str("12-16")
-    # board.push_from_str("12-16")
-    # board.push_from_str("23-18")
-    # board.push_from_str("16-23")
-    # print(board.pop())
-    print(board)
-    # while True:
-    #     moves = board.legal_moves
-    #     move = np.random.choice(list(moves))
-    #     board.push(move)
-    #     print(move)
-    #     print(board)
-    #     from time import sleep
+    from draughts.server import Server
 
-    #     sleep(2)
+    Server(board).run()
+    moves = ["24-20", "11-16", "20x11", "7x16"]
+    for m in moves:
+        board.push_uci(m)
+        print(board)
+        print(list(board.legal_moves))

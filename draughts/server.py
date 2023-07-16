@@ -140,9 +140,8 @@ class Server:
 
 
 if __name__ == "__main__":
-    from draughts.standard import Board
+    from draughts.engine import AlphaBetaEngine
 
-    server = Server(
-        get_best_move_method=lambda board: np.random.choice(list(board.legal_moves)),
-    )
+    engine = AlphaBetaEngine(depth=5)
+    server = Server(get_best_move_method=engine.get_best_move)
     server.run()

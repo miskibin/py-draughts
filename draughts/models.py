@@ -24,7 +24,7 @@ class Figure(IntEnum):
     EMPTY = 0
 
 
-ENTITY_REPR = {
+FIGURE_REPR = {
     Figure.BLACK_MAN: "b",
     Figure.WHITE_MAN: "w",
     Figure.EMPTY: ".",

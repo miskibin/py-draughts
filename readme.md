@@ -17,7 +17,7 @@ pip install py-draughts
 ## Running UI with default AI
 
 ```bash
-python -m draughts
+python -m draughts.server
 ```
 
 ### [Documentation](https://michalskibinski109.github.io/py-draughts/)
