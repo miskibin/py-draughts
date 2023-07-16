@@ -40,6 +40,7 @@ class MiniMaxEngine:
 
     def get_best_move(self, board: Board = None) -> tuple:
         best_move = None
+        best_evaluation = -100 if board.turn == Color.WHITE else 100
         for move in board.legal_moves:
             board.push(move)
             evaluation = self.__minimax(board, self.depth)
