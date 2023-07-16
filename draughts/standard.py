@@ -28,27 +28,28 @@ SQUARES=  [ B10, D10, F10, H10, J10,
 class Board(BaseBoard):
     """
     **Board for Standard (international) checkers.**
-     Game rules:
 
-     - Board size: 10x10
-     - Any piece can capture backwards and forwards
-     - Capture is mandatory
-     - King can move along the diagonal any number of squares
+    Game rules:
 
-     **Winning and drawing**
+    - Board size: 10x10
+    - Any piece can capture backwards and forwards
+    - Capture is mandatory
+    - King can move along the diagonal any number of squares
 
-     - A player wins the game when the opponent no longer has any valid moves.
-        This can be either because all of the player's pieces have been captured,
-        or because they are all blocked and thus have no more squares available.
-     - If the same position appears on the board for the third time,
-        with the same side to move, the game is considered drawn by threefold repetition.
-     - The game is drawn when both players make 25 consecutive king moves without capturing.
-        When one player has only a king left, and the other player three pieces including at least
-        one king (three kings, two kings and a man, or one king and two men),
-        the game is drawn after both players made 16 moves.
-     - When one player has only a king left, and the other player two pieces
-        or less including at least one king (one king, two kings, or one king and a man),
-        the game is drawn after both players made 5 moves.
+    **Winning and drawing**
+
+    - A player wins the game when the opponent no longer has any valid moves.
+    This can be either because all of the player's pieces have been captured,
+    or because they are all blocked and thus have no more squares available.
+    - If the same position appears on the board for the third time,
+    with the same side to move, the game is considered drawn by threefold repetition.
+    - The game is drawn when both players make 25 consecutive king moves without capturing.
+    When one player has only a king left, and the other player three pieces including at least
+    one king (three kings, two kings and a man, or one king and two men),
+    the game is drawn after both players made 16 moves.
+    - When one player has only a king left, and the other player two pieces
+    or less including at least one king (one king, two kings, or one king and a man),
+    the game is drawn after both players made 5 moves.
 
     """
 

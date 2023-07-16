@@ -1,3 +1,4 @@
+tqdm
 numpy
 easy_logs
 fastapi
