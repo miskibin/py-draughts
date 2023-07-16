@@ -36,6 +36,7 @@ class Board(BaseBoard):
      - King can move along the diagonal any number of squares
 
      **Winning and drawing**
+
      - A player wins the game when the opponent no longer has any valid moves.
         This can be either because all of the player's pieces have been captured,
         or because they are all blocked and thus have no more squares available.

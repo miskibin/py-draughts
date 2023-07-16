@@ -1,8 +1,8 @@
-Engine class
+Engine
 ==========================================
 
 .. autoclass:: draughts.engine.Engine
     :members:
 
 .. autoclass:: draughts.engine.AlphaBetaEngine
-    :members:
+    :members: __init__ , evaluate

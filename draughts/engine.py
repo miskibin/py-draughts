@@ -32,12 +32,16 @@ class AlphaBetaEngine(Engine):
     """
 
     def __init__(self, depth):
+        """
+        ``depth`` - how many moves will be inspected by engine.
+        Bigger depth means better moves, but also longer calculation time.
+        """
         self.depth = depth
         self.inspected_nodes = 0
 
     def evaluate(self, board: Board):
         """
-        Evaluation function for given board.
+        Simple evaluation function for given board.
         """
         return -board._pos.sum()
 
