@@ -32,8 +32,8 @@ pip install py-draughts
 #### Displays simple ascii board
 
 ```python
->>> from draughts.standard import Board
->>> board = Board()
+>>> from draughts import get_board
+>>> board = get_board("standard")
 Board initialized with shape (10, 10). (base.py:108)
 >>> board
  . b . b . b . b . b
@@ -95,8 +95,8 @@ Board initialized with shape (10, 10). (base.py:109)
 #### American checkers
 
 ```python
->>> from draughts.american import Board
->>> board = Board()
+>>> from draughts import get_board
+>>> board = get_board("american")
 Board initialized with shape (8, 8). (base.py:108)
 >>> board
  . b . b . b . b

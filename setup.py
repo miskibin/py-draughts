@@ -13,6 +13,7 @@ with open(this_directory / "requirements.txt") as f:
 
 setuptools.setup(
     name="py-draughts",
+    install_requires=requirements,
     version=__version__,
     author="Michał Skibiński",
     author_email="mskibinski109@gmail.com",
@@ -22,7 +23,6 @@ setuptools.setup(
     long_description_content_type="text/markdown",
     packages=setuptools.find_packages(),
     package_data={"draughts": ["static/js/*", "static/css/*", "templates/*"]},
-    install_requires=requirements,
     license="GPL-3.0+",
     keywords=" draughts, checkers, AI mini-max, game, board",
     url="https://github.com/michalskibinski109/draughts",
@@ -46,5 +46,5 @@ setuptools.setup(
     project_urls={
         "Documentation": "https://michalskibinski109.github.io/py-draughts/index.html",
     },
-    python_requires=">=3.8",
+    python_requires=">=3.7",
 )
