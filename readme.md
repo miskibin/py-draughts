@@ -14,11 +14,6 @@ Supports multiple variants of the game and allows playing against AI.
 pip install py-draughts
 ```
 
-### Running UI with default AI
-
-```bash
-python -m draughts.server
-```
 
 ### [Documentation](https://michalskibinski109.github.io/py-draughts/)
 
@@ -87,6 +82,14 @@ Legal moves are: [Move: 28->37, Move: 31->22]
 >>> board.fen
 '[FEN "W:W4,11,28,31,K33,K34,38,40,K41,43,K44,45,K46,47:BK3,21,27,32"]'
 ```
+- Has simple engine
+
+```python
+>>> from draughts.engine import AlphaBetaEngine
+>>> engine = AlphaBetaEngine(depth=5)
+>>> engine.get_best_move(board, with_evaluation=True)
+Move: 28->37, 3.0
+```
 
 ## UI
 
@@ -120,6 +123,7 @@ INFO:     Uvicorn running on http://127.0.0.1:8000 (Press CTRL+C to quit)
 _It is as simple as that!_
 
 <img src="https://github.com/michalskibinski109/py-draughts/assets/77834536/a7d67a8a-a325-437e-90b5-ba443d1b0874" width="800" />
+
 
 
 ### testing best moves finding methods:
