@@ -2,11 +2,12 @@
 
 [![GitHub Actions](https://github.com/michalskibinski109/checkers/actions/workflows/python-app.yml/badge.svg)](https://github.com/michalskibinski109/checkers/actions/workflows/python-app.yml)
 [![PyPI version](https://badge.fury.io/py/py-draughts.svg)](https://badge.fury.io/py/py-draughts)
-[![Downloads](https://static.pepy.tech/personalized-badge/py-draughts?period=month&units=none&left_color=grey&right_color=blue&left_text=Downloads)](https://pepy.tech/project/py-draughts)
-
+[![Downloads](https://static.pepy.tech/badge/py-draughts)](https://pepy.tech/project/py-draughts)
 
 Efficient modern and flexible implementation of the draughts game with a beautiful web interface. 
 Supports multiple variants of the game and allows playing against AI.
+
+_inspired by [python-chess](https://pypi.org/project/chess/)_
 
 ## Installation
 
