@@ -7,6 +7,8 @@
 Efficient modern and flexible implementation of the draughts game with a beautiful web interface. 
 Supports multiple variants of the game and allows playing against AI.
 
+_inspired by [python-chess](https://pypi.org/project/chess/)_
+
 ## Installation
 
 ```bash
