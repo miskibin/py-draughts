@@ -25,7 +25,7 @@ setuptools.setup(
     package_data={"draughts": ["static/js/*", "static/css/*", "templates/*"]},
     license="GPL-3.0+",
     keywords=" draughts, checkers, AI mini-max, game, board",
-    url="https://github.com/michalskibinski109/draughts",
+    url="https://github.com/michalskibinski109/py-draughts",
     classifiers=[
         "Development Status :: 5 - Production/Stable",
         "Intended Audience :: Developers",
