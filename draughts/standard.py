@@ -74,19 +74,22 @@ class Board(BaseBoard):
 
     @property
     def is_25_moves_rule(self) -> bool:
-        if len(self._moves_stack) < 25:
+        if len(self._moves_stack) < 50:
             return False
-        for move in self._moves_stack[-25:]:
-            if move.captured_list:
+        for move in self._moves_stack[-50:]:
+            src = move.square_list[-1]
+            if move.captured_list or self._pos[src] != Figure.KING.value:
                 return False
         logger.debug("25 moves rule")
         return True
 
     @property
     def is_16_moves_rule(self) -> bool:
-        if len(self._moves_stack) < 16:
+        if len(self._moves_stack) < 32 or len(self._pos[self._pos != Figure.EMPTY]) > 4:
             return False
-        for move in self._moves_stack[-16:]:
+        if np.abs(self._pos).sum() < Figure.KING.value * 2 + Figure.MAN.value * 2:
+            return False
+        for move in self._moves_stack[-32:]:
             if move.captured_list or move.is_promotion:
                 return False
         logger.debug("16 moves rule")
@@ -95,11 +98,11 @@ class Board(BaseBoard):
     @property
     def is_5_moves_rule(self) -> bool:
         # if count of pieces is not 3 or 4
-        if len(self._pos[self._pos != Figure.EMPTY]) > 4:
+        if len(self._pos[self._pos != Figure.EMPTY]) > 3:
             return False
-        if len(self._moves_stack) < 5:
+        if np.abs(self._pos).sum() < Figure.KING.value * 2 + Figure.MAN.value:
             return False
-        for move in self._moves_stack[-5:]:
+        for move in self._moves_stack[-10:]:
             if move.captured_list or move.is_promotion:
                 return False
         logger.debug("5 moves rule")
@@ -117,8 +120,8 @@ class Board(BaseBoard):
             # ):
             #     is_capture_mandatory = True
             all_moves.extend(moves)
-        if any([len(move.captured_list) > 0 for move in all_moves]):
-            all_moves = [move for move in all_moves if len(move.captured_list) > 0]
+        if any([len(move) > 1 for move in all_moves]):
+            all_moves = [move for move in all_moves if len(move) > 1]
         return all_moves
 
     def _get_man_legal_moves_from(
@@ -143,9 +146,12 @@ class Board(BaseBoard):
                 move = Move(
                     [square, direction[1]], [direction[0]], [self._pos[direction[0]]]
                 )
-                moves.append(move)
+                # moves.append(move)
                 self.push(move, False)
-                moves += [move + m for m in self._legal_moves_from(direction[1], True)]
+                new_moves = [
+                    move + m for m in self._legal_moves_from(direction[1], True)
+                ]
+                moves += [move] if len(new_moves) == 0 else new_moves
                 self.pop(False)
         return moves
 
@@ -170,7 +176,8 @@ class Board(BaseBoard):
                         moves.append(move)
                         self.push(move, False)
                         moves += [
-                            move + m for m in self._legal_moves_from(direction[i], True)
+                            move + m
+                            for m in self._get_king_legal_moves_from(direction[i], True)
                         ]
                         # if one move is longer then others return only this one
                         self.pop(False)

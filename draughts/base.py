@@ -227,7 +227,7 @@ class BaseBoard(ABC):
         """
         COLORS_REPR = {Color.WHITE: "W", Color.BLACK: "B"}
         fen_components = [
-            f'[FEN "{COLORS_REPR[self.turn]}:W',
+            f'[FEN "W:{COLORS_REPR[self.turn]}:W',
             ",".join(
                 "K" * bool(self._pos[sq] < -1) + str(sq + 1)
                 for sq in np.where(self.position < 0)[0]

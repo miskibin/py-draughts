@@ -114,6 +114,9 @@ class Server:
 
     def get_best_move(self, request: Request) -> PositionResponse:
         move = self.get_best_move_method(self.board)
+        if self.board.game_over:
+            print("Game over")
+            return self.position_json
         self.board.push(move)
         return self.position_json
 
@@ -141,7 +144,12 @@ class Server:
 
 if __name__ == "__main__":
     from draughts.engine import AlphaBetaEngine
+    from draughts import get_board
 
-    engine = AlphaBetaEngine(depth=5)
+    engine = AlphaBetaEngine(depth=2)
+    # board = get_board(
+    #     "standard",
+    #     '[FEN "B:W18,26,28,29,32,33,38,39,41,45,46,47,48,49,50:B4,5,7,8,9,10,11,12,13,15,16,17,19,20"]',
+    # )
     server = Server(get_best_move_method=engine.get_best_move)
     server.run()
