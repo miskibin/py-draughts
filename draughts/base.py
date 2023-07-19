@@ -98,6 +98,7 @@ class BaseBoard(ABC):
         """
         super().__init__()
         self._pos = starting_position.copy()
+        self.turn = self.STARTING_COLOR
         size = int(np.sqrt(len(self.position) * 2))
         if size**2 != len(self.position) * 2:
             msg = f"Invalid board with shape {starting_position.shape} provided.\
@@ -106,7 +107,6 @@ class BaseBoard(ABC):
             logger.error(msg)
             raise ValueError(msg)
         self.shape = (size, size)
-        self.turn = Color.WHITE
         self._moves_stack: list[Move] = []
         logger.info(f"Board initialized with shape {self.shape}.")
 
@@ -151,7 +151,9 @@ class BaseBoard(ABC):
 
         return self.is_draw or not bool(list(self.legal_moves))
 
-    def push(self, move: Move, is_finished: bool = True) -> None:
+    def push(
+        self, move: Move, is_finished: bool = True
+    ) -> None:  # TODO multiple captures != promotion
         """Pushes a move to the board.
         Automatically promotes a piece if it reaches the last row.
 
@@ -249,7 +251,7 @@ class BaseBoard(ABC):
         fen = fen.upper()
         re_turn = re.compile(r"[WB]:")
         re_premove = re.compile(r"(G[0-9]+|P[0-9]+)(,|)")
-        re_prefix = re.compile(r"[WB]:[WB]:[WB]:")
+        re_prefix = re.compile(r"[WB]:[WB]:[WB]")
         re_white = re.compile(r"W[0-9K,]+")
         re_black = re.compile(r"B[0-9K,]+")
         # remove premoves from fen
@@ -275,6 +277,7 @@ class BaseBoard(ABC):
         except ValueError as e:
             logger.error(f"Invalid FEN: {fen} \n {e}")
         cls.turn = Color.WHITE if turn == "W" else Color.BLACK
+        cls.STARTING_COLOR = cls.turn
         return cls(starting_position=cls.STARTING_POSITION)
 
     @classmethod
@@ -343,12 +346,8 @@ class BaseBoard(ABC):
 
 
 if __name__ == "__main__":
-    # board = BaseBoard(BaseBoard.STARTING_POSITION)
+    board = BaseBoard(BaseBoard.STARTING_POSITION)
     # print(board)
-    board = BaseBoard.from_fen("W:W:WG23:BP12,K19,K28")
-    print(board)
-    BaseBoard.from_fen("W:W4,11,28,31,K33,K34,38,40,K41,43,K44,45,K46,47:BK3,21,27,32")
-
 # print(board.info)
 #     m1 = Move([C3, B4])
 #     board.push(m1)
