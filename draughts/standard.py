@@ -78,24 +78,20 @@ class Board(BaseBoard):
 
     @property
     def is_25_moves_rule(self) -> bool:
-        if len(self._moves_stack) < 50:
+        if self.halfmove_clock < 50:
             return False
-        for move in self._moves_stack[-50:]:
-            src = move.square_list[-1]
-            if move.captured_list or self._pos[src] != Figure.KING.value:
-                return False
         logger.debug("25 moves rule")
         return True
+        # return self.halfmove_clock >= 50
 
     @property
     def is_16_moves_rule(self) -> bool:
-        if len(self._moves_stack) < 32 or len(self._pos[self._pos != Figure.EMPTY]) > 4:
+        if self.halfmove_clock < 32:
+            return False
+        if len(self._pos[self._pos != Figure.EMPTY]) > 4:
             return False
         if np.abs(self._pos).sum() < Figure.KING.value * 2 + Figure.MAN.value * 2:
             return False
-        for move in self._moves_stack[-32:]:
-            if move.captured_list or move.is_promotion:
-                return False
         logger.debug("16 moves rule")
         return True
 
@@ -106,9 +102,8 @@ class Board(BaseBoard):
             return False
         if np.abs(self._pos).sum() < Figure.KING.value * 2 + Figure.MAN.value:
             return False
-        for move in self._moves_stack[-10:]:
-            if move.captured_list or move.is_promotion:
-                return False
+        if self.halfmove_clock < 10:
+            return False
         logger.debug("5 moves rule")
         return True
 

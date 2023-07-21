@@ -35,6 +35,7 @@ class Move:
         self.captured_list = captured_list
         self.captured_entities = captured_entities
         self.is_promotion = is_promotion
+        self.halfmove_clock = 0
 
     def __repr__(self) -> str:
         visited_squares = [str(s + 1) for s in self.square_list]

@@ -57,6 +57,9 @@ class BaseBoard(ABC):
         For generating legal moves use
     """
 
+    halfmove_clock: int = 0
+    """The number of half-moves since the last capture or pawn move."""
+
     GAME_TYPE = -1
     """
     PDN game type. See `PDN specification <https://en.wikipedia.org/wiki/Portable_Draughts_Notation>`_.
@@ -134,6 +137,7 @@ class BaseBoard(ABC):
             raise ValueError(msg)
         self.shape = (size, size)
         self._moves_stack: list[Move] = []
+
         logger.info(f"Board initialized with shape {self.shape}.")
 
     # @abstractmethod
@@ -166,7 +170,7 @@ class BaseBoard(ABC):
                 return True
         return False
 
-    @property
+    @abstractproperty
     def is_draw(self) -> bool:
         raise NotImplementedError
 
@@ -186,6 +190,7 @@ class BaseBoard(ABC):
         If ``is_finished`` is set to ``True``, the turn is switched. This parameter is used only
         for generating legal moves.
         """
+        move.halfmove_clock = self.halfmove_clock  # Before move occurs
         src, tg = (
             move.square_list[0],
             move.square_list[-1],
@@ -203,8 +208,18 @@ class BaseBoard(ABC):
         ):
             self._pos[tg] *= Figure.KING.value
             move.is_promotion = True
+        elif (
+            abs(self._pos[tg]) == Figure.KING.value
+            and not move.captured_list
+            and is_finished
+        ):
+            self.halfmove_clock += 1
+        elif is_finished:
+            self.halfmove_clock = 0
         if move.captured_list:
-            self._pos[np.array([sq for sq in move.captured_list])] = Figure.EMPTY
+            self._pos[
+                np.array([sq for sq in move.captured_list if sq != tg])
+            ] = Figure.EMPTY
         self._moves_stack.append(move)
         if is_finished:
             self.turn = Color.WHITE if self.turn == Color.BLACK else Color.BLACK
@@ -223,6 +238,7 @@ class BaseBoard(ABC):
         if move.is_promotion:
             self._pos[tg] //= Figure.KING.value
         self._pos[src], self._pos[tg] = self._pos[tg], self._pos[src]
+        self.halfmove_clock = move.halfmove_clock
         for sq, entity in zip(move.captured_list, move.captured_entities):
             self._pos[sq] = entity  # Dangerous line
         if is_finished:

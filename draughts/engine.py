@@ -1,9 +1,10 @@
 from abc import ABC, abstractmethod
 
 from tqdm import tqdm
-from draughts.standard import Board, Move
+from draughts.standard import Board, Move, Figure
 from draughts.models import Color
 from draughts.utils import logger
+import numpy as np
 
 
 class Engine(ABC):
@@ -91,7 +92,9 @@ class AlphaBetaEngine(Engine):
         self, board: Board, depth: int, alpha: float, beta: float
     ) -> float:
         if board.game_over:
-            return -100 if board.turn == Color.WHITE else 100
+            if not board.is_draw:
+                return -100 if board.turn == Color.WHITE else 100
+            return -0.2 if board.turn == Color.WHITE else 0.2
         if depth == 0:
             self.inspected_nodes += 1
             return self.evaluate(board)
@@ -101,6 +104,7 @@ class AlphaBetaEngine(Engine):
         for move in legal_moves:
             board.push(move)
             evaluation = self.__alpha_beta_puring(board, depth - 1, alpha, beta)
+            evaluation -= np.abs(board.position[move.square_list[-1]]) == Figure.KING
             board.pop()
             if board._pos.sum() != tmp:
                 logger.warning(str(board))

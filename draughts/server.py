@@ -147,6 +147,8 @@ if __name__ == "__main__":
     from draughts.engine import AlphaBetaEngine
     from draughts import get_board
 
-    engine = AlphaBetaEngine(depth=2)
+    # fen = "W:W:WK5,45,48,50:BK2,K4"
+    engine = AlphaBetaEngine(depth=4)
+    # board = get_board("standard", fen=fen)
     server = Server(get_best_move_method=engine.get_best_move)
     server.run()
