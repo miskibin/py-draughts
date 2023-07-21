@@ -149,7 +149,6 @@ if __name__ == "__main__":
     engine = AlphaBetaEngine(depth=6)
     board = get_board(
         "standard",
-        '[FEN "W:B:W23,27,29,33,34,37,42,45,46,50:B5,8,9,10,12,13,14,15,16,17,20,36"]',
     )
     server = Server(board=board, get_best_move_method=engine.get_best_move)
     server.run()

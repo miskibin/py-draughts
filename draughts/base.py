@@ -89,10 +89,21 @@ class BaseBoard(ABC):
     (one for move and one for capture)
     """
 
+    def __init_subclass__(cls, **kwargs):
+        parent_class = cls.__bases__[0]
+        parent_class_vars = vars(parent_class)
+        child_class_vars = vars(cls)
+        print(parent_class, cls)
+        for var_name, var_value in child_class_vars.items():
+            if var_name in parent_class_vars and not var_name.startswith("_"):
+                # print(var_name, var_value)
+                # print("#####################")
+                setattr(parent_class, var_name, var_value)
+
     def __init__(
         self,
-        starting_position: np.ndarray = STARTING_POSITION,
-        turn: Color = STARTING_COLOR,
+        starting_position: np.ndarray = None,
+        turn: Color = None,
         *args,
         **kwargs,
     ) -> None:
@@ -103,8 +114,12 @@ class BaseBoard(ABC):
 
         """
         super().__init__()
-        self._pos = starting_position.copy()
-        self.turn = turn
+        self._pos = (
+            starting_position
+            if starting_position is not None
+            else self.STARTING_POSITION
+        )
+        self.turn = turn if turn is not None else self.STARTING_COLOR
         size = int(np.sqrt(len(self.position) * 2))
         if size**2 != len(self.position) * 2:
             msg = f"Invalid board with shape {starting_position.shape} provided.\
@@ -353,7 +368,7 @@ class BaseBoard(ABC):
 
 
 if __name__ == "__main__":
-    board = BaseBoard(BaseBoard.STARTING_POSITION, turn=Color.WHITE)
+    board = BaseBoard(BaseBoard.STARTING_POSITION, Color.WHITE)
     # print(board)
 # print(board.info)
 #     m1 = Move([C3, B4])
