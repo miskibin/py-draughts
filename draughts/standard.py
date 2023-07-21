@@ -1,9 +1,11 @@
 from __future__ import annotations
+import types
+from typing import Any
 
 import numpy as np
 
 from draughts.base import BaseBoard
-from draughts.models import Figure
+from draughts.models import Color, Figure
 from draughts.move import Move
 from draughts.utils import (
     get_king_pseudo_legal_moves,
@@ -55,13 +57,16 @@ class Board(BaseBoard):
 
     GAME_TYPE = 20
     STARTING_POSITION = np.array([1] * 15 + [0] * 20 + [-1] * 15, dtype=np.int8)
+    STARTING_COLOR = Color.WHITE
     PSEUDO_LEGAL_KING_MOVES = get_king_pseudo_legal_moves(len(STARTING_POSITION))
     PSEUDO_LEGAL_MAN_MOVES = get_man_pseudo_legal_moves(len(STARTING_POSITION))
     ROW_IDX = {val: val // 5 for val in range(len(STARTING_POSITION))}
     COL_IDX = {val: val % 10 for val in range(len(STARTING_POSITION))}
 
-    def __init__(self, starting_position=STARTING_POSITION) -> None:
-        super().__init__(starting_position)
+    def __init__(
+        self, starting_position=STARTING_POSITION, turn=STARTING_COLOR, *args, **kwargs
+    ) -> None:
+        super().__init__(starting_position, turn, *args, **kwargs)
 
     @property
     def is_draw(self) -> bool:

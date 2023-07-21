@@ -89,7 +89,13 @@ class BaseBoard(ABC):
     (one for move and one for capture)
     """
 
-    def __init__(self, starting_position: np.ndarray) -> None:
+    def __init__(
+        self,
+        starting_position: np.ndarray = STARTING_POSITION,
+        turn: Color = STARTING_COLOR,
+        *args,
+        **kwargs,
+    ) -> None:
         """
         Initializes the board with a starting position.
         The starting position must be a numpy array of length n * n/2,
@@ -98,7 +104,7 @@ class BaseBoard(ABC):
         """
         super().__init__()
         self._pos = starting_position.copy()
-        self.turn = self.STARTING_COLOR
+        self.turn = turn
         size = int(np.sqrt(len(self.position) * 2))
         if size**2 != len(self.position) * 2:
             msg = f"Invalid board with shape {starting_position.shape} provided.\
@@ -278,9 +284,8 @@ class BaseBoard(ABC):
             cls.__populate_from_list(black.split(","), Color.BLACK)
         except ValueError as e:
             logger.error(f"Invalid FEN: {fen} \n {e}")
-        cls.turn = Color.WHITE if turn == "W" else Color.BLACK
-        cls.STARTING_COLOR = cls.turn
-        return cls(starting_position=cls.STARTING_POSITION)
+        turn = Color.WHITE if turn == "W" else Color.BLACK
+        return cls(cls.STARTING_POSITION, turn)
 
     @classmethod
     def __populate_from_list(cls, fen_list: list[str], color: Color) -> None:
@@ -348,7 +353,7 @@ class BaseBoard(ABC):
 
 
 if __name__ == "__main__":
-    board = BaseBoard(BaseBoard.STARTING_POSITION)
+    board = BaseBoard(BaseBoard.STARTING_POSITION, turn=Color.WHITE)
     # print(board)
 # print(board.info)
 #     m1 = Move([C3, B4])

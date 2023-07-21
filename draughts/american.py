@@ -32,6 +32,7 @@ class Board(BaseBoard):
     """
 
     GAME_TYPE = 23
+    STARTING_COLOR = Color.WHITE
     STARTING_POSITION = np.array([1] * 12 + [0] * 8 + [-1] * 12, dtype=np.int8)
     VARIANT_NAME = "American checkers"
     ROW_IDX = {val: val // 4 for val in range(len(STARTING_POSITION))}
@@ -39,8 +40,10 @@ class Board(BaseBoard):
 
     size = int(np.sqrt(len(STARTING_POSITION) * 2))
 
-    def __init__(self, starting_position=STARTING_POSITION) -> None:
-        super().__init__(starting_position)
+    def __init__(
+        self, starting_position=STARTING_POSITION, turn=STARTING_COLOR, *args, **kwargs
+    ) -> None:
+        super().__init__(starting_position, turn, *args, **kwargs)
 
     @property
     def is_draw(self) -> bool:
