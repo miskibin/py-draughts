@@ -8,7 +8,11 @@ import numpy as np
 
 from draughts.models import FIGURE_REPR, Color, Figure, SquareT
 from draughts.move import Move
-from draughts.utils import logger
+from draughts.utils import (
+    logger,
+    get_king_pseudo_legal_moves,
+    get_man_pseudo_legal_moves,
+)
 
 # fmt: off
 SQUARES = [_, B8, D8, F8, H8,
@@ -37,9 +41,9 @@ class BaseBoard(ABC):
     To create new variants of draughts, inherit from this class and:
 
     - override the ``legal_moves`` property
-    - override the ``SQUARES`` list to match the new board size
+    - (optional) override the ``SQUARES`` list to match the new board size if you want to use UCI notation: ``[A1, B1, C1, ...]``
     - override the ``STARTING_POSITION`` to specify the starting position
-
+    - override the ``STARTING_COLOR`` to specify the starting color
     Constraints:
     - There are only two colors:
         - ``Color.WHITE``
@@ -49,6 +53,8 @@ class BaseBoard(ABC):
         - ``PieceType.MAN``
         - ``PieceType.KING``
     - **Board should always be square.**
+    .. note::
+        For generating legal moves use
     """
 
     GAME_TYPE = -1
@@ -73,17 +79,15 @@ class BaseBoard(ABC):
     Starting color. ``Color.WHITE`` or ``Color.BLACK``.
     """
 
-    PSEUDO_LEGAL_KING_MOVES = None
+    PSEUDO_LEGAL_MAN_MOVES = ...
     """
     Dictionary of pseudo-legal moves for king pieces. Generated only on module import.
     This dictionary contains all possible moves for king piece (as if there were no other pieces on the board).
     
     **Structure:**
-    
     ``[(right-up moves), (left-up moves), (right-down moves), (left-down moves)]``
-    
     """
-    PSEUDO_LEGAL_MAN_MOVES = None
+    PSEUDO_LEGAL_KING_MOVES = ...
     """ 
     Same as ``PSEUDO_LEGAL_KING_MOVES`` but contains only first 2 squares of the move.
     (one for move and one for capture)
@@ -93,19 +97,20 @@ class BaseBoard(ABC):
         parent_class = cls.__bases__[0]
         parent_class_vars = vars(parent_class)
         child_class_vars = vars(cls)
-        print(parent_class, cls)
         for var_name, var_value in child_class_vars.items():
             if var_name in parent_class_vars and not var_name.startswith("_"):
-                # print(var_name, var_value)
-                # print("#####################")
                 setattr(parent_class, var_name, var_value)
+        cls.PSEUDO_LEGAL_KING_MOVES = get_king_pseudo_legal_moves(
+            len(cls.STARTING_POSITION)
+        )
+        cls.PSEUDO_LEGAL_MAN_MOVES = get_man_pseudo_legal_moves(
+            len(cls.STARTING_POSITION)
+        )
 
     def __init__(
         self,
         starting_position: np.ndarray = None,
         turn: Color = None,
-        *args,
-        **kwargs,
     ) -> None:
         """
         Initializes the board with a starting position.
@@ -271,6 +276,7 @@ class BaseBoard(ABC):
         """
         Creates a board from a FEN string by using regular expressions.
         """
+        logger.debug(f"Initializing board from FEN: {fen}")
         fen = fen.upper()
         re_turn = re.compile(r"[WB]:")
         re_premove = re.compile(r"(G[0-9]+|P[0-9]+)(,|)")

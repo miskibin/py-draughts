@@ -58,8 +58,7 @@ class Board(BaseBoard):
     GAME_TYPE = 20
     STARTING_POSITION = np.array([1] * 15 + [0] * 20 + [-1] * 15, dtype=np.int8)
     STARTING_COLOR = Color.WHITE
-    PSEUDO_LEGAL_KING_MOVES = get_king_pseudo_legal_moves(len(STARTING_POSITION))
-    PSEUDO_LEGAL_MAN_MOVES = get_man_pseudo_legal_moves(len(STARTING_POSITION))
+
     ROW_IDX = {val: val // 5 for val in range(len(STARTING_POSITION))}
     COL_IDX = {val: val % 10 for val in range(len(STARTING_POSITION))}
 
@@ -125,9 +124,7 @@ class Board(BaseBoard):
             # ):
             #     is_capture_mandatory = True
             all_moves.extend(moves)
-        if any([len(move) > 1 for move in all_moves]):
-            all_moves = [move for move in all_moves if len(move) > 1]
-        return all_moves
+        return [mv for mv in all_moves if len(mv) == max(len(m) for m in all_moves)]
 
     def _get_man_legal_moves_from(
         self, square: int, is_capture_mandatory: bool

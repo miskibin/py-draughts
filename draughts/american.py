@@ -114,5 +114,4 @@ if __name__ == "__main__":
     moves = ["24-20", "11-16", "20x11", "7x16"]
     for m in moves:
         board.push_uci(m)
-        print(board)
         print(list(board.legal_moves))
