@@ -149,7 +149,7 @@ class Board(BaseBoard):
                 # moves.append(move)
                 self.push(move, False)
                 new_moves = [
-                    move + m for m in self._legal_moves_from(direction[1], True)
+                    move + m for m in self._get_man_legal_moves_from(direction[1], True)
                 ]
                 moves += [move] if len(new_moves) == 0 else new_moves
                 self.pop(False)

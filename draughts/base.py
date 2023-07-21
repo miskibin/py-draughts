@@ -169,9 +169,11 @@ class BaseBoard(ABC):
         if (
             (tg // (self.shape[0] // 2)) == 0
             and self._pos[tg] == Figure.WHITE_MAN.value
+            and is_finished
         ) or (
             (tg // (self.shape[0] // 2)) == (self.shape[0] - 1)
             and self._pos[tg] == Figure.BLACK_MAN.value
+            and is_finished
         ):
             self._pos[tg] *= Figure.KING.value
             move.is_promotion = True
