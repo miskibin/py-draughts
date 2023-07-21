@@ -86,11 +86,12 @@ class Server:
         history = []  # (numver, white, black)
         stack = self.board._moves_stack
         for idx in range(len(stack)):
-            src, tg = stack[idx].square_list[0] + 1, stack[idx].square_list[-1]
+            src, tg = stack[idx].square_list[0] + 1, stack[idx].square_list[-1] + 1
+            separator = "-" if len(stack[idx].captured_list) == 0 else "x"
             if idx % 2 == 0:
-                history.append([(idx // 2) + 1, f"{src}-{tg}"])
+                history.append([(idx // 2) + 1, f"{src}{separator}{tg}"])
             else:
-                history[-1].append(f"{src}-{tg}")
+                history[-1].append(f"{src}{separator}{tg}")
         turn = "white" if self.board.turn == Color.WHITE else "black"
         return PositionResponse(
             position=self.board.friendly_form.tolist(),

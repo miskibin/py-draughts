@@ -80,10 +80,14 @@ const makeBestMove = () => {
   $.ajax({
     url: "best_move",
     type: "GET",
+    beforeSend: function () {
+      $("#makeMove").prop("disabled", true);
+    },
     success: (data) => {
       boardArray = data["position"];
       historyData = data["history"];
       turn = data["turn"];
+      $("#makeMove").prop("disabled", false);
       upadateBoard();
     },
   });

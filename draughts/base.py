@@ -127,7 +127,7 @@ class BaseBoard(ABC):
         self.turn = turn if turn is not None else self.STARTING_COLOR
         size = int(np.sqrt(len(self.position) * 2))
         if size**2 != len(self.position) * 2:
-            msg = f"Invalid board with shape {starting_position.shape} provided.\
+            msg = f"Invalid board with shape {self._pos.shape} provided.\
                 Please use an array with lenght = (n * n/2). \
                 Where n is an size of the board."
             logger.error(msg)
@@ -137,7 +137,7 @@ class BaseBoard(ABC):
         logger.info(f"Board initialized with shape {self.shape}.")
 
     # @abstractmethod
-    @property
+    @abstractproperty
     def legal_moves(self) -> Generator[Move, None, None]:
         """
         Return list legal moves for the current position.
@@ -375,6 +375,7 @@ class BaseBoard(ABC):
 
 if __name__ == "__main__":
     board = BaseBoard(BaseBoard.STARTING_POSITION, Color.WHITE)
+    print(board.GAME_TYPE)
     # print(board)
 # print(board.info)
 #     m1 = Move([C3, B4])

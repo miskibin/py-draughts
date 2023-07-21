@@ -56,7 +56,7 @@ class Board(BaseBoard):
     """
 
     GAME_TYPE = 20
-    STARTING_POSITION = np.array([1] * 15 + [0] * 20 + [-1] * 15, dtype=np.int8)
+    STARTING_POSITION = np.array([1] * 20 + [0] * 10 + [-1] * 20, dtype=np.int8)
     STARTING_COLOR = Color.WHITE
 
     ROW_IDX = {val: val // 5 for val in range(len(STARTING_POSITION))}

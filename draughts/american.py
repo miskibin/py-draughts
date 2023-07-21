@@ -107,11 +107,9 @@ class Board(BaseBoard):
 
 
 if __name__ == "__main__":
-    board = Board()
-    from draughts.server import Server
+    from draughts.standard import Board as StandardBoard
 
-    Server(board).run()
-    moves = ["24-20", "11-16", "20x11", "7x16"]
-    for m in moves:
-        board.push_uci(m)
-        print(list(board.legal_moves))
+    board = BaseBoard(BaseBoard.STARTING_POSITION, Color.WHITE)
+    print(board.GAME_TYPE)
+    board = Board()
+    print(board.GAME_TYPE)
