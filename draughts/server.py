@@ -86,11 +86,12 @@ class Server:
         history = []  # (numver, white, black)
         stack = self.board._moves_stack
         for idx in range(len(stack)):
-            src, tg = stack[idx].square_list[0] + 1, stack[idx].square_list[-1]
+            src, tg = stack[idx].square_list[0] + 1, stack[idx].square_list[-1] + 1
+            separator = "-" if len(stack[idx].captured_list) == 0 else "x"
             if idx % 2 == 0:
-                history.append([(idx // 2) + 1, f"{src}-{tg}"])
+                history.append([(idx // 2) + 1, f"{src}{separator}{tg}"])
             else:
-                history[-1].append(f"{src}-{tg}")
+                history[-1].append(f"{src}{separator}{tg}")
         turn = "white" if self.board.turn == Color.WHITE else "black"
         return PositionResponse(
             position=self.board.friendly_form.tolist(),
@@ -146,10 +147,6 @@ if __name__ == "__main__":
     from draughts.engine import AlphaBetaEngine
     from draughts import get_board
 
-    engine = AlphaBetaEngine(depth=2)
-    # board = get_board(
-    #     "standard",
-    #     '[FEN "B:W18,26,28,29,32,33,38,39,41,45,46,47,48,49,50:B4,5,7,8,9,10,11,12,13,15,16,17,19,20"]',
-    # )
+    engine = AlphaBetaEngine(depth=6)
     server = Server(get_best_move_method=engine.get_best_move)
     server.run()

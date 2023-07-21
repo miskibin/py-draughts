@@ -1,9 +1,11 @@
 from __future__ import annotations
+import types
+from typing import Any
 
 import numpy as np
 
 from draughts.base import BaseBoard
-from draughts.models import Figure
+from draughts.models import Color, Figure
 from draughts.move import Move
 from draughts.utils import (
     get_king_pseudo_legal_moves,
@@ -54,14 +56,16 @@ class Board(BaseBoard):
     """
 
     GAME_TYPE = 20
-    STARTING_POSITION = np.array([1] * 15 + [0] * 20 + [-1] * 15, dtype=np.int8)
-    PSEUDO_LEGAL_KING_MOVES = get_king_pseudo_legal_moves(len(STARTING_POSITION))
-    PSEUDO_LEGAL_MAN_MOVES = get_man_pseudo_legal_moves(len(STARTING_POSITION))
+    STARTING_POSITION = np.array([1] * 20 + [0] * 10 + [-1] * 20, dtype=np.int8)
+    STARTING_COLOR = Color.WHITE
+
     ROW_IDX = {val: val // 5 for val in range(len(STARTING_POSITION))}
     COL_IDX = {val: val % 10 for val in range(len(STARTING_POSITION))}
 
-    def __init__(self, starting_position=STARTING_POSITION) -> None:
-        super().__init__(starting_position)
+    # def __init__(
+    #     self, starting_position=STARTING_POSITION, turn=STARTING_COLOR, *args, **kwargs
+    # ) -> None:
+    #     super().__init__(starting_position, turn, *args, **kwargs)
 
     @property
     def is_draw(self) -> bool:
@@ -120,9 +124,7 @@ class Board(BaseBoard):
             # ):
             #     is_capture_mandatory = True
             all_moves.extend(moves)
-        if any([len(move) > 1 for move in all_moves]):
-            all_moves = [move for move in all_moves if len(move) > 1]
-        return all_moves
+        return [mv for mv in all_moves if len(mv) == max(len(m) for m in all_moves)]
 
     def _get_man_legal_moves_from(
         self, square: int, is_capture_mandatory: bool
@@ -149,7 +151,7 @@ class Board(BaseBoard):
                 # moves.append(move)
                 self.push(move, False)
                 new_moves = [
-                    move + m for m in self._legal_moves_from(direction[1], True)
+                    move + m for m in self._get_man_legal_moves_from(direction[1], True)
                 ]
                 moves += [move] if len(new_moves) == 0 else new_moves
                 self.pop(False)
@@ -207,6 +209,6 @@ class Board(BaseBoard):
 if __name__ == "__main__":
     board = Board()
 
-    b = Board.from_fen("B:B:WG8,18,24,28,34,37,42,44,49:B2,10,12,15,25,26")
-    print(b)
-    Board.from_fen("W:W4,11,28,31,K33,K34,38,40,K41,43,K44,45,K46,47:BK3,21,27,32")
+    # b = Board.from_fen("B:B:WG8,18,24,28,34,37,42,44,49:B2,10,12,15,25,26")
+    # print(b)
+    # Board.from_fen("W:W4,11,28,31,K33,K34,38,40,K41,43,K44,45,K46,47:BK3,21,27,32")

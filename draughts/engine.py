@@ -59,10 +59,10 @@ class AlphaBetaEngine(Engine):
     def __get_engine_move(self, board: Board) -> tuple:
         depth = self.depth
         legal_moves = list(board.legal_moves)
-        legal_moves.sort(key=lambda move: board.is_capture(move), reverse=True)
         bar = tqdm(legal_moves)
         evals = []
         alpha, beta = -100, 100
+
         for move in legal_moves:
             board.push(move)
             evals.append(
@@ -74,6 +74,7 @@ class AlphaBetaEngine(Engine):
                 )
             )
             board.pop()
+
             bar.update(1)
             if board.turn == Color.WHITE:
                 alpha = max(alpha, evals[-1])
@@ -95,11 +96,16 @@ class AlphaBetaEngine(Engine):
             self.inspected_nodes += 1
             return self.evaluate(board)
         legal_moves = list(board.legal_moves)
-        legal_moves.sort(key=lambda move: board.is_capture(move), reverse=True)
+        tmp = board._pos.copy().sum()
+
         for move in legal_moves:
             board.push(move)
             evaluation = self.__alpha_beta_puring(board, depth - 1, alpha, beta)
             board.pop()
+            if board._pos.sum() != tmp:
+                logger.warning(str(board))
+                logger.error(f"{move}")
+                break
             if board.turn == Color.WHITE:
                 alpha = max(alpha, evaluation)
             else:

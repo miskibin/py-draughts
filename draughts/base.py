@@ -8,7 +8,11 @@ import numpy as np
 
 from draughts.models import FIGURE_REPR, Color, Figure, SquareT
 from draughts.move import Move
-from draughts.utils import logger
+from draughts.utils import (
+    logger,
+    get_king_pseudo_legal_moves,
+    get_man_pseudo_legal_moves,
+)
 
 # fmt: off
 SQUARES = [_, B8, D8, F8, H8,
@@ -37,9 +41,9 @@ class BaseBoard(ABC):
     To create new variants of draughts, inherit from this class and:
 
     - override the ``legal_moves`` property
-    - override the ``SQUARES`` list to match the new board size
+    - (optional) override the ``SQUARES`` list to match the new board size if you want to use UCI notation: ``[A1, B1, C1, ...]``
     - override the ``STARTING_POSITION`` to specify the starting position
-
+    - override the ``STARTING_COLOR`` to specify the starting color
     Constraints:
     - There are only two colors:
         - ``Color.WHITE``
@@ -49,6 +53,8 @@ class BaseBoard(ABC):
         - ``PieceType.MAN``
         - ``PieceType.KING``
     - **Board should always be square.**
+    .. note::
+        For generating legal moves use
     """
 
     GAME_TYPE = -1
@@ -73,23 +79,39 @@ class BaseBoard(ABC):
     Starting color. ``Color.WHITE`` or ``Color.BLACK``.
     """
 
-    PSEUDO_LEGAL_KING_MOVES = None
+    PSEUDO_LEGAL_MAN_MOVES = ...
     """
     Dictionary of pseudo-legal moves for king pieces. Generated only on module import.
     This dictionary contains all possible moves for king piece (as if there were no other pieces on the board).
     
     **Structure:**
-    
     ``[(right-up moves), (left-up moves), (right-down moves), (left-down moves)]``
-    
     """
-    PSEUDO_LEGAL_MAN_MOVES = None
+    PSEUDO_LEGAL_KING_MOVES = ...
     """ 
     Same as ``PSEUDO_LEGAL_KING_MOVES`` but contains only first 2 squares of the move.
     (one for move and one for capture)
     """
 
-    def __init__(self, starting_position: np.ndarray) -> None:
+    def __init_subclass__(cls, **kwargs):
+        parent_class = cls.__bases__[0]
+        parent_class_vars = vars(parent_class)
+        child_class_vars = vars(cls)
+        for var_name, var_value in child_class_vars.items():
+            if var_name in parent_class_vars and not var_name.startswith("_"):
+                setattr(parent_class, var_name, var_value)
+        cls.PSEUDO_LEGAL_KING_MOVES = get_king_pseudo_legal_moves(
+            len(cls.STARTING_POSITION)
+        )
+        cls.PSEUDO_LEGAL_MAN_MOVES = get_man_pseudo_legal_moves(
+            len(cls.STARTING_POSITION)
+        )
+
+    def __init__(
+        self,
+        starting_position: np.ndarray = None,
+        turn: Color = None,
+    ) -> None:
         """
         Initializes the board with a starting position.
         The starting position must be a numpy array of length n * n/2,
@@ -97,21 +119,25 @@ class BaseBoard(ABC):
 
         """
         super().__init__()
-        self._pos = starting_position.copy()
+        self._pos = (
+            starting_position
+            if starting_position is not None
+            else self.STARTING_POSITION
+        )
+        self.turn = turn if turn is not None else self.STARTING_COLOR
         size = int(np.sqrt(len(self.position) * 2))
         if size**2 != len(self.position) * 2:
-            msg = f"Invalid board with shape {starting_position.shape} provided.\
+            msg = f"Invalid board with shape {self._pos.shape} provided.\
                 Please use an array with lenght = (n * n/2). \
                 Where n is an size of the board."
             logger.error(msg)
             raise ValueError(msg)
         self.shape = (size, size)
-        self.turn = Color.WHITE
         self._moves_stack: list[Move] = []
         logger.info(f"Board initialized with shape {self.shape}.")
 
     # @abstractmethod
-    @property
+    @abstractproperty
     def legal_moves(self) -> Generator[Move, None, None]:
         """
         Return list legal moves for the current position.
@@ -151,7 +177,9 @@ class BaseBoard(ABC):
 
         return self.is_draw or not bool(list(self.legal_moves))
 
-    def push(self, move: Move, is_finished: bool = True) -> None:
+    def push(
+        self, move: Move, is_finished: bool = True
+    ) -> None:  # TODO multiple captures != promotion
         """Pushes a move to the board.
         Automatically promotes a piece if it reaches the last row.
 
@@ -167,9 +195,11 @@ class BaseBoard(ABC):
         if (
             (tg // (self.shape[0] // 2)) == 0
             and self._pos[tg] == Figure.WHITE_MAN.value
+            and is_finished
         ) or (
             (tg // (self.shape[0] // 2)) == (self.shape[0] - 1)
             and self._pos[tg] == Figure.BLACK_MAN.value
+            and is_finished
         ):
             self._pos[tg] *= Figure.KING.value
             move.is_promotion = True
@@ -246,10 +276,11 @@ class BaseBoard(ABC):
         """
         Creates a board from a FEN string by using regular expressions.
         """
+        logger.debug(f"Initializing board from FEN: {fen}")
         fen = fen.upper()
         re_turn = re.compile(r"[WB]:")
         re_premove = re.compile(r"(G[0-9]+|P[0-9]+)(,|)")
-        re_prefix = re.compile(r"[WB]:[WB]:[WB]:")
+        re_prefix = re.compile(r"[WB]:[WB]:[WB]")
         re_white = re.compile(r"W[0-9K,]+")
         re_black = re.compile(r"B[0-9K,]+")
         # remove premoves from fen
@@ -274,8 +305,8 @@ class BaseBoard(ABC):
             cls.__populate_from_list(black.split(","), Color.BLACK)
         except ValueError as e:
             logger.error(f"Invalid FEN: {fen} \n {e}")
-        cls.turn = Color.WHITE if turn == "W" else Color.BLACK
-        return cls(starting_position=cls.STARTING_POSITION)
+        turn = Color.WHITE if turn == "W" else Color.BLACK
+        return cls(cls.STARTING_POSITION, turn)
 
     @classmethod
     def __populate_from_list(cls, fen_list: list[str], color: Color) -> None:
@@ -343,12 +374,9 @@ class BaseBoard(ABC):
 
 
 if __name__ == "__main__":
-    # board = BaseBoard(BaseBoard.STARTING_POSITION)
+    board = BaseBoard(BaseBoard.STARTING_POSITION, Color.WHITE)
+    print(board.GAME_TYPE)
     # print(board)
-    board = BaseBoard.from_fen("W:W:WG23:BP12,K19,K28")
-    print(board)
-    BaseBoard.from_fen("W:W4,11,28,31,K33,K34,38,40,K41,43,K44,45,K46,47:BK3,21,27,32")
-
 # print(board.info)
 #     m1 = Move([C3, B4])
 #     board.push(m1)

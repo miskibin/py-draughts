@@ -77,6 +77,7 @@ class Move:
             self.square_list + other.square_list[1:],
             self.captured_list + other.captured_list,
             self.captured_entities + other.captured_entities,
+            self.is_promotion,
         )
 
     @classmethod
