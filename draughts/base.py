@@ -3,7 +3,6 @@ from __future__ import annotations
 import re
 from abc import ABC, abstractproperty
 from typing import Generator
-
 import numpy as np
 
 from draughts.models import FIGURE_REPR, Color, Figure, SquareT
@@ -24,6 +23,20 @@ SQUARES = [_, B8, D8, F8, H8,
         B2, D2, F2, H2,
         A1, C1, E1, G1] = range(33)
 # fmt: on
+
+
+class _BoardState:
+    __slots__ = ("position", "halfmove_clock", "turn")
+
+    def __init__(self, board: BaseBoard):
+        self.position = board.position
+        self.halfmove_clock = board.halfmove_clock
+        self.turn = board.turn
+
+    def restore(self, board: BaseBoard):
+        board.position = self.position
+        board.halfmove_clock = self.halfmove_clock
+        board.turn = self.turn
 
 
 class BaseBoard(ABC):
@@ -136,6 +149,7 @@ class BaseBoard(ABC):
             logger.error(msg)
             raise ValueError(msg)
         self.shape = (size, size)
+        self._state_stack: list[_BoardState] = []
         self._moves_stack: list[Move] = []
 
         logger.info(f"Board initialized with shape {self.shape}.")
