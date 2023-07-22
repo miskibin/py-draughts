@@ -25,7 +25,7 @@ class Move:
     """
 
     __slots__ = (
-        "visited_squares",
+        "square_list",
         "captured_list",
         "captured_entities",
         "is_promotion",
