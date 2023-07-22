@@ -8,11 +8,8 @@ import numpy as np
 
 from draughts.models import FIGURE_REPR, Color, Figure, SquareT
 from draughts.move import Move
-from draughts.utils import (
-    logger,
-    get_king_pseudo_legal_moves,
-    get_man_pseudo_legal_moves,
-)
+from draughts.utils import (get_king_pseudo_legal_moves,
+                            get_man_pseudo_legal_moves, logger)
 
 # fmt: off
 SQUARES = [_, B8, D8, F8, H8,
@@ -24,6 +21,20 @@ SQUARES = [_, B8, D8, F8, H8,
         B2, D2, F2, H2,
         A1, C1, E1, G1] = range(33)
 # fmt: on
+
+
+class _BoardState:
+    __slots__ = ("position", "halfmove_clock", "turn")
+
+    def __init__(self, board: BaseBoard):
+        self.position = board.position
+        self.halfmove_clock = board.halfmove_clock
+        self.turn = board.turn
+
+    def restore(self, board: BaseBoard):
+        board.position = self.position
+        board.halfmove_clock = self.halfmove_clock
+        board.turn = self.turn
 
 
 class BaseBoard(ABC):
@@ -136,6 +147,7 @@ class BaseBoard(ABC):
             logger.error(msg)
             raise ValueError(msg)
         self.shape = (size, size)
+        self._state_stack: list[_BoardState] = [_BoardState(self)]
         self._moves_stack: list[Move] = []
 
         logger.info(f"Board initialized with shape {self.shape}.")
@@ -190,7 +202,6 @@ class BaseBoard(ABC):
         If ``is_finished`` is set to ``True``, the turn is switched. This parameter is used only
         for generating legal moves.
         """
-        move.halfmove_clock = self.halfmove_clock  # Before move occurs
         src, tg = (
             move.square_list[0],
             move.square_list[-1],
@@ -220,30 +231,25 @@ class BaseBoard(ABC):
             self._pos[
                 np.array([sq for sq in move.captured_list if sq != tg])
             ] = Figure.EMPTY
-        self._moves_stack.append(move)
         if is_finished:
             self.turn = Color.WHITE if self.turn == Color.BLACK else Color.BLACK
+            self._state_stack.append(_BoardState(self))
+        self._moves_stack.append(move)
 
     def pop(self, is_finished=True) -> None:
         """Pops a move from the board.
 
         If ``is_finished`` is set to ``True``, the turn is switched. This parameter is used only
         for generating legal moves.
+        Raises ``IndexError`` if there are no moves to pop.
         """
-        move = self._moves_stack.pop()
-        src, tg = (
-            move.square_list[0],
-            move.square_list[-1],
-        )
-        if move.is_promotion:
-            self._pos[tg] //= Figure.KING.value
-        self._pos[src], self._pos[tg] = self._pos[tg], self._pos[src]
-        self.halfmove_clock = move.halfmove_clock
-        for sq, entity in zip(move.captured_list, move.captured_entities):
-            self._pos[sq] = entity  # Dangerous line
+
         if is_finished:
+            self._state_stack.pop().restore(self)
             self.turn = Color.WHITE if self.turn == Color.BLACK else Color.BLACK
-        return move
+        else:
+            self._state_stack[-1].restore(self)
+        return self._moves_stack.pop()
 
     def push_uci(self, str_move: str) -> None:
         """

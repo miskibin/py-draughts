@@ -24,18 +24,24 @@ class Move:
     n - 2 - number of captured pieces
     """
 
+    __slots__ = (
+        "square_list",
+        "captured_list",
+        "captured_entities",
+        "is_promotion",
+    )
+
     def __init__(
         self,
-        visited_squares: list[int],
+        square_list: list[int],
         captured_list: list[int] = [],
         captured_entities: list[Figure.value] = [],
         is_promotion: bool = False,
     ) -> None:
-        self.square_list = visited_squares
+        self.square_list = square_list
         self.captured_list = captured_list
         self.captured_entities = captured_entities
         self.is_promotion = is_promotion
-        self.halfmove_clock = 0
 
     def __repr__(self) -> str:
         visited_squares = [str(s + 1) for s in self.square_list]
