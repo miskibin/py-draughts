@@ -24,6 +24,13 @@ class Move:
     n - 2 - number of captured pieces
     """
 
+    __slots__ = (
+        "visited_squares",
+        "captured_list",
+        "captured_entities",
+        "is_promotion",
+    )
+
     def __init__(
         self,
         visited_squares: list[int],
