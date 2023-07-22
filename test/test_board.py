@@ -2,9 +2,9 @@ import numpy as np
 import pytest
 
 import draughts.american as checkers
-from draughts.base import BaseBoard, Color, Figure, Move
 from draughts import get_board
 from draughts.american import Board
+from draughts.base import BaseBoard, Color, Figure, Move
 
 
 class TestBoard:

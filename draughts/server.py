@@ -144,8 +144,8 @@ class Server:
 
 
 if __name__ == "__main__":
-    from draughts.engine import AlphaBetaEngine
     from draughts import get_board
+    from draughts.engine import AlphaBetaEngine
 
     # fen = "W:W:WK5,45,48,50:BK2,K4"
     engine = AlphaBetaEngine(depth=4)

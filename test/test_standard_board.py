@@ -1,11 +1,12 @@
+import json
+from pathlib import Path
+
 import numpy as np
 import pytest
 
-from draughts.base import BaseBoard, Color, Figure, Move
 from draughts import get_board
+from draughts.base import BaseBoard, Color, Figure, Move
 from draughts.standard import Board
-from pathlib import Path
-import json
 
 
 class TestBoard:

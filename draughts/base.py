@@ -1,18 +1,15 @@
 from __future__ import annotations
 
-import chess
 import re
 from abc import ABC, abstractproperty
 from typing import Generator
+
 import numpy as np
 
 from draughts.models import FIGURE_REPR, Color, Figure, SquareT
 from draughts.move import Move
-from draughts.utils import (
-    logger,
-    get_king_pseudo_legal_moves,
-    get_man_pseudo_legal_moves,
-)
+from draughts.utils import (get_king_pseudo_legal_moves,
+                            get_man_pseudo_legal_moves, logger)
 
 # fmt: off
 SQUARES = [_, B8, D8, F8, H8,
