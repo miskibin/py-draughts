@@ -33,12 +33,12 @@ class Move:
 
     def __init__(
         self,
-        visited_squares: list[int],
+        square_list: list[int],
         captured_list: list[int] = [],
         captured_entities: list[Figure.value] = [],
         is_promotion: bool = False,
     ) -> None:
-        self.square_list = visited_squares
+        self.square_list = square_list
         self.captured_list = captured_list
         self.captured_entities = captured_entities
         self.is_promotion = is_promotion
