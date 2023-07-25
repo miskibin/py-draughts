@@ -60,7 +60,7 @@ Color.WHITE
 ```
 
 - detects draws and wins
-- 
+
 ```python
 >>> board.game_over
 False
