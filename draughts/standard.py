@@ -203,7 +203,7 @@ class Board(BaseBoard):
 
 if __name__ == "__main__":
     board = Board()
-    board.push_uci("31-27")
+    board.push_uci("31-22")
     print(board.turn)
     board.is_5_moves_rule
     board.is_16_moves_rule

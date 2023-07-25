@@ -80,12 +80,12 @@ _Each variant has it's own specyfic rules._
 - Validate and generate moves
 
 ```python
->>> board.push_uci("10x42")
-Move: 37->32 is correct, but not legal in given position.
-Legal moves are: [Move: 28->37, Move: 31->22]
+>>> board.push_uci("31-22")
+ValueError: 31-22 is correct, but not legal in given position.
+Legal moves are: ['31-27', '31-26', '32-28', '32-27', '33-29', '33-28', '34-30', '34-29', '35-30']
 
 >>> list(board.legal_moves)
-[Move: 28->37, Move: 31->22]
+['31-27', '31-26', '32-28', '32-27', '33-29', '33-28', '34-30', '34-29', '35-30']
 ```
 
 - Reads and writes fen strings

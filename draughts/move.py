@@ -37,6 +37,10 @@ class Move:
         self.is_promotion = is_promotion
         self.halfmove_clock = 0
 
+    def __str__(self) -> str:
+        separator = "x" if self.captured_list else "-"
+        return f"{self.square_list[0] + 1}{separator}{self.square_list[-1] + 1}"
+
     def __repr__(self) -> str:
         visited_squares = [str(s + 1) for s in self.square_list]
         return f"Move: {'->'.join(visited_squares)}"
@@ -116,5 +120,5 @@ class Move:
             if legal_move == move:
                 return legal_move
         raise ValueError(
-            f"{move} is correct, but not legal in given position.\n Legal moves are: {list(legal_moves)}"
+            f"{str(move)} is correct, but not legal in given position.\n Legal moves are: {list(map(str,legal_moves))}"
         )
