@@ -128,8 +128,8 @@ class BaseBoard(ABC):
             else self.STARTING_POSITION
         )
         self.turn = turn if turn is not None else self.STARTING_COLOR
-        size = int(np.sqrt(len(self.position) * 2))
-        if size**2 != len(self.position) * 2:
+        size = int(np.sqrt(len(self._pos) * 2))
+        if size**2 != len(self._pos) * 2:
             msg = f"Invalid board with shape {self._pos.shape} provided.\
                 Please use an array with lenght = (n * n/2). \
                 Where n is an size of the board."
