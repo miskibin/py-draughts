@@ -52,19 +52,31 @@ pip install py-draughts
 - Make and undo moves
 
 ```python
->>> board.push_uci("37-32")
+>>> board.push_uci("31-27")
 >>> board.pop() # undo last move
-Move: 37->32
+Move: 31->27
+>>> board.turn
+Color.WHITE
 ```
 
 - detects draws and wins
-
+- 
 ```python
 >>> board.game_over
 False
 >>> board.is_threefold_repetition
 False
+>>> board.is_5_moves_rule
+False
+>>> board.is_16_moves_rule
+False
+>>> board.is_25_moves_rule
+False
+>>> board.is_draw
+False
 ```
+_Each variant has it's own specyfic rules._
+
 - Validate and generate moves
 
 ```python
