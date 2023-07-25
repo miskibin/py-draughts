@@ -32,6 +32,9 @@ class AlphaBetaEngine(Engine):
     Usually, those moves are better than non-capture moves.*
     """
 
+    WHITE_WIN = -100 * Color.WHITE.value
+    BLACK_WIN = -100 * Color.BLACK.value
+
     def __init__(self, depth):
         """
         ``depth`` - how many moves will be inspected by engine.
@@ -93,23 +96,18 @@ class AlphaBetaEngine(Engine):
     ) -> float:
         if board.game_over:
             if not board.is_draw:
-                return -100 if board.turn == Color.WHITE else 100
-            return -0.2 if board.turn == Color.WHITE else 0.2
+                return -100 * board.turn.value
+            return -0.2 * board.turn.value
         if depth == 0:
             self.inspected_nodes += 1
             return self.evaluate(board)
         legal_moves = list(board.legal_moves)
-        tmp = board._pos.copy().sum()
 
         for move in legal_moves:
             board.push(move)
             evaluation = self.__alpha_beta_puring(board, depth - 1, alpha, beta)
             evaluation -= np.abs(board.position[move.square_list[-1]]) == Figure.KING
             board.pop()
-            if board._pos.sum() != tmp:
-                logger.warning(str(board))
-                logger.error(f"{move}")
-                break
             if board.turn == Color.WHITE:
                 alpha = max(alpha, evaluation)
             else:
