@@ -7,7 +7,7 @@
 Efficient modern and flexible implementation of the draughts game with a beautiful web interface. 
 Supports multiple variants of the game and allows playing against AI.
 
-<img src="https://github.com/michalskibinski109/py-draughts/assets/77834536/11e6be5e-0cfc-412c-ac0b-2b8e87a4f450" width="400" />
+<img src="https://github.com/michalskibinski109/py-draughts/assets/77834536/11e6be5e-0cfc-412c-ac0b-2b8e87a4f450" width="800" />
 
 ## Installation
 
