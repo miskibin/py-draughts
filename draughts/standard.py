@@ -8,8 +8,8 @@ from draughts.base import BaseBoard
 from draughts.models import Color, Figure
 from draughts.move import Move
 from draughts.utils import (
-    get_king_pseudo_legal_moves,
-    get_man_pseudo_legal_moves,
+    get_diagonal_moves,
+    get_short_diagonal_moves,
     logger,
 )
 
@@ -126,7 +126,7 @@ class Board(BaseBoard):
     ) -> list:
         moves = []
         # white can move only on even directions
-        for idx, direction in enumerate(self.PSEUDO_LEGAL_MAN_MOVES[square]):
+        for idx, direction in enumerate(self.DIAGONAL_LONG_MOVES[square]):
             if (
                 len(direction) > 0
                 and (self.turn.value + idx)
@@ -156,7 +156,7 @@ class Board(BaseBoard):
         self, square: int, is_capture_mandatory: bool
     ) -> list[Move]:
         moves = []
-        for direction in self.PSEUDO_LEGAL_KING_MOVES[square]:
+        for direction in self.DIAGONAL_SHORT_MOVES[square]:
             for idx, target in enumerate(direction):
                 if (
                     len(direction) > idx + 1
