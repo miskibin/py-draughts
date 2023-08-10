@@ -21,19 +21,21 @@ PDN parsing and writing. Supports multiple variants of game.
 
 from typing import Literal
 
-__version__ = "1.2.4"
+__version__ = "1.2.5"
 __author__ = "Michał Skibiński"
 
+# create board type
+from draughts.boards.base import BaseBoard
+from draughts.boards.standard import Board as StandardBoard
+from draughts.boards.american import Board as AmericanBoard
 
-def get_board(variant: Literal["standard", "american"], fen: str = None):
+
+def get_board(variant: Literal["standard", "american"], fen: str = None) -> BaseBoard:
     """
     Board factory method.
     - ``standard`` - standard draughts board
     - ``american`` - american checkers board
     """
-    from draughts.boards.american import Board as AmericanBoard
-    from draughts.boards.base import BaseBoard
-    from draughts.boards.standard import Board as StandardBoard
 
     BOARDS = {
         "standard": StandardBoard,
