@@ -103,6 +103,33 @@ class Board(BaseBoard):
 
     @property
     def legal_moves(self) -> list[Move]:
+        all_moves = []
+        is_capture_mandatory = False
+        squares_list = np.transpose(np.nonzero(self._pos * self.turn.value > 0))
+        for square in squares_list.flatten():
+            moves = self._legal_moves_from(square, is_capture_mandatory)
+            all_moves.extend(moves)
+
+        return all_moves
+
+    def _legal_moves_from(self, square: int, is_capture_mandatory=False) -> list[Move]:
+        entity = Figure(self._pos[square])
+        if abs(entity) == Figure.MAN:
+            moves = self._get_man_legal_moves_from(square, is_capture_mandatory)
+        else:
+            moves = self._get_king_legal_moves_from(square, is_capture_mandatory)
+        if is_capture_mandatory:
+            moves = [move for move in moves if len(move.captured_list) > 0]
+        return moves
+
+    def _get_man_legal_moves_from(
+        square: int, is_captrue_mandatory: bool
+    ) -> list[Move]:
+        raise NotImplementedError
+
+    def _get_king_legal_moves_from(
+        square: int, is_captrue_mandatory: bool
+    ) -> list[Move]:
         raise NotImplementedError
 
 
