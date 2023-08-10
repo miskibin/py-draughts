@@ -1,6 +1,6 @@
-Standard draughts 
+Frisian draughts 
 ==========================================
 
-.. autoclass:: draughts.standard.Board
+.. autoclass:: draughts.frisian.Board
     :members: GAME_TYPE
     :noindex:
