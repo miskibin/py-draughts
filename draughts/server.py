@@ -12,8 +12,8 @@ from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel, Field
 
 from draughts import __version__
-from draughts.base import BaseBoard, Color
-from draughts.standard import Board
+from draughts.boards.base import BaseBoard, Color
+from boards.standard import Board
 
 
 class PositionResponse(BaseModel):
@@ -63,7 +63,7 @@ class Server:
 
     def set_board(self, request: Request, board_type: Literal["standard", "american"]):
         if board_type == "standard":
-            from draughts.standard import Board
+            from boards.standard import Board
 
             self.board = Board()
         elif board_type == "american":

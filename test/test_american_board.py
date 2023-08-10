@@ -1,8 +1,8 @@
 import numpy as np
 import pytest
 
-import draughts.american as checkers
-from draughts.american import Board, Color, Move
+import draughts.boards.american as checkers
+from draughts.boards.american import Board, Color, Move
 from draughts.models import Figure
 
 

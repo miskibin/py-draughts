@@ -1,9 +1,9 @@
 import numpy as np
 import pytest
 
-from draughts.base import BaseBoard, Color, Figure, Move
+from draughts.boards.base import BaseBoard, Color, Figure, Move
 from draughts import get_board
-from draughts.standard import Board
+from draughts.boards.standard import Board
 from pathlib import Path
 import json
 

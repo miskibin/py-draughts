@@ -21,7 +21,7 @@ PDN parsing and writing. Supports multiple variants of game.
 
 from typing import Literal
 
-__version__ = "1.2.3"
+__version__ = "1.2.4"
 __author__ = "Michał Skibiński"
 
 
@@ -31,9 +31,9 @@ def get_board(variant: Literal["standard", "american"], fen: str = None):
     - ``standard`` - standard draughts board
     - ``american`` - american checkers board
     """
-    from draughts.american import Board as AmericanBoard
-    from draughts.base import BaseBoard
-    from draughts.standard import Board as StandardBoard
+    from draughts.boards.american import Board as AmericanBoard
+    from draughts.boards.base import BaseBoard
+    from draughts.boards.standard import Board as StandardBoard
 
     BOARDS = {
         "standard": StandardBoard,

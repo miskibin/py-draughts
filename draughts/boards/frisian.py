@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import numpy as np
 
-from draughts.base import BaseBoard
+from draughts.boards.base import BaseBoard
 from draughts.models import Color, Figure
 from draughts.move import Move
 from draughts.utils import (

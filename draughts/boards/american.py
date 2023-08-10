@@ -4,7 +4,7 @@ from typing import Generator
 
 import numpy as np
 
-from draughts.base import BaseBoard
+from draughts.boards.base import BaseBoard
 from draughts.models import Color, Figure
 from draughts.move import Move
 
@@ -107,7 +107,7 @@ class Board(BaseBoard):
 
 
 if __name__ == "__main__":
-    from draughts.standard import Board as StandardBoard
+    from boards.standard import Board as StandardBoard
 
     board = BaseBoard(BaseBoard.STARTING_POSITION, Color.WHITE)
     print(board.GAME_TYPE)
