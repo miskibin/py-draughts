@@ -10,8 +10,8 @@ from draughts.models import FIGURE_REPR, Color, Figure, SquareT
 from draughts.move import Move
 from draughts.utils import (
     logger,
-    get_king_pseudo_legal_moves,
-    get_man_pseudo_legal_moves,
+    get_diagonal_moves,
+    get_short_diagonal_moves,
 )
 
 # fmt: off
@@ -82,7 +82,7 @@ class BaseBoard(ABC):
     Starting color. ``Color.WHITE`` or ``Color.BLACK``.
     """
 
-    PSEUDO_LEGAL_MAN_MOVES = ...
+    DIAGONAL_LONG_MOVES = ...
     """
     Dictionary of pseudo-legal moves for king pieces. Generated only on module import.
     This dictionary contains all possible moves for king piece (as if there were no other pieces on the board).
@@ -90,9 +90,9 @@ class BaseBoard(ABC):
     **Structure:**
     ``[(right-up moves), (left-up moves), (right-down moves), (left-down moves)]``
     """
-    PSEUDO_LEGAL_KING_MOVES = ...
+    DIAGONAL_SHORT_MOVES = ...
     """ 
-    Same as ``PSEUDO_LEGAL_KING_MOVES`` but contains only first 2 squares of the move.
+    Same as ``DIAGONAL_LONG_MOVES`` but contains only first 2 squares of the move.
     (one for move and one for capture)
     """
 
@@ -103,12 +103,8 @@ class BaseBoard(ABC):
         for var_name, var_value in child_class_vars.items():
             if var_name in parent_class_vars and not var_name.startswith("_"):
                 setattr(parent_class, var_name, var_value)
-        cls.PSEUDO_LEGAL_KING_MOVES = get_king_pseudo_legal_moves(
-            len(cls.STARTING_POSITION)
-        )
-        cls.PSEUDO_LEGAL_MAN_MOVES = get_man_pseudo_legal_moves(
-            len(cls.STARTING_POSITION)
-        )
+        cls.DIAGONAL_SHORT_MOVES = get_diagonal_moves(len(cls.STARTING_POSITION))
+        cls.DIAGONAL_LONG_MOVES = get_short_diagonal_moves(len(cls.STARTING_POSITION))
 
     def __init__(
         self,
@@ -172,7 +168,7 @@ class BaseBoard(ABC):
 
     @abstractproperty
     def is_draw(self) -> bool:
-        raise NotImplementedError
+        ...
 
     @property
     def game_over(self) -> bool:
@@ -181,9 +177,7 @@ class BaseBoard(ABC):
 
         return self.is_draw or not bool(list(self.legal_moves))
 
-    def push(
-        self, move: Move, is_finished: bool = True
-    ) -> None:  # TODO multiple captures != promotion
+    def push(self, move: Move, is_finished: bool = True) -> None:
         """Pushes a move to the board.
         Automatically promotes a piece if it reaches the last row.
 

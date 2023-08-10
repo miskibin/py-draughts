@@ -1,5 +1,6 @@
 import numpy as np
 from easy_logs import get_logger
+from collections import defaultdict
 
 logger = get_logger(lvl=10)
 
@@ -44,17 +45,44 @@ def _get_all_squares_at_the_diagonal(square: int, position_length: int) -> list[
     return result
 
 
-def get_king_pseudo_legal_moves(position_length: int) -> dict[list]:
+def get_diagonal_moves(position_length: int) -> dict[list]:
     squares = {}
     for sq in range(position_length):
         squares[sq] = _get_all_squares_at_the_diagonal(sq, position_length)
     return squares
 
 
-def get_man_pseudo_legal_moves(position_length: int) -> dict[list]:
+def get_short_diagonal_moves(position_length: int) -> dict[list]:
     squares = {}
     for sq in range(position_length):
         squares[sq] = [
             moves[:2] for moves in _get_all_squares_at_the_diagonal(sq, position_length)
         ]
     return squares
+
+
+def get_vertical_and_horizontal_moves(position_length: int) -> dict:
+    """
+    [sq_number]: [up, right, down, left]
+    """
+    size = int(np.sqrt(position_length * 2))
+    row_idx = {val: val // (size // 2) for val in range(position_length + 1)}
+    squares = defaultdict(list)
+
+    for sq in range(position_length):
+        row_squares = [val for val, idx in row_idx.items() if idx == row_idx[sq]]
+        idx = row_squares.index(sq)
+        squares[sq] = [
+            list(range(sq, -1, -size))[1:],  # Up
+            row_squares[idx + 1 :],  # Right
+            list(range(sq, position_length, size))[1:],  # Down
+            row_squares[:idx],  # Left
+        ]
+    return squares
+
+
+def get_short_vertical_and_horizontal_moves(position_length: int) -> dict[list]:
+    return {
+        sq: [moves[:4] for moves in list_of_sq]
+        for sq, list_of_sq in get_vertical_and_horizontal_moves(position_length).items()
+    }
