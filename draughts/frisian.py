@@ -25,33 +25,35 @@ SQUARES=  [ B10, D10, F10, H10, J10,
 
 class Board(BaseBoard):
     """
-    **Board for Standard (international) checkers.**
+    **Board for Frisian draughts.**
 
     Game rules:
 
     - Board size: 10x10
+
     - Besides capturing diagonally, one can also capture horizontally and vertically.
         Every piece can thus capture in eight directions
+
     - If a king and a man can play a capture sequence of equal value,
-    it is always forced to play with the king.
+        it is always forced to play with the king.
+
     - If a player has one or more kings on the board but also has one or more men left,
-    it is not allowed to play more than three non-capturing moves in a row with the same king.
-    If no capture is available for a king after its third non-capturing move,
-    one is forced to play with a different king or a man.
-    After that one can play any move with that king again,
-    but of course again only three times in a row if it doesn't capture.
-    This rule does not apply for a player that has no more men left (only kings on the board).
+        it is not allowed to play more than three non-capturing moves in a row with the same king.
+        If no capture is available for a king after its third non-capturing move,
+        one is forced to play with a different king or a man.
+        After that one can play any move with that king again,
+        but of course again only three times in a row if it doesn't capture.
+        This rule does not apply for a player that has no more men left (only kings on the board).
 
     **Winning and drawing**
 
     - When one player has two kings and the other player has one king,
-    the game is drawn after both players made 7 moves.
+        the game is drawn after both players made 7 moves.
     - When both players have one king left, the game is drawn after both players made 2 moves.
-    The official rules state that the game is drawn immediately when two kings are left
-    unless either player can win by force (which means the other king can be captured immediately
-    or will necessarily be captured next move). As we currently can't distinguish the positions
-    that win by force on lidraughts, this rule is implemented by always allowing 2 more moves to win the game.
-
+        The official rules state that the game is drawn immediately when two kings are left
+        unless either player can win by force (which means the other king can be captured immediately
+        or will necessarily be captured next move). As we currently can't distinguish the positions
+        that win by force on lidraughts, this rule is implemented by always allowing 2 more moves to win the game.
     """
 
     GAME_TYPE = 40
