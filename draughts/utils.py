@@ -56,7 +56,9 @@ def get_short_diagonal_moves(position_length: int) -> dict[list]:
     squares = {}
     for sq in range(position_length):
         squares[sq] = [
-            moves[:2] for moves in _get_all_squares_at_the_diagonal(sq, position_length)
+            moves[:4]
+            for moves in _get_all_squares_at_the_diagonal(sq, position_length)
+            if len(moves) >= 4
         ]
     return squares
 
@@ -86,9 +88,3 @@ def get_short_vertical_and_horizontal_moves(position_length: int) -> dict[list]:
         sq: [moves[:2] for moves in list_of_sq]
         for sq, list_of_sq in get_vertical_and_horizontal_moves(position_length).items()
     }
-
-
-from pprint import pprint
-
-pprint(get_vertical_and_horizontal_moves(50))
-pprint(get_short_vertical_and_horizontal_moves(50))
