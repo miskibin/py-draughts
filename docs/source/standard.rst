@@ -1,4 +1,4 @@
-Standard draughts 
+Standard (International) draughts 
 ==========================================
 
 .. autoclass:: draughts.standard.Board
