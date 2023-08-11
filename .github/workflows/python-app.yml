@@ -23,7 +23,9 @@ jobs:
         working-directory: .
         run: |
           ls -la
-          python -m pip install --upgrade pip
+          python -m pip install virtualenv
+          python -m virtualenv .venv
+          source .venv/bin/activate
           export PYTHONPATH=$PYTHONPATH:$(pwd)
           pip install flake8 pytest
           pip install -r requirements.txt
