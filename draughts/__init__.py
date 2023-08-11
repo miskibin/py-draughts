@@ -28,6 +28,7 @@ __author__ = "Michał Skibiński"
 from draughts.boards.base import BaseBoard
 from draughts.boards.standard import Board as StandardBoard
 from draughts.boards.american import Board as AmericanBoard
+from draughts.server.server import Server
 
 
 def get_board(variant: Literal["standard", "american"], fen: str = None) -> BaseBoard:

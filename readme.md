@@ -111,7 +111,7 @@ Move: 28->37, 3.0
 3. Allows to test and find bugs in your engine.
 
 ```python
-python -m draughts.server
+python -m draughts.server.server
 ```
 
 #### Use for testing your engine.
@@ -123,7 +123,7 @@ _Example with simplest possible engine._
 
 
 ```python
->>> from draughts.server import Server
+>>> from draughts import Server
 >>> import numpy as np
 >>> get_best_mv = lambda board: np.random.choice(list(board.legal_moves))
 >>> server = Server(get_best_move_method=get_best_mv)

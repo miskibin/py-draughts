@@ -13,7 +13,7 @@ from pydantic import BaseModel, Field
 
 from draughts import __version__
 from draughts.boards.base import BaseBoard, Color
-from boards.standard import Board
+from draughts.boards.standard import Board
 
 
 class PositionResponse(BaseModel):

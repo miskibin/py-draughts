@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 
 from tqdm import tqdm
-from boards.standard import Board, Move, Figure
+from draughts.boards.standard import Board, Move, Figure
 from draughts.models import Color
 from draughts.utils import logger
 import numpy as np
