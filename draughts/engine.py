@@ -34,6 +34,7 @@ class AlphaBetaEngine(Engine):
 
     WHITE_WIN = -100 * Color.WHITE.value
     BLACK_WIN = -100 * Color.BLACK.value
+    LOSE = -100
 
     def __init__(self, depth):
         """
@@ -65,7 +66,7 @@ class AlphaBetaEngine(Engine):
         legal_moves = list(board.legal_moves)
         bar = tqdm(legal_moves)
         evals = []
-        alpha, beta = -100, 100
+        alpha, beta = self.BLACK_WIN, self.WHITE_WIN
 
         for move in legal_moves:
             board.push(move)
@@ -96,7 +97,7 @@ class AlphaBetaEngine(Engine):
     ) -> float:
         if board.game_over:
             if not board.is_draw:
-                return -100 * board.turn.value
+                return self.LOSE * board.turn.value
             return -0.2 * board.turn.value
         if depth == 0:
             self.inspected_nodes += 1

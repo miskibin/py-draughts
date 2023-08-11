@@ -27,19 +27,24 @@ __author__ = "Michał Skibiński"
 # create board type
 from draughts.boards.base import BaseBoard
 from draughts.boards.standard import Board as StandardBoard
+from draughts.boards.frisian import Board as FrisianBoard
 from draughts.boards.american import Board as AmericanBoard
 from draughts.server.server import Server
 
 
-def get_board(variant: Literal["standard", "american"], fen: str = None) -> BaseBoard:
+def get_board(
+    variant: Literal["standard", "american", "frisian"], fen: str = None
+) -> BaseBoard:
     """
     Board factory method.
     - ``standard`` - standard draughts board
     - ``american`` - american checkers board
+    - ``frisian`` - frisian draughts board
     """
 
     BOARDS = {
         "standard": StandardBoard,
+        "frisian": FrisianBoard,
         "american": AmericanBoard,
     }
     board_cls: BaseBoard = BOARDS[variant]
