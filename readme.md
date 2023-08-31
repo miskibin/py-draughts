@@ -137,6 +137,11 @@ INFO:     Uvicorn running on http://127.0.0.1:8000 (Press CTRL+C to quit)
 
 _It is as simple as that!_
 
+> **Note**  
+> Server will not start when using _google colab_
+
+---
+
 <img src="https://github.com/michalskibinski109/py-draughts/assets/77834536/11e4b7ea-4b47-4ab2-80b8-6d6cf1052869" width="800" />
 
 
