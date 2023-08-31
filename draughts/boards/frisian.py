@@ -6,6 +6,8 @@ from draughts.boards.base import BaseBoard
 from draughts.models import Color, Figure
 from draughts.move import Move
 from draughts.utils import (
+    get_short_vertical_and_horizontal_moves,
+    get_vertical_and_horizontal_moves,
     logger,
 )
 
@@ -125,8 +127,10 @@ class Board(BaseBoard):
         return moves
 
     def _get_man_legal_moves_from(
-        square: int, is_captrue_mandatory: bool
+        self, square: int, is_captrue_mandatory: bool
     ) -> list[Move]:
+        # legal_moves  = self.DIAGONAL_SHORT_MOVES +
+
         raise NotImplementedError
 
     def _get_king_legal_moves_from(
