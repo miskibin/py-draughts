@@ -26,10 +26,11 @@ jobs:
           python -m pip install virtualenv
           python -m virtualenv .venv
           source .venv/bin/activate
-          pip install pytest flake8
+          pip install pytest 
           pip install -r requirements.txt
           export PYTHONPATH+=$PYTHONPATH:$(pwd)
           pip install -e .
       - name: Test with pytest
         run: |
+          source .venv/bin/activate
           python -m pytest . -vv
