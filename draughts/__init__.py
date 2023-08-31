@@ -19,17 +19,13 @@ A draughts library with advenced (customizable) WEB UI move generation and valid
 PDN parsing and writing. Supports multiple variants of game.
 """
 
-from typing import Literal
+from typing import Literal, NewType
 
-__version__ = "1.2.5"
+__version__ = "1.2.6"
 __author__ = "Michał Skibiński"
 
+BaseBoard = NewType("BaseBoard", type)
 # create board type
-from draughts.boards.base import BaseBoard
-from draughts.boards.standard import Board as StandardBoard
-from draughts.boards.frisian import Board as FrisianBoard
-from draughts.boards.american import Board as AmericanBoard
-from draughts.server.server import Server
 
 
 def get_board(
@@ -41,6 +37,10 @@ def get_board(
     - ``american`` - american checkers board
     - ``frisian`` - frisian draughts board
     """
+    from draughts.boards.base import BaseBoard
+    from draughts.boards.standard import Board as StandardBoard
+    from draughts.boards.frisian import Board as FrisianBoard
+    from draughts.boards.american import Board as AmericanBoard
 
     BOARDS = {
         "standard": StandardBoard,
