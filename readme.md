@@ -23,6 +23,7 @@ pip install py-draughts
 -  Displays simple ascii board for different variants of the game.
 
 ```python
+>>> from draughts import get_board
 >>> board = get_board('standard', "W:W4,11,28,31,K33,K34,38,40,K41,43,K44,45,K46,47:BK3,21,27,32")
 >>> board
  . . . . . B . w . .
