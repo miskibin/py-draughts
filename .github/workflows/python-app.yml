@@ -32,4 +32,4 @@ jobs:
           pip install -e .
       - name: Test with pytest
         run: |
-          pytest
+          python -m pytest . -vv
