@@ -21,7 +21,7 @@ PDN parsing and writing. Supports multiple variants of game.
 
 from typing import Literal, NewType
 
-__version__ = "1.2.6"
+__version__ = "1.2.7"
 __author__ = "Michał Skibiński"
 
 BaseBoard = NewType("BaseBoard", type)
