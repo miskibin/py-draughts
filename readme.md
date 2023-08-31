@@ -62,6 +62,10 @@ Color.WHITE
 
 - detects draws and wins
 
+> [!Important]  
+> Those methods are variant specific. Each variant has different set of them.
+
+
 ```python
 >>> board.game_over
 False
@@ -76,7 +80,6 @@ False
 >>> board.is_draw
 False
 ```
-_Each variant has it's own specyfic rules._
 
 - Validate and generate moves
 
@@ -137,7 +140,7 @@ INFO:     Uvicorn running on http://127.0.0.1:8000 (Press CTRL+C to quit)
 
 _It is as simple as that!_
 
-> **Note**  
+> [!Warning]  
 > Server will not start when using _google colab_
 
 ---
