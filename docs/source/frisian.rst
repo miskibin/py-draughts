@@ -1,6 +1,6 @@
 Frisian draughts 
 ==========================================
 
-.. autoclass:: draughts.frisian.Board
+.. autoclass:: draughts.boards.frisian.Board
     :members: GAME_TYPE
     :noindex:

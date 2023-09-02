@@ -1,5 +1,5 @@
 American checkers
 ==========================================
 
-.. autoclass:: draughts.american.Board
+.. autoclass:: draughts.boards.american.Board
     :members:
