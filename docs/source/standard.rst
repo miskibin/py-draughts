@@ -1,6 +1,6 @@
 Standard (International) draughts 
 ==========================================
 
-.. autoclass:: draughts.standard.Board
+.. autoclass:: draughts.boards.standard.Board
     :members: GAME_TYPE
     :noindex:
