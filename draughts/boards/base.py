@@ -44,6 +44,7 @@ class BaseBoard(ABC):
     - (optional) override the ``SQUARES`` list to match the new board size if you want to use UCI notation: ``[A1, B1, C1, ...]``
     - override the ``STARTING_POSITION`` to specify the starting position
     - override the ``STARTING_COLOR`` to specify the starting color
+
     Constraints:
     - There are only two colors:
         - ``Color.WHITE``
@@ -331,18 +332,6 @@ class BaseBoard(ABC):
                     f"invalid square value: {sq} for board with length\
                         {cls.STARTING_POSITION.shape[0]}"
                 )
-
-    @classmethod
-    @property
-    def info(cls) -> str:
-        board_size = int(np.sqrt(cls.STARTING_POSITION.shape[0]))
-        data = (
-            f'[GameType "{cls.GAME_TYPE}"]\n'
-            f'[Variant "{cls.VARIANT_NAME}"]\n'
-            f'[BoardSize "{board_size} X {board_size}"]\n'
-            f'[StartingColor "{cls.STARTING_COLOR}"]\n'
-        )
-        return data
 
     @property
     def result(self) -> str:
