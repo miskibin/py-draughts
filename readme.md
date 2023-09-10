@@ -94,6 +94,22 @@ Legal moves are: ['31-27', '31-26', '32-28', '32-27', '33-29', '33-28', '34-30',
 
 - Reads and writes fen strings
 
+
+- Writes PDN strings
+
+```python
+>>> board.push_uci("31-27")
+>>> board.push_uci("32-28")
+>>> board.push_uci("27-23")
+>>> board.push_uci("28-24")
+
+>>> board.pdn
+[GameType "20"]
+[Variant "Standard (international) checkers"]
+[Result "-"]
+'1. 31-27 32-28 2. 27-23 28-24'
+```
+
 ```python
 >>> board = get_board('standard', "W:W4,11,28,31,K33,K34,38,40,K41,43,K44,45,K46,47:BK3,21,27,32")
 >>> board.fen
