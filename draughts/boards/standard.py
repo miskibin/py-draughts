@@ -58,6 +58,7 @@ class Board(BaseBoard):
     GAME_TYPE = 20
     STARTING_POSITION = np.array([1] * 20 + [0] * 10 + [-1] * 20, dtype=np.int8)
     STARTING_COLOR = Color.WHITE
+    VARIANT_NAME = "Standard (international) checkers"
 
     ROW_IDX = {val: val // 5 for val in range(len(STARTING_POSITION))}
     COL_IDX = {val: val % 10 for val in range(len(STARTING_POSITION))}
@@ -203,14 +204,9 @@ class Board(BaseBoard):
 
 if __name__ == "__main__":
     board = Board()
-    board.push_uci("31-22")
-    print(board.turn)
-    board.is_5_moves_rule
-    board.is_16_moves_rule
-    board.is_25_moves_rule
-    board.is_threefold_repetition
-    board.is_draw
-    board.turn
-    # b = Board.from_fen("B:B:WG8,18,24,28,34,37,42,44,49:B2,10,12,15,25,26")
-    # print(b)
-    # Board.from_fen("W:W4,11,28,31,K33,K34,38,40,K41,43,K44,45,K46,47:BK3,21,27,32")
+    for i in range(10):
+        # random move
+        move = np.random.choice(list(board.legal_moves))
+        board.push(move)
+
+    print(board.pdn)

@@ -107,9 +107,10 @@ class Board(BaseBoard):
 
 
 if __name__ == "__main__":
-    from boards.standard import Board as StandardBoard
-
-    board = BaseBoard(BaseBoard.STARTING_POSITION, Color.WHITE)
-    print(board.GAME_TYPE)
     board = Board()
-    print(board.GAME_TYPE)
+    for i in range(10):
+        # random move
+        move = np.random.choice(list(board.legal_moves))
+        board.push(move)
+
+    print(board.pdn)

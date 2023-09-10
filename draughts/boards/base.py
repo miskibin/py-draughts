@@ -345,6 +345,25 @@ class BaseBoard(ABC):
         return data
 
     @property
+    def result(self) -> str:
+        """
+        Returns a result of the game.
+
+        - '1/2-1/2' - draw
+        - '1-0' - white won
+        - '0-1' - black won
+        - '-'
+
+        """
+        if self.is_draw:
+            return "1/2-1/2"
+        if self.turn == Color.WHITE and self.game_over:
+            return "0-1"
+        if self.turn == Color.BLACK and self.game_over:
+            return "1-0"
+        return "-"
+
+    @property
     def friendly_form(self) -> np.ndarray:
         """
         Returns a board position in a friendly form.
@@ -357,6 +376,37 @@ class BaseBoard(ABC):
             new_pos.append(sq)
         new_pos.append(0)
         return np.array(new_pos)
+
+    @property
+    def pdn(self) -> str:
+        """
+        Returns a PDN string that represents the game.
+        pdn - Portable Draughts Notation
+        Example:
+            ```
+            [GameType "20"]
+            [Variant "Standard (international) checkers"]
+            [Result "-"]
+            1. 34-29 17-21 2. 33-28 12-17 3. 38-33 21-26
+            4. 29-24 20x27 5. 31x22 18x27
+            ```
+        """
+        data = (
+            f'[GameType "{self.GAME_TYPE}"]\n'
+            f'[Variant "{self.VARIANT_NAME}"]\n'
+            f'[Result "{self.result}"]\n'
+        )
+        history = []  # (number, white, black)
+        for idx, move in enumerate(self._moves_stack):
+            if idx % 2 == 0:
+                history.append([(idx // 2) + 1, str(move)])
+            else:
+                history[-1].append(str(move))
+        return (
+            data
+            + " ".join(f"{h[0]}. {' '.join(h[1:])}" for h in history)
+            + self.result * (len(self.result) - 1)
+        )
 
     @staticmethod
     def is_capture(move: Move) -> bool:
@@ -381,23 +431,3 @@ class BaseBoard(ABC):
 
     def __getitem__(self, key: SquareT) -> Figure:
         return self.position[key]
-
-
-if __name__ == "__main__":
-    board = BaseBoard(BaseBoard.STARTING_POSITION, Color.WHITE)
-    print(board.GAME_TYPE)
-    # print(board)
-# print(board.info)
-#     m1 = Move([C3, B4])
-#     board.push(m1)
-
-#     m2 = Move([B6, A5])
-#     board.push(m2)
-
-#     m3 = Move([G3, H4])
-#     board.push(m3)
-#     print(board)
-
-#     m4 = Move([A5, C3], captured_list=[B4])
-#     board.push(m4)
-#     print(board)
