@@ -42,8 +42,8 @@ project = "py-draughts"
 copyright = "2023, Michal Skibinski"
 
 # The version.
-version = draughts.__version__
-release = draughts.__version__
+# version = draughts.__version__
+# release = draughts.__version__
 
 
 myst_enable_extensions = [
