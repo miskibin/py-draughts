@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import re
 from abc import ABC, abstractproperty
-from typing import Generator
+from typing import Generator, Literal
 
 import numpy as np
 
@@ -334,15 +334,9 @@ class BaseBoard(ABC):
                 )
 
     @property
-    def result(self) -> str:
+    def result(self) -> Literal["1/2-1/2", "1-0", "0-1", "-"]:
         """
         Returns a result of the game.
-
-        - '1/2-1/2' - draw
-        - '1-0' - white won
-        - '0-1' - black won
-        - '-'
-
         """
         if self.is_draw:
             return "1/2-1/2"
