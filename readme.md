@@ -127,7 +127,7 @@ _Example with simplest possible engine._
 
 
 ```python
->>> from draughts.server import Server
+>>> from draughts import Server
 >>> import numpy as np
 >>> get_best_mv = lambda board: np.random.choice(list(board.legal_moves))
 >>> server = Server(get_best_move_method=get_best_mv)

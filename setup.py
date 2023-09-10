@@ -2,7 +2,8 @@ from pathlib import Path
 
 import setuptools
 
-from draughts.__init__ import __doc__, __version__
+__version__ = "1.3.0"
+__author__ = "Michał Skibiński"
 
 this_directory = Path(__file__).parent
 long_description = (this_directory / "readme.md").read_text()
@@ -15,9 +16,14 @@ setuptools.setup(
     name="py-draughts",
     install_requires=requirements,
     version=__version__,
-    author="Michał Skibiński",
+    author=__author__,
     author_email="mskibinski109@gmail.com",
-    description=__doc__.replace("\n", " ").strip(),
+    description="""
+        A draughts library with advenced (customizable) WEB UI move generation and validation,
+        PDN parsing and writing. Supports multiple variants of game.
+        """.replace(
+        "\n", " "
+    ).strip(),
     long_description=long_description,
     # rst
     long_description_content_type="text/markdown",
