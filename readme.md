@@ -104,10 +104,10 @@ Legal moves are: ['31-27', '31-26', '32-28', '32-27', '33-29', '33-28', '34-30',
 >>> board.push_uci("28-24")
 
 >>> board.pdn
-[GameType "20"]
-[Variant "Standard (international) checkers"]
-[Result "-"]
-'1. 31-27 32-28 2. 27-23 28-24'
+'[GameType "20"]
+ [Variant "Standard (international) checkers"]
+ [Result "-"]
+ 1. 31-27 32-28 2. 27-23 28-24'
 ```
 
 ```python
