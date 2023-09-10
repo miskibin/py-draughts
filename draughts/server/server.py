@@ -11,7 +11,6 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel, Field
 
-from draughts import __version__
 from draughts.boards.base import BaseBoard, Color
 
 
@@ -22,7 +21,7 @@ class PositionResponse(BaseModel):
 
 
 class Server:
-    APP = FastAPI(title="py-draughts", version=__version__)
+    APP = FastAPI(title="py-draughts")
     static_dir = Path(__file__).parent / "static"
     APP.mount("/static", StaticFiles(directory=static_dir), name="static")
     templates_dir = Path(__file__).parent / "templates"
@@ -62,13 +61,13 @@ class Server:
 
     def set_board(self, request: Request, board_type: Literal["standard", "american"]):
         if board_type == "standard":
-            from draughts.boards.standard import Board
+            from draughts import StandardBoard
 
-            self.board = Board()
+            self.board = StandardBoard()
         elif board_type == "american":
-            from draughts.boards.american import Board
+            from draughts import AmericanBoard
 
-            self.board = Board()
+            self.board = AmericanBoard()
 
         return RedirectResponse(url="/")
 
