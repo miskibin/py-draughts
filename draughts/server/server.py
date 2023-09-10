@@ -13,7 +13,6 @@ from pydantic import BaseModel, Field
 
 from draughts import __version__
 from draughts.boards.base import BaseBoard, Color
-from draughts.boards.standard import Board
 
 
 class PositionResponse(BaseModel):
@@ -31,7 +30,7 @@ class Server:
 
     def __init__(
         self,
-        board: BaseBoard = Board(),
+        board: BaseBoard,
         get_best_move_method: callable = None,
     ):
         self.get_best_move_method = get_best_move_method
@@ -63,11 +62,11 @@ class Server:
 
     def set_board(self, request: Request, board_type: Literal["standard", "american"]):
         if board_type == "standard":
-            from boards.standard import Board
+            from draughts.boards.standard import Board
 
             self.board = Board()
         elif board_type == "american":
-            from draughts.american import Board
+            from draughts.boards.american import Board
 
             self.board = Board()
 
@@ -83,7 +82,7 @@ class Server:
 
     @property
     def position_json(self) -> PositionResponse:
-        history = []  # (numver, white, black)
+        history = []  # (number, white, black)
         stack = self.board._moves_stack
         for idx in range(len(stack)):
             if idx % 2 == 0:
@@ -145,8 +144,7 @@ if __name__ == "__main__":
     from draughts.engine import AlphaBetaEngine
     from draughts import get_board
 
-    fen = "W:W25,26,28,34,35,42,43:B3,5,6,14,23,30,32"
     engine = AlphaBetaEngine(depth=3)
-    board = get_board("standard", fen=fen)
+    board = get_board("standard")
     server = Server(board=board, get_best_move_method=engine.get_best_move)
     server.run()
