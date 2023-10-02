@@ -122,7 +122,7 @@ class BaseBoard(ABC):
         self._pos = (
             starting_position
             if starting_position is not None
-            else self.STARTING_POSITION
+            else self.STARTING_POSITION.copy()
         )
         self.turn = turn if turn is not None else self.STARTING_COLOR
         size = int(np.sqrt(len(self._pos) * 2))
