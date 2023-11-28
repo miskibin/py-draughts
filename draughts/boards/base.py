@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import re
 from abc import ABC, abstractproperty
-from typing import Generator, Literal
+from typing import Generator, Literal, Optional
 from typing import Type
 import numpy as np
 
@@ -109,8 +109,8 @@ class BaseBoard(ABC):
 
     def __init__(
         self,
-        starting_position: np.ndarray = None,
-        turn: Color = None,
+        starting_position: Optional[np.ndarray] = None,
+        turn: Optional[Color] = None,
     ) -> None:
         """
         Initializes the board with a starting position.

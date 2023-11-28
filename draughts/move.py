@@ -28,7 +28,7 @@ class Move:
         self,
         visited_squares: list[int],
         captured_list: list[int] = [],
-        captured_entities: list[Figure.value] = [],
+        captured_entities: list[int] = [],
         is_promotion: bool = False,
     ) -> None:
         self.square_list = visited_squares
@@ -115,10 +115,10 @@ class Move:
         else:
             raise ValueError(f"Invalid move {move}.")
 
-        move = Move([int(step) - 1 for step in steps])
+        move_obj = Move([int(step) - 1 for step in steps])
         for legal_move in legal_moves:
-            if legal_move == move:
+            if legal_move == move_obj:
                 return legal_move
         raise ValueError(
-            f"{str(move)} is correct, but not legal in given position.\n Legal moves are: {list(map(str,legal_moves))}"
+            f"{str(move_obj)} is correct, but not legal in given position.\n Legal moves are: {list(map(str,legal_moves))}"
         )

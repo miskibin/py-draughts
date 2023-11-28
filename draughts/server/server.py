@@ -1,7 +1,7 @@
 import json
 from collections import defaultdict
 from pathlib import Path
-from typing import Literal
+from typing import Literal, Callable
 
 import numpy as np
 import uvicorn
@@ -10,7 +10,6 @@ from fastapi.responses import RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel, Field
-
 from draughts.boards.base import BaseBoard, Color
 
 
@@ -30,7 +29,9 @@ class Server:
     def __init__(
         self,
         board: BaseBoard,
-        get_best_move_method: callable = None,
+        get_best_move_method: Callable = lambda board: np.random.choice(
+            list(board.legal_moves)
+        ),
     ):
         self.get_best_move_method = get_best_move_method
         self.board = board
@@ -51,10 +52,6 @@ class Server:
         )
         self.router.add_api_route("/pop", self.pop, methods=["GET"])
         self.APP.include_router(self.router)
-        if not get_best_move_method:
-            self.get_best_move_method = lambda board: np.random.choice(
-                list(board.legal_moves)
-            )
 
     def get_fen(self):
         return {"fen": self.board.fen}
@@ -88,11 +85,10 @@ class Server:
                 history.append([(idx // 2) + 1, str(stack[idx])])
             else:
                 history[-1].append(str(stack[idx]))
-        turn = "white" if self.board.turn == Color.WHITE else "black"
         return PositionResponse(
             position=self.board.friendly_form.tolist(),
             history=history,
-            turn=turn,
+            turn="white" if self.board.turn == Color.WHITE else "black",
         )
 
     def get_position(self, request: Request) -> PositionResponse:

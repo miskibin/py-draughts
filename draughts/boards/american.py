@@ -40,11 +40,6 @@ class Board(BaseBoard):
 
     size = int(np.sqrt(len(STARTING_POSITION) * 2))
 
-    # def __init__(
-    #     self, starting_position=STARTING_POSITION, turn=STARTING_COLOR, *args, **kwargs
-    # ) -> None:
-    #     super().__init__(starting_position, turn, *args, **kwargs)
-
     @property
     def is_draw(self) -> bool:
         return self.is_threefold_repetition
