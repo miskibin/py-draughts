@@ -3,7 +3,7 @@ from __future__ import annotations
 import re
 from abc import ABC, abstractproperty
 from typing import Generator, Literal
-
+from typing import Type
 import numpy as np
 
 from draughts.models import FIGURE_REPR, Color, Figure, SquareT

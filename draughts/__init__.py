@@ -15,14 +15,11 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 """
-A draughts library with advenced (customizable) WEB UI move generation and validation,
+A draughts library with advanced (customizable) WEB UI move generation and validation,
 PDN parsing and writing. Supports multiple variants of game.
 """
+from typing import Literal, Optional, Type
 
-from typing import Literal, NewType
-
-
-BaseBoardT = NewType("BaseBoard", type)
 # create board type
 from draughts.boards.base import BaseBoard
 from draughts.boards.standard import Board as StandardBoard
@@ -32,7 +29,7 @@ from draughts.server.server import Server
 
 
 def get_board(
-    variant: Literal["standard", "american", "frisian"], fen: str = None
+    variant: Literal["standard", "american", "frisian"], fen: Optional[str] = None
 ) -> BaseBoard:
     """
     Board factory method.
@@ -41,15 +38,12 @@ def get_board(
     - ``frisian`` - frisian draughts board
     """
 
-    BOARDS = {
+    BOARDS: dict[str, Type[BaseBoard]] = {
         "standard": StandardBoard,
         "frisian": FrisianBoard,
         "american": AmericanBoard,
     }
-    board_cls: BaseBoard = BOARDS[variant]
+    board_cls = BOARDS[variant]
     if fen:
         return board_cls.from_fen(fen)
     return board_cls()
-
-
-# Server(StandardBoard()).run()

@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-
+from typing import Optional
 from tqdm import tqdm
 from draughts.boards.standard import Board, Move, Figure
 from draughts.models import Color
@@ -13,7 +13,9 @@ class Engine(ABC):
     """
 
     @abstractmethod
-    def get_best_move(self, board: Board) -> Move:
+    def get_best_move(
+        self, board: Board, with_evaluation: bool
+    ) -> Move | tuple[Move, float]:
         """
         Returns best move for given board.
         It could be random move, or move calculated by some algorithm.
@@ -50,9 +52,7 @@ class AlphaBetaEngine(Engine):
         """
         return -board._pos.sum()
 
-    def get_best_move(
-        self, board: Board = None, with_evaluation: bool = False
-    ) -> tuple:
+    def get_best_move(self, board: Board, with_evaluation: bool = False):
         self.inspected_nodes = 0
         move, evaluation = self.__get_engine_move(board)
         logger.debug(f"\ninspected  {self.inspected_nodes} nodes\n")
