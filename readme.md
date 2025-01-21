@@ -16,7 +16,7 @@ pip install py-draughts
 ```
 
 
-### [Documentation](https://michalskibinski109.github.io/py-draughts/)
+### [Documentation](https://miskibin.github.io/py-draughts/)
 
 ## Key features
 
