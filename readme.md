@@ -115,7 +115,7 @@ Legal moves are: ['31-27', '31-26', '32-28', '32-27', '33-29', '33-28', '34-30',
 >>> board.fen
 '[FEN "W:W4,11,28,31,K33,K34,38,40,K41,43,K44,45,K46,47:BK3,21,27,32"]'
 ```
-- Has simple engine
+- Has powerful AI engine
 
 ```python
 >>> from draughts.engine import AlphaBetaEngine
@@ -123,6 +123,16 @@ Legal moves are: ['31-27', '31-26', '32-28', '32-27', '33-29', '33-28', '34-30',
 >>> engine.get_best_move(board, with_evaluation=True)
 Move: 28->37, 3.0
 ```
+
+The engine uses **alpha-beta pruning** with several optimizations:
+- **Move ordering**: Captures are evaluated first for better pruning
+- **Transposition table**: Caches positions to avoid redundant calculations  
+- **Enhanced evaluation**: Considers material, positioning, and king promotion
+
+**Performance guide:**
+- Depth 3-4: Fast, good for interactive play (~0.1s per move)
+- Depth 5-6: Strong play with reasonable speed (~1-5s per move)
+- Depth 7+: Very strong but slower, best for analysis (>10s per move)
 
 ## UI
 
