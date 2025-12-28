@@ -72,6 +72,11 @@ class AlphaBetaEngine(Engine):
     WHITE_WIN = -100 * Color.WHITE.value
     BLACK_WIN = -100 * Color.BLACK.value
     LOSE = -100
+    
+    # Evaluation constants
+    BOARD_WIDTH = 5  # Width of the draughts board in playable squares
+    MAX_ROW = 9      # Maximum row index for positional evaluation
+    POSITION_BONUS = 0.1  # Bonus multiplier for advanced piece positioning
 
     def __init__(self, depth):
         """
@@ -113,7 +118,8 @@ class AlphaBetaEngine(Engine):
             piece = position[idx]
             if piece != 0:
                 # Award bonus for piece advancement (based on board position)
-                row_bonus = (idx // 5) * 0.1 if piece > 0 else ((9 - idx // 5) * 0.1)
+                row_bonus = (idx // self.BOARD_WIDTH) * self.POSITION_BONUS if piece > 0 \
+                           else ((self.MAX_ROW - idx // self.BOARD_WIDTH) * self.POSITION_BONUS)
                 score += row_bonus * abs(piece)
         
         return score
@@ -130,7 +136,7 @@ class AlphaBetaEngine(Engine):
             Move or tuple[Move, float]: Best move, optionally with its evaluation
         """
         self.inspected_nodes = 0
-        self._transposition_table.clear()  # Clear cache for new search
+        # Note: Transposition table is preserved between moves for better performance
         move, evaluation = self.__get_engine_move(board)
         logger.debug(f"\ninspected  {self.inspected_nodes} nodes\n")
         logger.info(f"best move: {move}, evaluation: {evaluation:.2f}")
@@ -251,7 +257,7 @@ class AlphaBetaEngine(Engine):
             board.push(move)
             evaluation = self.__alpha_beta_pruning(board, depth - 1, alpha, beta)
             
-            # Small bonus for achieving king promotion
+            # Small penalty for not promoting to king (encourages king promotion)
             evaluation -= np.abs(board.position[move.square_list[-1]]) == Figure.KING
             board.pop()
             
