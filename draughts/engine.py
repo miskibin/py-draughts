@@ -145,12 +145,6 @@ class AlphaBetaEngine(Engine):
         return move
 
     def __get_engine_move(self, board: Board) -> tuple:
-        """
-        Root node of the search tree. Evaluates all legal moves and picks the best.
-        
-        This method uses iterative deepening at the root level to search all moves
-        and apply alpha-beta pruning to eliminate poor moves early.
-        """
         depth = self.depth
         legal_moves = list(board.legal_moves)
         
@@ -187,19 +181,6 @@ class AlphaBetaEngine(Engine):
         return legal_moves[index], evals[index]
     
     def _order_moves(self, moves: list[Move], board: Board) -> list[Move]:
-        """
-        Order moves to improve alpha-beta pruning efficiency.
-        
-        Captures are evaluated first as they are more likely to be good moves.
-        This improves pruning effectiveness significantly.
-        
-        Args:
-            moves: List of legal moves
-            board: Current board state
-            
-        Returns:
-            Ordered list of moves with captures first
-        """
         captures = [m for m in moves if m.captured_list]
         non_captures = [m for m in moves if not m.captured_list]
         return captures + non_captures
@@ -207,29 +188,6 @@ class AlphaBetaEngine(Engine):
     def __alpha_beta_pruning(
         self, board: Board, depth: int, alpha: float, beta: float
     ) -> float:
-        """
-        Alpha-beta pruning algorithm for minimax tree search.
-        
-        This recursive function searches the game tree to find the best move
-        by exploring positions and pruning branches that cannot affect the outcome.
-        
-        Args:
-            board: Current board position
-            depth: Remaining search depth
-            alpha: Best value for maximizing player (White)
-            beta: Best value for minimizing player (Black)
-            
-        Returns:
-            Evaluation score for the position
-            
-        Algorithm:
-            1. Check terminal conditions (game over or max depth)
-            2. Check transposition table for cached evaluation
-            3. Generate and order legal moves
-            4. Recursively evaluate each move
-            5. Update alpha/beta and prune if possible
-            6. Cache result in transposition table
-        """
         # Terminal node: game is over
         if board.game_over:
             if not board.is_draw:
