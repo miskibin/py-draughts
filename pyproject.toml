@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "py-draughts"
-version = "1.3.1"
+version = "1.4.2"
 description = "A draughts library with advanced (customizable) WEB UI move generation and validation, PDN parsing and writing. Supports multiple variants of game."
 readme = "readme.md"
 license = {file = "LICENSE"}
