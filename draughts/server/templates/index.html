@@ -1,90 +1,109 @@
 <!-- extends base.html -->
-{% extends "base.html" %} {% block content %}
-<main>
-  <div class="row h-100">
-    <div class="col-3 rounded p-5">
-      <div class="row">
-        <div class="col-12">
-          <h1 class="text-center">Settings</h1>
-        </div>
-        <!-- game type -->
-        <hr class="col-12 bg-secondary" />
-        <div class="col-12">
-          <p class="display-6">Game type</p>
-        </div>
-        <a href="/set_board/american" class="col-12 btn btn-custom mt-3"
-          >American (8x8)</a
-        >
-        <a href="/set_board/standard" class="col-12 btn btn-custom mt-3"
-          >Standard (10x10)</a
-        >
-        <a href="#" class="col-12 btn btn-custom mt-3 disabled"
-          >Your own board . . .</a
-        >
-        <!-- game settings -->
-        <hr class="col-12 bg-secondary" />
-        <div class="col-12">
-          <p class="display-6">Game control</p>
-        </div>
-        <button id="makeMove" class="col-12 btn btn-custom mt-3">
-          Make engine move
-        </button>
+{% extends "base.html" %} 
 
-        <button id="popBtn" class="col-12 btn btn-custom mt-3">Undo</button>
-        <button id="randomPos" class="col-12 btn btn-custom mt-3">
-          Set random position
-        </button>
-        <button id="copyFen" class="col-12 btn btn-custom mt-3">
-          Copy FEN <small>to clipboard</small>
-        </button>
-        <button id="autoPlay" class="col-12 btn btn-custom mt-3">
-          Auto play
-        </button>
-      </div>
-    </div>
-    <div class="col-6 h-100">
-      <div
-        id="board"
-        class="board"
-        crown_icon="{{ url_for('static', path='img/crown-icon.svg') }}"
-      >
-        {% for i in range(size) %}
-        <div class="tile" id="tile-{{ i }}" tile-number="{{ i }}">
-          <p id="tile-{{ i }}-text" class="tile-text"></p>
+{% block content %}
+<div class="app-container">
+  <main class="main-content">
+    
+    <!-- Left Panel - Controls -->
+    <div class="side-panel panel">
+      <div class="panel-header">Game</div>
+      <div class="panel-body">
+        
+        <!-- Board Type -->
+        <div class="settings-section">
+          <div class="section-title">Board</div>
+          <div class="d-grid gap-1">
+            <a href="/set_board/american" class="btn btn-game">
+              <i class="bi bi-grid"></i>
+              American 8×8
+            </a>
+            <a href="/set_board/standard" class="btn btn-game">
+              <i class="bi bi-grid-3x3-gap-fill"></i>
+              Standard 10×10
+            </a>
+          </div>
         </div>
-        {% endfor %}
-      </div>
-    </div>
-    <div class="col-2 pl-5 pr-0 pb-5 pt-5 rounded">
-      <div class="row">
-        <div class="col-12">
-          <h1 class="text-center">Game info</h1>
-        </div>
-        <hr class="col-12 bg-secondary" />
 
-        <div class="col-12">
-          <p class="display-6">Turn: <code id="turn">White</code></p>
-        </div>
-        <div class="col-12">
-          <p class="display-6">Move history</p>
-          <table class="table m-0">
-            <thead>
-              <tr>
-                <th scope="col">Nr</th>
-                <th scope="col">White</th>
-                <th scope="col">Black</th>
-              </tr>
-            </thead>
-          </table>
+        <div class="divider"></div>
 
-          <div id="historyContainer" class="history-container m-0">
-            <table class="table">
-              <tbody id="historyTableBody"></tbody>
-            </table>
+        <!-- Controls -->
+        <div class="settings-section">
+          <div class="section-title">Controls</div>
+          <div class="d-grid gap-1">
+            <button id="makeMove" class="btn btn-game" type="button">
+              <i class="bi bi-cpu"></i>
+              Engine Move
+            </button>
+            <button id="popBtn" class="btn btn-game" type="button">
+              <i class="bi bi-arrow-counterclockwise"></i>
+              Undo
+            </button>
+            <button id="randomPos" class="btn btn-game" type="button">
+              <i class="bi bi-shuffle"></i>
+              Random
+            </button>
+            <button id="copyFen" class="btn btn-game" type="button">
+              <i class="bi bi-clipboard"></i>
+              Copy FEN
+            </button>
+            <button id="autoPlay" class="btn btn-game" type="button">
+              <i class="bi bi-play-fill"></i>
+              Auto Play
+            </button>
           </div>
         </div>
       </div>
     </div>
+
+    <!-- Board Area - Center -->
+    <div class="board-area">
+      <div 
+        id="board" 
+        class="game-board"
+        data-crown-icon="{{ url_for('static', path='img/crown-icon.svg') }}"
+      >
+        {% for i in range(size) %}
+        <div class="tile" id="tile-{{ i }}" data-tile-number="{{ i }}">
+          <span id="tile-{{ i }}-text" class="tile-text"></span>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+
+    <!-- Right Panel - Info -->
+    <div class="side-panel panel">
+      <div class="panel-header">Info</div>
+      <div class="panel-body">
+        
+        <!-- Turn -->
+        <div id="turnIndicator" class="turn-indicator turn-white">
+          <div class="turn-dot"></div>
+          <span id="turn" class="turn-text">White</span>
+          <span class="turn-text ms-auto">to move</span>
+        </div>
+
+        <!-- Move History -->
+        <div class="section-title">Moves</div>
+        <div id="moveList" class="move-list">
+          <!-- Move rows inserted here -->
+        </div>
+
+      </div>
+    </div>
+    
+  </main>
+</div>
+
+<!-- Toast -->
+<div class="toast-container position-fixed bottom-0 end-0 p-3">
+  <div id="notificationToast" class="toast" role="alert" aria-live="assertive" aria-atomic="true">
+    <div class="toast-header">
+      <i class="bi bi-check-circle-fill text-success me-2" id="toastIcon"></i>
+      <strong class="me-auto" id="toastTitle">Notification</strong>
+      <button type="button" class="btn-close btn-close-white" data-bs-dismiss="toast" aria-label="Close"></button>
+    </div>
+    <div class="toast-body" id="toastMessage"></div>
   </div>
-</main>
+</div>
 {% endblock %}

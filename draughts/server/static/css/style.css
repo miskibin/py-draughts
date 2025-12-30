@@ -1,201 +1,494 @@
+/* ==========================================================================
+   CSS Custom Properties (Design Tokens)
+   ========================================================================== */
+
 :root {
-    --primary: #FDF0D5;
-    --white-man: #780000;
-    --black-man: #336683;
-    --light: #FDF0D5;
-    --dark: #669BBC;
-    --dark: #003049;
-    --secondary: #333;
-    --red: #3bce4575;
-    --tetriary: #669BBC;
+    /* Board Colors - Warm wood tones */
+    --color-board-light: #e8d4b8;
+    --color-board-dark: #b58863;
+
+    /* Piece Colors */
+    --color-piece-white: #f0f0f0;
+    --color-piece-black: #1a1a1a;
+
+    /* UI Colors - Deep blue-gray theme */
+    --color-background: #1e2433;
+    --color-surface: #282d3a;
+    --color-surface-hover: #363c4d;
+    --color-border: #3a4155;
+
+    /* Text Colors */
+    --color-text-primary: #e8eaed;
+    --color-text-secondary: #9aa0a6;
+    --color-text-muted: #6b7280;
+
+    /* Board Text - High contrast */
+    --color-board-text-light: #8b7355;
+    --color-board-text-dark: #f5e6d3;
+
+    /* Accent Colors */
+    --color-accent: #7c9cff;
+    --color-highlight: rgba(124, 156, 255, 0.4);
+
+    /* Spacing */
+    --spacing-xs: 0.25rem;
+    --spacing-sm: 0.5rem;
+    --spacing-md: 1rem;
+    --spacing-lg: 1.5rem;
+
+    /* Border Radius */
+    --radius-sm: 4px;
+    --radius-md: 6px;
+    --radius-full: 50%;
+
+    /* Transitions */
+    --transition-fast: 0.1s ease;
+    --transition-normal: 0.2s ease;
+
+    /* Z-Index */
+    --z-piece: 10;
+    --z-crown: 20;
 }
 
-/* 
---hunyadi-yellow: #edae49ff;
---amaranth: #d1495bff;
---caribbean-current: #00798cff;
---lapis-lazuli: #30638eff;
---indigo-dye: #003d5bff;
 
-*/
+/* ==========================================================================
+   Base Styles & Layout
+   ========================================================================== */
 
-main {
-    /* display: flex;
-    align-items: center;
-    justify-content: center; */
-    height: 100vh;
-    font-family: sans-serif;
-    font-size: 1.5rem;
-    background-color: var(--secondary);
-    color: var(--light);
+html,
+body {
+    height: 100%;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, sans-serif;
+    background-color: var(--color-background);
+    color: var(--color-text-primary);
     overflow: hidden;
 }
 
-.board {
+.app-container {
+    height: 100vh;
+    width: 100vw;
+}
+
+.main-content {
+    height: 100%;
+    display: grid;
+    grid-template-columns: 240px 1fr 280px;
+    gap: 0;
+}
+
+
+/* ==========================================================================
+   Panel Components
+   ========================================================================== */
+
+.panel {
+    background-color: var(--color-surface);
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+}
+
+.panel-header {
+    padding: var(--spacing-sm) var(--spacing-md);
+    border-bottom: 1px solid var(--color-border);
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--color-text-secondary);
+}
+
+.panel-body {
+    flex: 1;
+    overflow: hidden;
+    padding: var(--spacing-sm);
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+}
+
+
+/* ==========================================================================
+   Settings & Info Sections
+   ========================================================================== */
+
+.settings-section,
+.info-section {
+    margin-bottom: var(--spacing-md);
+}
+
+.section-title {
+    font-size: 0.7rem;
+    font-weight: 600;
+    color: var(--color-text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-bottom: var(--spacing-sm);
+    padding: var(--spacing-xs) 0;
+}
+
+
+/* ==========================================================================
+   Button Styles
+   ========================================================================== */
+
+.btn-game {
+    background-color: var(--color-surface-hover);
+    border: none;
+    color: var(--color-text-primary);
+    padding: 0.6rem 0.75rem;
+    font-size: 0.85rem;
+    font-weight: 500;
+    text-align: left;
+    transition: var(--transition-fast);
+    border-radius: var(--radius-sm);
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.btn-game:hover:not(.disabled):not(:disabled) {
+    background-color: var(--color-accent);
+    color: #fff;
+}
+
+.btn-game.disabled,
+.btn-game:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+.btn-game i {
+    font-size: 0.9rem;
+    opacity: 0.8;
+}
+
+.btn-game .spinner-border {
+    width: 0.9rem;
+    height: 0.9rem;
+    border-width: 0.12em;
+}
+
+
+/* ==========================================================================
+   Game Board Styles
+   ========================================================================== */
+
+.board-area {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: var(--spacing-lg);
+}
+
+.game-board {
     display: grid;
     grid-template-columns: repeat(10, 1fr);
     grid-template-rows: repeat(10, 1fr);
-    grid-gap: 1px;
-    border: 2px;
-    height: 95%;
+    aspect-ratio: 1;
+    height: min(92vh, calc(100vw - 560px));
+    border-radius: var(--radius-md);
+    overflow: hidden;
+    box-shadow: 
+        0 4px 16px rgba(0, 0, 0, 0.3),
+        0 0 0 4px var(--color-surface);
+}
 
-    margin: 20px auto;
-    background-color: var(--secondary);
-    padding: 10px;
-    border-radius: 10px;
-    color: var(--light);
+.side-panel {
+    display: flex;
+    flex-direction: column;
+    border-left: 1px solid var(--color-border);
+}
 
+.side-panel:first-child {
+    border-left: none;
+    border-right: 1px solid var(--color-border);
 }
 
 .tile {
     position: relative;
-    /* display */
     display: flex;
-    /* justify content */
     justify-content: center;
-    /* align items */
     align-items: center;
-    /* font size */
-    font-size: 30px;
-    /* font weight */
-    color: var(--light);
-    /* border */
-    border: 2px solid var(--primary);
-    /* border radius */
-    border-radius: 10px;
-    /* background */
-    background: var(--primary);
-    /* cursor */
     cursor: pointer;
-    /* hover-time */
-    transition: 0.2s ease-in-out;
-    /* not user select */
     user-select: none;
-}
-
-.higlight {
-    background-color: var(--red) !important;
-    border-radius: 70px;
-    transition: 0.1s ease-in-out;
-}
-
-.dark-tile {
-    background-color: var(--dark);
-}
-
-.light-tile {
-    background-color: var(--light);
-    color: var(--dark);
-}
-
-.piece {
-    position: absolute;
-    width: 80%;
-    height: 80%;
-    border-radius: 50%;
-    opacity: .84;
-    background: var(--primary);
-    box-shadow: 0.3rem 0.9rem 0.7rem rgba(0, 0, 0, 0.747);
-    pointer-events: auto;
-    z-index: 1;
-}
-
-
-
-.crown {
-    width: 60%;
-    height: 60%;
-    opacity: 0.4;
-    margin: auto;
-    position: absolute;
-    pointer-events: none;
-    align-self: center;
-    justify-self: center;
-
-    z-index: 2;
-}
-
-.tile:hover {
-    /* background */
-    border-radius: 6px;
-}
-
-
-
-.tile:active .piece {
-    /* background */
-    width: 70%;
-    height: 70%;
-}
-
-.box {
-    background: #fff;
-    border-radius: 4px;
-    padding-bottom: 100%;
 }
 
 .tile-text {
     position: absolute;
-    text-align: center;
-    font-weight: bolder;
-
+    font-size: 0.7rem;
+    font-weight: 700;
+    pointer-events: none;
+    margin: 0;
+    top: 3px;
+    left: 5px;
 }
 
-.btn-custom {
-    background-color: var(--primary);
-    color: var(--dark);
-    border: 2px solid var(--dark);
-    border-radius: 10px;
-    font-weight: bold;
-    cursor: pointer;
-    transition: 0.01s ease-in-out;
-    user-select: none;
+.dark-tile {
+    background-color: var(--color-board-dark);
 }
 
-.btn-custom:hover {
-    background-color: var(--dark);
-    color: var(--primary);
-    border: 2px solid var(--primary);
+.dark-tile .tile-text {
+    color: var(--color-board-text-dark);
 }
 
-.history-container {
+.light-tile {
+    background-color: var(--color-board-light);
+}
+
+.light-tile .tile-text {
+    color: var(--color-board-text-light);
+}
+
+.highlight {
     position: relative;
-    overflow-y: scroll;
-    max-height: 500px;
-    background-color: var(--secondary) !important;
-    border: 0 2px solid var(--primary);
-    border-radius: 10px;
-    font-weight: bold;
+}
+
+.highlight::after {
+    content: '';
+    position: absolute;
+    width: 35%;
+    height: 35%;
+    background-color: rgba(0, 0, 0, 0.15);
+    border-radius: var(--radius-full);
+}
+
+
+/* ==========================================================================
+   Piece Styles
+   ========================================================================== */
+
+.piece {
+    position: absolute;
+    width: 75%;
+    height: 75%;
+    border-radius: var(--radius-full);
+    pointer-events: auto;
+    z-index: var(--z-piece);
+    transition: transform 0.08s ease;
+    cursor: pointer;
+    box-shadow: 
+        0 3px 6px rgba(0, 0, 0, 0.3),
+        inset 0 -3px 8px rgba(0, 0, 0, 0.2),
+        inset 0 3px 8px rgba(255, 255, 255, 0.1);
+}
+
+.piece:hover {
+    transform: scale(1.08);
+}
+
+.piece:active {
+    transform: scale(0.95);
+}
+
+.crown {
+    position: absolute;
+    width: 45%;
+    height: 45%;
+    opacity: 0.85;
+    pointer-events: none;
+    z-index: var(--z-crown);
+}
+
+.crown.crown-light {
+    filter: invert(1);
+}
+
+
+/* ==========================================================================
+   Turn Indicator
+   ========================================================================== */
+
+.turn-indicator {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    padding: var(--spacing-sm) var(--spacing-md);
+    background-color: var(--color-surface-hover);
+    border-radius: var(--radius-sm);
+    margin-bottom: var(--spacing-sm);
+}
+
+.turn-dot {
+    width: 12px;
+    height: 12px;
+    border-radius: var(--radius-full);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+}
+
+.turn-white .turn-dot {
+    background-color: var(--color-piece-white);
+}
+
+.turn-black .turn-dot {
+    background-color: var(--color-piece-black);
+}
+
+.turn-text {
+    font-size: 0.85rem;
+    font-weight: 500;
+}
+
+
+/* ==========================================================================
+   Move History
+   ========================================================================== */
+
+.move-list {
+    overflow-y: auto;
+    font-size: 0.8rem;
+    font-family: 'SF Mono', 'Consolas', monospace;
+    max-height: calc(100vh - 200px);
+}
+
+.move-row {
+    display: flex;
+    padding: 0.25rem 0.5rem;
+    border-radius: var(--radius-sm);
+}
+
+.move-row:hover {
+    background-color: var(--color-surface-hover);
+}
+
+.move-row:last-child {
+    background-color: var(--color-surface-hover);
+}
+
+.move-number {
+    width: 24px;
+    color: var(--color-text-muted);
+    flex-shrink: 0;
+}
+
+.move-white,
+.move-black {
+    flex: 1;
+    color: var(--color-text-secondary);
+}
+
+.move-white:hover,
+.move-black:hover {
+    color: var(--color-text-primary);
     cursor: pointer;
 }
 
-table {
-    color: var(--light) !important;
-    border: var(--light) !important;
-    font-size: medium;
+
+/* ==========================================================================
+   Toast Notifications
+   ========================================================================== */
+
+.toast {
+    background-color: var(--color-surface);
+    border: 1px solid var(--color-border);
+    color: var(--color-text-primary);
+    font-size: 0.85rem;
 }
 
-tr {
-    border: 1px solid var(--light) !important;
+.toast-header {
+    background-color: var(--color-surface-hover);
+    color: var(--color-text-primary);
+    border-bottom: 1px solid var(--color-border);
+    padding: 0.5rem 0.75rem;
 }
 
-/* width */
+.toast-body {
+    padding: 0.5rem 0.75rem;
+}
+
+
+/* ==========================================================================
+   Scrollbar Styles
+   ========================================================================== */
+
 ::-webkit-scrollbar {
-    width: 10px;
-    /* background: var(--primary); */
-    border-radius: 0px;
+    width: 6px;
 }
 
-/* Track */
 ::-webkit-scrollbar-track {
-    border-radius: 0px;
-    background: var(--secondary);
+    background: transparent;
 }
 
-/* Handle */
 ::-webkit-scrollbar-thumb {
-    background: var(--primary);
-    /* border-radius: inherit; */
+    background: var(--color-border);
+    border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: var(--color-text-muted);
+}
+
+
+/* ==========================================================================
+   Utility Classes
+   ========================================================================== */
+
+.btn-icon {
+    padding: 0.5rem;
+    line-height: 1;
+}
+
+.divider {
+    height: 1px;
+    background-color: var(--color-border);
+    margin: var(--spacing-sm) 0;
+}
+
+
+/* ==========================================================================
+   Responsive Adjustments
+   ========================================================================== */
+
+@media (max-width: 1024px) {
+    .main-content {
+        grid-template-columns: 200px 1fr 220px;
+    }
+
+    .game-board {
+        height: min(calc(100vh - 3rem), calc(100vw - 480px));
+    }
+}
+
+@media (max-width: 768px) {
+    .main-content {
+        grid-template-columns: 1fr;
+        grid-template-rows: auto 1fr auto;
+    }
+
+    .side-panel {
+        border: none;
+        border-bottom: 1px solid var(--color-border);
+    }
+
+    .side-panel:last-child {
+        border-bottom: none;
+        border-top: 1px solid var(--color-border);
+    }
+
+    .board-area {
+        padding: var(--spacing-sm);
+    }
+
+    .game-board {
+        height: auto;
+        width: 100%;
+        max-height: 60vh;
+    }
+
+    .panel-body {
+        display: flex;
+        flex-wrap: wrap;
+        gap: var(--spacing-sm);
+    }
+
+    .settings-section {
+        margin-bottom: 0;
+    }
 }
 
 /* auto scroll to bottom */

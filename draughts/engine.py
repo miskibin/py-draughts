@@ -39,6 +39,7 @@ class Engine(ABC):
         ...
 
 
+
 class AlphaBetaEngine(Engine):
     """
     Engine using alpha-beta pruning algorithm.

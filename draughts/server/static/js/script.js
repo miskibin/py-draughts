@@ -1,231 +1,175 @@
-let light = getComputedStyle(document.body).getPropertyValue("--light");
+/**
+ * py-draughts - Game Client
+ */
 
-let dark = getComputedStyle(document.body).getPropertyValue("--dark");
-
-let whiteManColor = getComputedStyle(document.body).getPropertyValue(
-  "--white-man"
-);
-let blackManColor = getComputedStyle(document.body).getPropertyValue(
-  "--black-man"
-);
-let blackKingColor = getComputedStyle(document.body).getPropertyValue(
-  "--black-king"
-);
-let whiteKingColor = getComputedStyle(document.body).getPropertyValue(
-  "--white-king"
-);
-
-let redColor = getComputedStyle(document.body).getPropertyValue("--red");
-
-const colorMap = {
-  1: whiteManColor,
-  "-1": blackManColor,
-  2: whiteManColor,
-  "-2": blackManColor,
+// Piece colors
+const COLORS = {
+    1: '#f0f0f0', '-1': '#1a1a1a',
+    2: '#f0f0f0', '-2': '#1a1a1a'
 };
 
-// ######################### constants #########################
-var boardArray = null;
-var legalMoves = null;
-var historyData = null;
-var turn = null;
-var size = null;
-const crown_icon = $("#board").attr("crown_icon");
-var sourceSquare = null;
-// ######################### constants #########################
+// Game state
+let board = null;
+let history = null;
+let turn = null;
+let legalMoves = null;
+let sourceSquare = null;
+let autoPlayId = null;
 
-// ####################### REQUESTS ############################
-const getLegalMoves = () =>
-  new Promise((resolve, reject) =>
-    $.ajax({
-      url: "/legal_moves",
-      type: "GET",
-      success: (data) => resolve(JSON.parse(data["legal_moves"])),
-      error: reject,
-    })
-  );
-const postMove = (source, target) =>
-  $.ajax({
-    url: `move/${source}/${target}`,
-    type: "POST",
-    success: (data) => {
-      boardArray = data["position"];
-      historyData = data["history"];
-      turn = data["turn"];
-      upadateBoard();
-    },
-  });
+const crownIcon = $('#board').data('crown-icon');
 
-const getFen = () =>
-  $.ajax({
-    url: "fen",
-    type: "GET",
-    success: (data) => {
-      navigator.clipboard.writeText(data["fen"]);
-      alert("Copied the text: " + data["fen"]);
-    },
-  });
-
-const getPosition = () =>
-  new Promise((resolve, reject) =>
-    $.ajax({
-      url: "position",
-      type: "GET",
-      success: (data) => resolve(data["position"]),
-      error: reject,
-    })
-  );
-
-const makeBestMove = () => {
-  $.ajax({
-    url: "best_move",
-    type: "GET",
-    beforeSend: function () {
-      $("#makeMove").prop("disabled", true);
-    },
-    success: (data) => {
-      boardArray = data["position"];
-      historyData = data["history"];
-      turn = data["turn"];
-      $("#makeMove").prop("disabled", false);
-      upadateBoard();
-    },
-  });
+// API calls
+const api = {
+    get: (url) => $.get(url),
+    post: (url) => $.post(url)
 };
 
-const pop = () => {
-  $.ajax({
-    url: "pop",
-    type: "GET",
-    success: (data) => {
-      boardArray = data["position"];
-      historyData = data["history"];
-      turn = data["turn"];
-      upadateBoard();
-    },
-  });
-};
-const getRandomPos = () => {
-  $.ajax({
-    url: "set_random_position",
-    type: "GET",
-    success: (data) => {
-      boardArray = data["position"];
-      historyData = data["history"];
-      turn = data["turn"];
-      upadateBoard();
-    },
-  });
-};
-
-// ####################### REQUESTS ############################
-
-// ############### MANIPULATING DOM ############################
-
-const handleSquareClick = (e) => {
-  if (!sourceSquare) {
-    sourceSquare = null;
-    return;
-  }
-  let targetSquare = parseInt($(e.target).text());
-  console.log(sourceSquare, targetSquare);
-  console.log(legalMoves);
-  if (
-    sourceSquare - 1 in legalMoves &&
-    legalMoves[sourceSquare - 1].includes(targetSquare - 1)
-  ) {
-    postMove(sourceSquare, targetSquare);
-    sourceSquare = null;
-  }
-};
-
-const showLegalMoves = async (e) => {
-  let square = parseInt($(e.target).parent().text());
-  $(".higlight").removeClass("higlight");
-  legalMoves = await getLegalMoves();
-  if (!(square - 1 in legalMoves)) return;
-  sourceSquare = square; // for handling move
-  let squaresToHighlight = legalMoves[square - 1].flat();
-  squaresToHighlight.forEach((element) => {
-    tiles = $(".tile");
-    for (let i = 0; i < tiles.length; i++) {
-      if (tiles[i].innerText - 1 == element) {
-        $(tiles[i]).addClass("higlight");
-      }
-    }
-  });
-};
-
-async function autoPlay() {
-  setInterval(() => {
-    makeBestMove();
-  }, 700);
+// Show toast notification
+function notify(title, message, type = 'success') {
+    const icons = { success: 'check-circle-fill text-success', error: 'x-circle-fill text-danger', info: 'info-circle-fill text-info' };
+    $('#toastIcon').attr('class', `bi bi-${icons[type]} me-2`);
+    $('#toastTitle').text(title);
+    $('#toastMessage').text(message);
+    new bootstrap.Toast($('#notificationToast')[0]).show();
 }
 
-const updatehistory = () => {
-  let tbody = $("#historyTableBody");
-  tbody.empty();
-  if (!historyData) return;
-  for (let i = 0; i < historyData.length; i++) {
-    if (!historyData[i][2]) historyData[i][2] = "-";
-    tbody.append(
-      `<tr><td>${historyData[i][0]}</td><td>${historyData[i][1]}</td><td>${historyData[i][2]}</td></tr>`
-    );
-  }
-  $("#historyContainer").scrollTop($("#historyContainer")[0].scrollHeight);
-};
+// Update the board display
+function updateBoard() {
+    const size = Math.sqrt(board.length);
+    $('#board').css('grid-template-columns', `repeat(${size}, 1fr)`);
+    $('#board').css('grid-template-rows', `repeat(${size}, 1fr)`);
 
-const upadateBoard = () => {
-  for (let i = 0; i < boardArray.length; i++) {
-    let tile = $(`#tile-${i}`);
-    $(".higlight").removeClass("higlight");
-    tile.children(".piece").remove();
-    tile.children(".crown").remove();
-    if (boardArray[i] !== 0) {
-      tile.append(
-        `<div class="piece" id="piece-${i}" style="background-color: ${
-          colorMap[boardArray[i]]
-        }"></div>`
-      );
-      $(`#piece-${i}`).click(showLegalMoves);
-      if (Math.abs(boardArray[i]) > 1) {
-        $(`#tile-${i}`).append(
-          `<img src="${crown_icon}" alt="crown" class="crown" />`
-        );
-      }
-    }
-  }
-  updatehistory();
-  $("#turn").text(turn);
-};
+    board.forEach((piece, i) => {
+        const $tile = $(`#tile-${i}`);
+        $tile.removeClass('highlight').find('.piece, .crown').remove();
 
-const init = (boardArray) => {
-  size = Math.floor(Math.sqrt(boardArray.length));
-  $("#board").css("grid-template-columns", `repeat(${size}, 1fr)`);
-  $("#board").css("grid-template-rows", `repeat(${size}, 1fr)`);
-  for (let i = 0; i < boardArray.length; i++) {
-    let tile = $(`#tile-${i}`);
-    tile.click(handleSquareClick);
-    let tileText = $(`#tile-${i}-text`);
-    let text = Math.floor(i / 2) + 1;
-    if ((i + Math.floor(i / size)) % 2 === 0) {
-      tile.addClass("dark-tile");
+        if (piece !== 0) {
+            $tile.append(`<div class="piece" style="background:${COLORS[piece]}"></div>`);
+            if (Math.abs(piece) > 1) {
+                const isBlack = piece < 0;
+                $tile.append(`<img src="${crownIcon}" class="crown ${isBlack ? 'crown-light' : ''}" alt="K">`);
+            }
+        }
+    });
+
+    // Update turn
+    $('#turn').text(turn || 'White');
+    $('#turnIndicator').removeClass('turn-white turn-black').addClass(turn === 'Black' ? 'turn-black' : 'turn-white');
+
+    // Update history
+    const $list = $('#moveList').empty();
+    if (!history?.length) {
+        $list.html('<div class="text-muted text-center py-3">No moves yet</div>');
     } else {
-      tileText.text(text);
-      tile.addClass("light-tile");
+        history.forEach(m => {
+            $list.append(`<div class="move-row"><span class="move-number">${m[0]}.</span><span class="move-white">${m[1] || ''}</span><span class="move-black">${m[2] || ''}</span></div>`);
+        });
+        $list.scrollTop($list[0].scrollHeight);
     }
-  }
-};
-// ############### MANIPULATING DOM ############################
+}
 
-// on ready
-$(document).ready(async () => {
-  boardArray = await getPosition();
-  init(boardArray);
-  upadateBoard();
-  $("#makeMove").click(makeBestMove);
-  $("#popBtn").click(pop);
-  $("#randomPos").click(getRandomPos);
-  $("#copyFen").click(getFen);
-  $("#autoPlay").click(autoPlay);
+// Initialize board tiles
+function initBoard() {
+    const size = Math.sqrt(board.length);
+    board.forEach((_, i) => {
+        const $tile = $(`#tile-${i}`);
+        const isLight = (i + Math.floor(i / size)) % 2 !== 0;
+
+        $tile.addClass(isLight ? 'light-tile' : 'dark-tile');
+        if (isLight) $(`#tile-${i}-text`).text(Math.floor(i / 2) + 1);
+
+        $tile.on('click', handleTileClick);
+    });
+}
+
+// Handle clicking a tile
+async function handleTileClick(e) {
+    const $tile = $(e.currentTarget);
+    const $piece = $tile.find('.piece');
+    const tileNum = parseInt($tile.find('.tile-text').text());
+
+    // If clicking a piece, show legal moves
+    if ($piece.length && !$(e.target).hasClass('tile')) {
+        $('.highlight').removeClass('highlight');
+        const data = await api.get('/legal_moves');
+        legalMoves = JSON.parse(data.legal_moves);
+
+        if (legalMoves[tileNum - 1]) {
+            sourceSquare = tileNum;
+            legalMoves[tileNum - 1].flat().forEach(target => {
+                $('.tile').each(function() {
+                    if (parseInt($(this).find('.tile-text').text()) - 1 === target) {
+                        $(this).addClass('highlight');
+                    }
+                });
+            });
+        }
+        return;
+    }
+
+    // If clicking highlighted tile, make move
+    if (sourceSquare && legalMoves[sourceSquare - 1]?.includes(tileNum - 1)) {
+        const data = await api.post(`/move/${sourceSquare}/${tileNum}`);
+        board = data.position;
+        history = data.history;
+        turn = data.turn;
+        sourceSquare = null;
+        updateBoard();
+    }
+}
+
+// Button handlers
+async function engineMove() {
+    const $btn = $('#makeMove').prop('disabled', true).html('<span class="spinner-border spinner-border-sm"></span>');
+    try {
+        const data = await api.get('/best_move');
+        board = data.position; history = data.history; turn = data.turn;
+        updateBoard();
+    } catch { notify('Error', 'Engine failed', 'error'); }
+    $btn.prop('disabled', false).html('<i class="bi bi-cpu"></i> Engine Move');
+}
+
+async function undo() {
+    const data = await api.get('/pop');
+    board = data.position; history = data.history; turn = data.turn;
+    updateBoard();
+    notify('Undo', 'Move undone', 'info');
+}
+
+async function randomPosition() {
+    const data = await api.get('/set_random_position');
+    board = data.position; history = data.history; turn = data.turn;
+    updateBoard();
+    notify('Random', 'New position set', 'success');
+}
+
+async function copyFen() {
+    const data = await api.get('/fen');
+    navigator.clipboard.writeText(data.fen);
+    notify('Copied', data.fen, 'success');
+}
+
+function toggleAutoPlay() {
+    const $btn = $('#autoPlay');
+    if (autoPlayId) {
+        clearInterval(autoPlayId);
+        autoPlayId = null;
+        $btn.html('<i class="bi bi-play-fill"></i> Auto Play');
+    } else {
+        autoPlayId = setInterval(engineMove, 800);
+        $btn.html('<i class="bi bi-stop-fill"></i> Stop');
+    }
+}
+
+// Initialize
+$(async () => {
+    board = (await api.get('/position')).position;
+    initBoard();
+    updateBoard();
+
+    $('#makeMove').on('click', engineMove);
+    $('#popBtn').on('click', undo);
+    $('#randomPos').on('click', randomPosition);
+    $('#copyFen').on('click', copyFen);
+    $('#autoPlay').on('click', toggleAutoPlay);
 });
