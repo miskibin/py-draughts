@@ -85,15 +85,16 @@ class BaseBoard(ABC):
 
     DIAGONAL_LONG_MOVES = ...
     """
-    Dictionary of pseudo-legal moves for king pieces. Generated only on module import.
-    This dictionary contains all possible moves for king piece (as if there were no other pieces on the board).
+    Dictionary of pseudo-legal moves for man pieces. Generated only on module import.
+    Despite the name, this contains SHORT moves (first 2 squares) sufficient for men.
     
     **Structure:**
     ``[(right-up moves), (left-up moves), (right-down moves), (left-down moves)]``
     """
     DIAGONAL_SHORT_MOVES = ...
     """ 
-    Same as ``DIAGONAL_LONG_MOVES`` but contains only first 2 squares of the move.
+    Dictionary of pseudo-legal moves for king pieces. Generated only on module import.
+    Despite the name, this contains LONG moves (all squares on diagonal) for kings.
     (one for move and one for capture)
     """
 
@@ -104,6 +105,9 @@ class BaseBoard(ABC):
         for var_name, var_value in child_class_vars.items():
             if var_name in parent_class_vars and not var_name.startswith("_"):
                 setattr(parent_class, var_name, var_value)
+        # Note: Names are intentionally swapped - DIAGONAL_SHORT_MOVES holds long moves (all squares)
+        # because kings need to traverse entire diagonals, while DIAGONAL_LONG_MOVES holds short moves
+        # (first 2 squares) which is sufficient for men who only move/capture one square at a time
         cls.DIAGONAL_SHORT_MOVES = get_diagonal_moves(len(cls.STARTING_POSITION))
         cls.DIAGONAL_LONG_MOVES = get_short_diagonal_moves(len(cls.STARTING_POSITION))
 
@@ -314,29 +318,29 @@ class BaseBoard(ABC):
         except AttributeError as e:
             raise AttributeError(f"Invalid FEN: {fen} \n {e}")
         logger.debug(f"turn: {turn}, white: {white}, black: {black}")
-        cls.STARTING_POSITION = np.zeros(cls.STARTING_POSITION.shape, dtype=np.int8)
+        position = np.zeros(cls.STARTING_POSITION.shape, dtype=np.int8)
         if len(turn) != 1 or (len(white) == 0 and len(black) == 0):
             raise ValueError(f"Invalid FEN: {fen}")
         try:
-            cls.__populate_from_list(white.split(","), Color.WHITE)
-            cls.__populate_from_list(black.split(","), Color.BLACK)
+            cls.__populate_from_list(white.split(","), Color.WHITE, position)
+            cls.__populate_from_list(black.split(","), Color.BLACK, position)
         except ValueError as e:
             logger.error(f"Invalid FEN: {fen} \n {e}")
         turn_color = Color.WHITE if turn == "W" else Color.BLACK
-        return cls(cls.STARTING_POSITION, turn_color)
+        return cls(position, turn_color)
 
     @classmethod
-    def __populate_from_list(cls, fen_list: list[str], color: Color) -> None:
-        board_range = range(1, cls.STARTING_POSITION.shape[0] + 1)
+    def __populate_from_list(cls, fen_list: list[str], color: Color, position: np.ndarray) -> None:
+        board_range = range(1, position.shape[0] + 1)
         for sq in fen_list:
             if sq.isdigit() and int(sq) in board_range:
-                cls.STARTING_POSITION[int(sq) - 1] = color.value
+                position[int(sq) - 1] = color.value
             elif sq.startswith("K") and sq[1:].isdigit() and int(sq[1:]) in board_range:
-                cls.STARTING_POSITION[int(sq[1:]) - 1] = color.value * Figure.KING.value
+                position[int(sq[1:]) - 1] = color.value * Figure.KING.value
             else:
                 raise ValueError(
                     f"invalid square value: {sq} for board with length\
-                        {cls.STARTING_POSITION.shape[0]}"
+                        {position.shape[0]}"
                 )
 
     @property

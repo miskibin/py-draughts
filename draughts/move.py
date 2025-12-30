@@ -27,13 +27,13 @@ class Move:
     def __init__(
         self,
         visited_squares: list[int],
-        captured_list: list[int] = [],
-        captured_entities: list[int] = [],
+        captured_list: list[int] | None = None,
+        captured_entities: list[int] | None = None,
         is_promotion: bool = False,
     ) -> None:
         self.square_list = visited_squares
-        self.captured_list = captured_list
-        self.captured_entities = captured_entities
+        self.captured_list = captured_list if captured_list is not None else []
+        self.captured_entities = captured_entities if captured_entities is not None else []
         self.is_promotion = is_promotion
         self.halfmove_clock = 0
 
