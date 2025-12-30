@@ -5,7 +5,7 @@ from collections import defaultdict
 logger = get_logger(lvl=10)
 
 
-def _get_all_squares_at_the_diagonal(square: int, position_length: int) -> list[int]:
+def _get_all_squares_at_the_diagonal(square: int, position_length: int) -> list[list[int]]:
     """
     [[up-right],  [up-left],[down-right], [down-left]]
     It was hard to write, so it should be hard to read.
@@ -13,7 +13,7 @@ def _get_all_squares_at_the_diagonal(square: int, position_length: int) -> list[
     """
     size = int(np.sqrt(position_length * 2))
     row_idx = {val: val // (size // 2) for val in range(position_length + 1)}
-    result = []
+    result: list[list[int]] = []
     squares, sq = [], square
 
     while (sq) % size != ((size // 2) - 1) and sq >= (size // 2):  # up right
@@ -45,14 +45,14 @@ def _get_all_squares_at_the_diagonal(square: int, position_length: int) -> list[
     return result
 
 
-def get_diagonal_moves(position_length: int) -> dict[list]:
-    squares = {}
+def get_diagonal_moves(position_length: int) -> dict[int, list[list[int]]]:
+    squares: dict[int, list[list[int]]] = {}
     for sq in range(position_length):
         squares[sq] = _get_all_squares_at_the_diagonal(sq, position_length)
     return squares
 
 
-def get_short_diagonal_moves(position_length: int) -> dict[list]:
+def get_short_diagonal_moves(position_length: int) -> dict[int, list[list[int]]]:
     squares = {}
     for sq in range(position_length):
         squares[sq] = [
@@ -81,7 +81,7 @@ def get_vertical_and_horizontal_moves(position_length: int) -> dict:
     return squares
 
 
-def get_short_vertical_and_horizontal_moves(position_length: int) -> dict[list]:
+def get_short_vertical_and_horizontal_moves(position_length: int) -> dict[int, list[list[int]]]:
     return {
         sq: [moves[:4] for moves in list_of_sq]
         for sq, list_of_sq in get_vertical_and_horizontal_moves(position_length).items()

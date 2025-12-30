@@ -219,7 +219,7 @@ class BaseBoard(ABC):
         if is_finished:
             self.turn = Color.WHITE if self.turn == Color.BLACK else Color.BLACK
 
-    def pop(self, is_finished=True) -> None:
+    def pop(self, is_finished=True) -> Move:
         """Pops a move from the board.
 
         If ``is_finished`` is set to ``True``, the turn is switched. This parameter is used only
@@ -297,14 +297,19 @@ class BaseBoard(ABC):
         # remove premoves from fen
         # remove first 2 letters from prefix
         fen = re_premove.sub("", fen)
-        prefix = re_prefix.search(fen)
-        if prefix:
-            prefix = prefix.group(0)
+        prefix_match = re_prefix.search(fen)
+        if prefix_match:
+            prefix = prefix_match.group(0)
             fen = fen.replace(prefix, prefix[2:])
         try:
-            turn = re_turn.search(fen).group(0)[0]
-            white = re_white.search(fen).group(0).replace("W", "")
-            black = re_black.search(fen).group(0).replace("B", "")
+            turn_match = re_turn.search(fen)
+            white_match = re_white.search(fen)
+            black_match = re_black.search(fen)
+            if not turn_match or not white_match or not black_match:
+                raise AttributeError(f"Invalid FEN: {fen}")
+            turn = turn_match.group(0)[0]
+            white = white_match.group(0).replace("W", "")
+            black = black_match.group(0).replace("B", "")
         except AttributeError as e:
             raise AttributeError(f"Invalid FEN: {fen} \n {e}")
         logger.debug(f"turn: {turn}, white: {white}, black: {black}")
@@ -316,8 +321,8 @@ class BaseBoard(ABC):
             cls.__populate_from_list(black.split(","), Color.BLACK)
         except ValueError as e:
             logger.error(f"Invalid FEN: {fen} \n {e}")
-        turn = Color.WHITE if turn == "W" else Color.BLACK
-        return cls(cls.STARTING_POSITION, turn)
+        turn_color = Color.WHITE if turn == "W" else Color.BLACK
+        return cls(cls.STARTING_POSITION, turn_color)
 
     @classmethod
     def __populate_from_list(cls, fen_list: list[str], color: Color) -> None:
@@ -387,7 +392,7 @@ class BaseBoard(ABC):
                 history[-1].append(str(move))
         return (
             data
-            + " ".join(f"{h[0]}. {' '.join(h[1:])}" for h in history)
+            + " ".join(f"{h[0]}. {' '.join(str(x) for x in h[1:])}" for h in history)
             + self.result * (len(self.result) - 1)
         )
 

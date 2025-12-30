@@ -169,9 +169,9 @@ class AlphaBetaEngine(Engine):
 
             # Update alpha-beta window
             if board.turn == Color.WHITE:
-                alpha = max(alpha, evals[-1])
+                alpha = max(alpha, evals[-1])  # type: ignore[assignment]
             else:
-                beta = min(beta, evals[-1])
+                beta = min(beta, evals[-1])  # type: ignore[assignment]
                 
         # Select best move based on current player
         index = (

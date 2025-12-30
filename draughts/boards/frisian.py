@@ -134,7 +134,7 @@ class Board(BaseBoard):
         raise NotImplementedError
 
     def _get_king_legal_moves_from(
-        square: int, is_captrue_mandatory: bool
+        self, square: int, is_captrue_mandatory: bool
     ) -> list[Move]:
         raise NotImplementedError
 
