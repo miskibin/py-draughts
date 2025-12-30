@@ -116,7 +116,7 @@ class Board(BaseBoard):
 
         return all_moves
 
-    def _legal_moves_from(self, square: int, is_capture_mandatory=False) -> list[Move]:
+    def _legal_moves_from(self, square: int | np.intp, is_capture_mandatory=False) -> list[Move]:
         entity = Figure(self._pos[square])
         if abs(entity) == Figure.MAN:
             moves = self._get_man_legal_moves_from(square, is_capture_mandatory)
