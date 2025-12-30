@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import re
-from abc import ABC, abstractproperty
+from abc import ABC, abstractmethod
 from typing import Generator, Literal, Optional
 from typing import Type
 import numpy as np
@@ -137,8 +137,8 @@ class BaseBoard(ABC):
 
         logger.info(f"Board initialized with shape {self.shape}.")
 
-    # @abstractmethod
-    @abstractproperty
+    @property
+    @abstractmethod
     def legal_moves(self) -> Generator[Move, None, None]:
         """
         Return list legal moves for the current position.
@@ -167,7 +167,8 @@ class BaseBoard(ABC):
                 return True
         return False
 
-    @abstractproperty
+    @property
+    @abstractmethod
     def is_draw(self) -> bool:
         ...
 
