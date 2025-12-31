@@ -7,11 +7,14 @@ Usage:
     python tools/compare_versions.py snapshots/snapshot_xxx  # specific snapshot vs current
 """
 
+import csv
 import json
+import platform
 import subprocess
 import sys
 import tempfile
 import venv
+from datetime import datetime
 from pathlib import Path
 
 from rich import box
@@ -30,8 +33,134 @@ NUM_GAMES = 20
 PROJECT_ROOT = Path(__file__).parent.parent
 POSITIONS_FILE = PROJECT_ROOT / "test" / "games" / "standard" / "random_positions.json"
 WORKERS_DIR = PROJECT_ROOT / "tools" / "workers"
+RESULTS_CSV = PROJECT_ROOT / "benchmark_results.csv"
 
 console = Console()
+
+
+def get_hardware_info() -> dict:
+    """Collect hardware and system information."""
+    info = {
+        "platform": platform.system(),
+        "platform_release": platform.release(),
+        "platform_version": platform.version(),
+        "architecture": platform.machine(),
+        "processor": platform.processor(),
+        "python_version": platform.python_version(),
+    }
+    
+    # Try to get CPU info
+    try:
+        import cpuinfo
+        cpu = cpuinfo.get_cpu_info()
+        info["cpu_brand"] = cpu.get("brand_raw", "unknown")
+        info["cpu_cores"] = cpu.get("count", "unknown")
+    except ImportError:
+        info["cpu_brand"] = platform.processor() or "unknown"
+        try:
+            import os
+            info["cpu_cores"] = os.cpu_count() or "unknown"
+        except Exception:
+            info["cpu_cores"] = "unknown"
+    
+    # Try to get memory info
+    try:
+        import psutil
+        mem = psutil.virtual_memory()
+        info["ram_gb"] = round(mem.total / (1024**3), 1)
+    except ImportError:
+        info["ram_gb"] = "unknown"
+    
+    return info
+
+
+def append_results_to_csv(
+    snapshot_name: str,
+    git_info: dict,
+    lm1_medians: list,
+    lm2_medians: list,
+    match_stats: dict,
+    positions_count: int,
+):
+    """Append benchmark results to CSV file."""
+    from statistics import median, mean, stdev
+    
+    hardware = get_hardware_info()
+    
+    # Calculate derived metrics
+    v1_avg_nodes = match_stats["v1_nodes"] / match_stats["v1_moves"] if match_stats["v1_moves"] else 0
+    v2_avg_nodes = match_stats["v2_nodes"] / match_stats["v2_moves"] if match_stats["v2_moves"] else 0
+    v1_avg_time = match_stats["v1_time_ms"] / match_stats["v1_moves"] if match_stats["v1_moves"] else 0
+    v2_avg_time = match_stats["v2_time_ms"] / match_stats["v2_moves"] if match_stats["v2_moves"] else 0
+    
+    lm_change_pct = ((median(lm2_medians) - median(lm1_medians)) / median(lm1_medians)) * 100 if median(lm1_medians) else 0
+    time_change_pct = ((v2_avg_time - v1_avg_time) / v1_avg_time) * 100 if v1_avg_time else 0
+    
+    row = {
+        # Timestamp
+        "timestamp": datetime.now().isoformat(),
+        
+        # Version info
+        "snapshot_name": snapshot_name,
+        "snapshot_branch": git_info.get("branch", ""),
+        "snapshot_commit": git_info.get("commit", ""),
+        "snapshot_dirty": git_info.get("dirty", False),
+        
+        # Test parameters
+        "warmup_rounds": WARMUP_ROUNDS,
+        "benchmark_rounds": BENCHMARK_ROUNDS,
+        "benchmark_iterations": BENCHMARK_ITERATIONS,
+        "engine_depth": ENGINE_DEPTH,
+        "num_games": NUM_GAMES,
+        "positions_count": positions_count,
+        
+        # Legal moves - snapshot
+        "lm_snapshot_median_ms": round(median(lm1_medians), 3),
+        "lm_snapshot_mean_ms": round(mean(lm1_medians), 3),
+        "lm_snapshot_min_ms": round(min(lm1_medians), 3),
+        "lm_snapshot_max_ms": round(max(lm1_medians), 3),
+        "lm_snapshot_stdev_ms": round(stdev(lm1_medians), 3) if len(lm1_medians) > 1 else 0,
+        
+        # Legal moves - current
+        "lm_current_median_ms": round(median(lm2_medians), 3),
+        "lm_current_mean_ms": round(mean(lm2_medians), 3),
+        "lm_current_min_ms": round(min(lm2_medians), 3),
+        "lm_current_max_ms": round(max(lm2_medians), 3),
+        "lm_current_stdev_ms": round(stdev(lm2_medians), 3) if len(lm2_medians) > 1 else 0,
+        "lm_change_pct": round(lm_change_pct, 2),
+        
+        # Engine match results
+        "match_snapshot_wins": match_stats["v1_wins"],
+        "match_current_wins": match_stats["v2_wins"],
+        "match_draws": match_stats["draws"],
+        "match_snapshot_avg_nodes": round(v1_avg_nodes, 1),
+        "match_current_avg_nodes": round(v2_avg_nodes, 1),
+        "match_snapshot_avg_time_ms": round(v1_avg_time, 2),
+        "match_current_avg_time_ms": round(v2_avg_time, 2),
+        "match_time_change_pct": round(time_change_pct, 2),
+        "match_snapshot_total_nodes": match_stats["v1_nodes"],
+        "match_current_total_nodes": match_stats["v2_nodes"],
+        
+        # Hardware info
+        "hw_platform": hardware["platform"],
+        "hw_platform_release": hardware["platform_release"],
+        "hw_architecture": hardware["architecture"],
+        "hw_cpu_brand": hardware["cpu_brand"],
+        "hw_cpu_cores": hardware["cpu_cores"],
+        "hw_ram_gb": hardware["ram_gb"],
+        "hw_python_version": hardware["python_version"],
+    }
+    
+    # Check if file exists to determine if we need headers
+    file_exists = RESULTS_CSV.exists()
+    
+    with open(RESULTS_CSV, "a", newline="", encoding="utf-8") as f:
+        writer = csv.DictWriter(f, fieldnames=row.keys())
+        if not file_exists:
+            writer.writeheader()
+        writer.writerow(row)
+    
+    console.print(f"\n[dim]Results appended to {RESULTS_CSV}[/]")
 
 
 def create_venv(path: Path) -> Path:
@@ -418,6 +547,16 @@ def main():
 
         if match["draws"] == NUM_GAMES:
             console.print("[dim]Note: 100% draws expected with identical code (deterministic engine)[/]")
+
+        # Append results to CSV
+        append_results_to_csv(
+            snapshot_name=snapshot_path.name,
+            git_info=git,
+            lm1_medians=lm1_medians,
+            lm2_medians=lm2_medians,
+            match_stats=match,
+            positions_count=lm1_results[0]["positions_count"],
+        )
 
 
 if __name__ == "__main__":
