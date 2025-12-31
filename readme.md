@@ -209,6 +209,19 @@ _It is as simple as that!_
 
 Contributions to this project are welcome. If you encounter any issues or have suggestions for improvements, please open an issue or submit a pull request on the project repository.
 
+## Logging
+
+Logging is disabled by default. To enable debug logs, configure loguru before importing draughts:
+
+```python
+from loguru import logger
+import sys
+
+logger.add(sys.stderr, level="DEBUG")
+
+from draughts import get_board  # Now shows debug logs
+```
+
 ## Bibliography
 
 1. [Notation](https://en.wikipedia.org/wiki/Portable_Draughts_Notation)
