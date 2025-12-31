@@ -6,7 +6,6 @@ from draughts import get_board
 from draughts.boards.standard import Board
 from pathlib import Path
 import json
-from draughts.utils import logger
 
 
 class TestBoard:

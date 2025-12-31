@@ -4,7 +4,7 @@ from pathlib import Path
 
 import requests
 
-from draughts.utils import logger
+from loguru import logger
 
 target_file = Path(__file__).parent / "random_pdns.json"
 
