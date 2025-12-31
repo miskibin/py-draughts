@@ -52,7 +52,6 @@ def main():
         "positions_count": len(clean_positions),
     }
     print(json.dumps(result))
-    print(json.dumps(result))
 
 
 if __name__ == "__main__":
