@@ -71,8 +71,63 @@ def run_legal_moves_benchmark(python: Path) -> dict:
     return json.loads(result.stdout)
 
 
+class EngineWorker:
+    """Persistent engine worker that stays alive across multiple moves."""
+    
+    def __init__(self, python: Path):
+        self.python = python
+        self.process = None
+    
+    def start(self):
+        """Start the worker process."""
+        worker = WORKERS_DIR / "engine_worker.py"
+        self.process = subprocess.Popen(
+            [str(self.python), str(worker)],
+            stdin=subprocess.PIPE,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+            bufsize=1,  # Line buffered
+        )
+        # Wait for ready signal
+        ready = self.process.stdout.readline()
+        if not ready or "ready" not in ready:
+            raise RuntimeError(f"Worker failed to start: {ready}")
+    
+    def get_move(self, fen: str | None, depth: int) -> dict:
+        """Get engine move from persistent worker."""
+        if not self.process or self.process.poll() is not None:
+            raise RuntimeError("Worker not running")
+        
+        cmd = json.dumps({"cmd": "move", "fen": fen, "depth": depth})
+        self.process.stdin.write(cmd + "\n")
+        self.process.stdin.flush()
+        
+        response = self.process.stdout.readline()
+        if not response:
+            return {"error": "Worker died"}
+        return json.loads(response)
+    
+    def stop(self):
+        """Stop the worker process."""
+        if self.process and self.process.poll() is None:
+            try:
+                self.process.stdin.write(json.dumps({"cmd": "quit"}) + "\n")
+                self.process.stdin.flush()
+                self.process.wait(timeout=2)
+            except Exception:
+                self.process.kill()
+    
+    def __enter__(self):
+        self.start()
+        return self
+    
+    def __exit__(self, *args):
+        self.stop()
+
+
 def get_engine_move(python: Path, fen: str | None, depth: int) -> dict:
-    """Get engine move from isolated environment."""
+    """Get engine move from isolated environment (legacy, spawns new process)."""
     worker = WORKERS_DIR / "get_engine_move.py"
     args = [str(python), str(worker), fen or "", str(depth)]
     result = subprocess.run(args, capture_output=True, text=True, timeout=120)
@@ -82,7 +137,7 @@ def get_engine_move(python: Path, fen: str | None, depth: int) -> dict:
 
 
 def play_match(python1: Path, python2: Path, num_games: int, depth: int) -> dict:
-    """Play engine vs engine match, collecting performance stats."""
+    """Play engine vs engine match using persistent workers."""
     stats = {
         "v1_wins": 0,
         "v2_wins": 0,
@@ -95,60 +150,62 @@ def play_match(python1: Path, python2: Path, num_games: int, depth: int) -> dict
         "v2_moves": 0,
     }
 
-    with console.status("[bold green]Playing match...") as status:
-        for game_num in range(num_games):
-            status.update(f"[bold green]Game {game_num + 1}/{num_games}...")
+    # Start persistent workers (avoids ~500ms startup per move!)
+    with EngineWorker(python1) as worker1, EngineWorker(python2) as worker2:
+        with console.status("[bold green]Playing match...") as status:
+            for game_num in range(num_games):
+                status.update(f"[bold green]Game {game_num + 1}/{num_games}...")
 
-            # Alternate who plays white
-            if game_num % 2 == 0:
-                white_py, black_py = python1, python2
-                white_ver = "v1"
-            else:
-                white_py, black_py = python2, python1
-                white_ver = "v2"
-
-            fen = None
-            move_count = 0
-            result = {}
-
-            while move_count < 200:
-                is_white_turn = move_count % 2 == 0
-                current_py = white_py if is_white_turn else black_py
-                current_ver = white_ver if is_white_turn else ("v2" if white_ver == "v1" else "v1")
-
-                result = get_engine_move(current_py, fen, depth)
-
-                if result.get("error") or result.get("game_over") or not result.get("move"):
-                    break
-
-                # Track stats
-                if current_ver == "v1":
-                    stats["v1_nodes"] += result.get("nodes", 0)
-                    stats["v1_time_ms"] += result.get("time_ms", 0)
-                    stats["v1_moves"] += 1
+                # Alternate who plays white
+                if game_num % 2 == 0:
+                    white_worker, black_worker = worker1, worker2
+                    white_ver = "v1"
                 else:
-                    stats["v2_nodes"] += result.get("nodes", 0)
-                    stats["v2_time_ms"] += result.get("time_ms", 0)
-                    stats["v2_moves"] += 1
+                    white_worker, black_worker = worker2, worker1
+                    white_ver = "v2"
 
-                fen = result["fen"]
-                move_count += 1
+                fen = None
+                move_count = 0
+                result = {}
 
-            # Determine winner
-            game_result = result.get("result", "1/2-1/2")
-            if game_result == "1-0":
-                winner = white_ver
-            elif game_result == "0-1":
-                winner = "v2" if white_ver == "v1" else "v1"
-            else:
-                winner = "draw"
+                while move_count < 200:
+                    is_white_turn = move_count % 2 == 0
+                    current_worker = white_worker if is_white_turn else black_worker
+                    current_ver = white_ver if is_white_turn else ("v2" if white_ver == "v1" else "v1")
 
-            if winner == "v1":
-                stats["v1_wins"] += 1
-            elif winner == "v2":
-                stats["v2_wins"] += 1
-            else:
-                stats["draws"] += 1
+                    result = current_worker.get_move(fen, depth)
+
+                    if result.get("error") or result.get("game_over") or not result.get("move"):
+                        break
+
+                    # Track stats
+                    if current_ver == "v1":
+                        stats["v1_nodes"] += result.get("nodes", 0)
+                        stats["v1_time_ms"] += result.get("time_ms", 0)
+                        stats["v1_moves"] += 1
+                    else:
+                        stats["v2_nodes"] += result.get("nodes", 0)
+                        stats["v2_time_ms"] += result.get("time_ms", 0)
+                        stats["v2_moves"] += 1
+
+                    fen = result["fen"]
+                    move_count += 1
+
+                # Determine winner
+                game_result = result.get("result", "1/2-1/2")
+                if game_result == "1-0":
+                    winner = white_ver
+                elif game_result == "0-1":
+                    winner = "v2" if white_ver == "v1" else "v1"
+                else:
+                    winner = "draw"
+
+                if winner == "v1":
+                    stats["v1_wins"] += 1
+                elif winner == "v2":
+                    stats["v2_wins"] += 1
+                else:
+                    stats["draws"] += 1
 
     return stats
 
