@@ -49,6 +49,7 @@ dev = [
     "pytest",
     "mypy",
     "sphinx",
+    "build",
     "rich",
     "pytest-benchmark",
 ]

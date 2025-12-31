@@ -63,6 +63,55 @@ Results
 
 Benchmark results are automatically appended to ``benchmark_results.csv`` in the project root.
 
+Optimization Workflow
+---------------------
+
+Recommended workflow for improving engine performance:
+
+1. **Profile**
+   
+   Run profiling to identify bottlenecks:
+
+   .. code-block:: bash
+
+      # For general engine profiling
+      python tools/profile_engine_detailed.py
+
+      # For legal moves generation specifically
+      python tools/profile_legal_moves.py
+
+2. **Improve**
+
+   Make code changes to address identified bottlenecks.
+
+3. **Verify Profile**
+
+   Run the profiling script again to verify local improvements.
+
+4. **Test**
+
+   Ensure no regressions in functionality:
+
+   .. code-block:: bash
+
+      pytest .
+
+5. **Benchmark**
+
+   Compare against the baseline snapshot to verify performance gains:
+
+   .. code-block:: bash
+
+      python tools/compare_versions.py
+
+6. **Snapshot**
+
+   If satisfied with the results, create a new snapshot to serve as the next baseline:
+
+   .. code-block:: bash
+
+      python tools/create_snapshot.py
+
 Profiling
 ---------
 

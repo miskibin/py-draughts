@@ -13,7 +13,6 @@ import platform
 import subprocess
 import sys
 import tempfile
-import venv
 from datetime import datetime
 from pathlib import Path
 
@@ -26,16 +25,30 @@ from rich.table import Table
 WARMUP_ROUNDS = 5
 BENCHMARK_ROUNDS = 10
 BENCHMARK_ITERATIONS = 10  # Number of times to run the legal moves benchmark
-ENGINE_DEPTH = 3
-NUM_GAMES = 40
+ENGINE_DEPTH = 4
 
 # === Paths ===
 PROJECT_ROOT = Path(__file__).parent.parent
 POSITIONS_FILE = PROJECT_ROOT / "test" / "games" / "standard" / "random_positions.json"
+OPENINGS_FILE = PROJECT_ROOT / "tools" / "openings.csv"
 WORKERS_DIR = PROJECT_ROOT / "tools" / "workers"
 RESULTS_CSV = PROJECT_ROOT / "benchmark_results.csv"
 
 console = Console()
+
+
+def load_openings() -> list[dict]:
+    """Load openings from CSV file."""
+    openings = []
+    with open(OPENINGS_FILE, "r", encoding="utf-8") as f:
+        reader = csv.DictReader(f)
+        for row in reader:
+            openings.append({
+                "name": row["name"],
+                "moves": row["moves"],
+                "fen": row["fen"] if row["fen"].strip() else None,
+            })
+    return openings
 
 
 def get_hardware_info() -> dict:
@@ -81,6 +94,8 @@ def append_results_to_csv(
     lm2_medians: list,
     match_stats: dict,
     positions_count: int,
+    num_games: int,
+    num_openings: int,
 ):
     """Append benchmark results to CSV file."""
     from statistics import median, mean, stdev
@@ -111,7 +126,8 @@ def append_results_to_csv(
         "benchmark_rounds": BENCHMARK_ROUNDS,
         "benchmark_iterations": BENCHMARK_ITERATIONS,
         "engine_depth": ENGINE_DEPTH,
-        "num_games": NUM_GAMES,
+        "num_games": num_games,
+        "num_openings": num_openings,
         "positions_count": positions_count,
         
         # Legal moves - snapshot
@@ -165,23 +181,18 @@ def append_results_to_csv(
 
 def create_venv(path: Path) -> Path:
     """Create virtualenv and return python executable path."""
-    venv.create(path, with_pip=True, clear=True)
+    subprocess.run(["uv", "venv", str(path)], check=True, capture_output=True)
     if sys.platform == "win32":
         python = path / "Scripts" / "python.exe"
     else:
         python = path / "bin" / "python"
-    subprocess.run(
-        [str(python), "-m", "pip", "install", "--upgrade", "pip", "-q"],
-        check=True,
-        capture_output=True,
-    )
     return python
 
 
 def install_package(python: Path, source: Path):
     """Install py-draughts from wheel or source."""
     subprocess.run(
-        [str(python), "-m", "pip", "install", str(source), "-q"],
+        ["uv", "pip", "install", "--python", str(python), str(source), "-q"],
         check=True,
         capture_output=True,
     )
@@ -265,8 +276,11 @@ def get_engine_move(python: Path, fen: str | None, depth: int) -> dict:
     return json.loads(result.stdout)
 
 
-def play_match(python1: Path, python2: Path, num_games: int, depth: int) -> dict:
-    """Play engine vs engine match using persistent workers."""
+def play_match(python1: Path, python2: Path, openings: list[dict], depth: int) -> dict:
+    """Play engine vs engine match using persistent workers.
+    
+    Each opening is played twice: once with v1 as white, once with v2 as white.
+    """
     stats = {
         "v1_wins": 0,
         "v2_wins": 0,
@@ -279,62 +293,80 @@ def play_match(python1: Path, python2: Path, num_games: int, depth: int) -> dict
         "v2_moves": 0,
     }
 
+    num_games = len(openings) * 2  # Each opening played twice (swap colors)
+    game_num = 0
+
     # Start persistent workers (avoids ~500ms startup per move!)
     with EngineWorker(python1) as worker1, EngineWorker(python2) as worker2:
         with console.status("[bold green]Playing match...") as status:
-            for game_num in range(num_games):
-                status.update(f"[bold green]Game {game_num + 1}/{num_games}...")
+            for opening in openings:
+                opening_name = opening["name"]
+                opening_fen = opening["fen"]
+                
+                # Play each opening twice: v1 as white, then v2 as white
+                for swap in range(2):
+                    game_num += 1
+                    color_info = "snapshot=W" if swap == 0 else "current=W"
+                    status.update(f"[bold green]Game {game_num}/{num_games}: {opening_name} ({color_info})...")
 
-                # Alternate who plays white
-                if game_num % 2 == 0:
-                    white_worker, black_worker = worker1, worker2
-                    white_ver = "v1"
-                else:
-                    white_worker, black_worker = worker2, worker1
-                    white_ver = "v2"
-
-                fen = None
-                move_count = 0
-                result = {}
-
-                while move_count < 200:
-                    is_white_turn = move_count % 2 == 0
-                    current_worker = white_worker if is_white_turn else black_worker
-                    current_ver = white_ver if is_white_turn else ("v2" if white_ver == "v1" else "v1")
-
-                    result = current_worker.get_move(fen, depth)
-
-                    if result.get("error") or result.get("game_over") or not result.get("move"):
-                        break
-
-                    # Track stats
-                    if current_ver == "v1":
-                        stats["v1_nodes"] += result.get("nodes", 0)
-                        stats["v1_time_ms"] += result.get("time_ms", 0)
-                        stats["v1_moves"] += 1
+                    # Determine who plays white
+                    if swap == 0:
+                        white_worker, black_worker = worker1, worker2
+                        white_ver = "v1"
                     else:
-                        stats["v2_nodes"] += result.get("nodes", 0)
-                        stats["v2_time_ms"] += result.get("time_ms", 0)
-                        stats["v2_moves"] += 1
+                        white_worker, black_worker = worker2, worker1
+                        white_ver = "v2"
 
-                    fen = result["fen"]
-                    move_count += 1
+                    # Start from opening position
+                    fen = opening_fen
+                    move_count = 0
+                    result = {}
+                    
+                    # Determine whose turn it is from FEN
+                    # FEN starts with 'W:' or 'B:' to indicate turn
+                    if fen and fen.startswith("B:"):
+                        is_white_turn = False
+                    else:
+                        is_white_turn = True  # Default to white's turn
 
-                # Determine winner
-                game_result = result.get("result", "1/2-1/2")
-                if game_result == "1-0":
-                    winner = white_ver
-                elif game_result == "0-1":
-                    winner = "v2" if white_ver == "v1" else "v1"
-                else:
-                    winner = "draw"
+                    while move_count < 200:
+                        current_worker = white_worker if is_white_turn else black_worker
+                        current_ver = white_ver if is_white_turn else ("v2" if white_ver == "v1" else "v1")
 
-                if winner == "v1":
-                    stats["v1_wins"] += 1
-                elif winner == "v2":
-                    stats["v2_wins"] += 1
-                else:
-                    stats["draws"] += 1
+                        result = current_worker.get_move(fen, depth)
+
+                        if result.get("error") or result.get("game_over") or not result.get("move"):
+                            break
+
+                        # Track stats
+                        if current_ver == "v1":
+                            stats["v1_nodes"] += result.get("nodes", 0)
+                            stats["v1_time_ms"] += result.get("time_ms", 0)
+                            stats["v1_moves"] += 1
+                        else:
+                            stats["v2_nodes"] += result.get("nodes", 0)
+                            stats["v2_time_ms"] += result.get("time_ms", 0)
+                            stats["v2_moves"] += 1
+
+                        fen = result["fen"]
+                        move_count += 1
+                        is_white_turn = not is_white_turn
+
+                    # Determine winner
+                    game_result = result.get("result", "1/2-1/2")
+                    if game_result == "1-0":
+                        winner = white_ver
+                    elif game_result == "0-1":
+                        winner = "v2" if white_ver == "v1" else "v1"
+                    else:
+                        winner = "draw"
+
+                    if winner == "v1":
+                        stats["v1_wins"] += 1
+                    elif winner == "v2":
+                        stats["v2_wins"] += 1
+                    else:
+                        stats["draws"] += 1
 
     return stats
 
@@ -485,9 +517,13 @@ def main():
         console.print()
         console.print(lm_table)
 
+        # Load openings
+        openings = load_openings()
+        num_games = len(openings) * 2  # Each opening played as both colors
+
         # Engine match
-        console.print(f"\n[bold]Engine match ({NUM_GAMES} games, depth={ENGINE_DEPTH})...[/]")
-        match = play_match(py1, py2, NUM_GAMES, ENGINE_DEPTH)
+        console.print(f"\n[bold]Engine match ({num_games} games from {len(openings)} openings, depth={ENGINE_DEPTH})...[/]")
+        match = play_match(py1, py2, openings, ENGINE_DEPTH)
 
         # Calculate averages
         v1_avg_nodes = match["v1_nodes"] / match["v1_moves"] if match["v1_moves"] else 0
@@ -495,11 +531,11 @@ def main():
         v1_avg_time = match["v1_time_ms"] / match["v1_moves"] if match["v1_moves"] else 0
         v2_avg_time = match["v2_time_ms"] / match["v2_moves"] if match["v2_moves"] else 0
 
-        v1_pct = (match["v1_wins"] / NUM_GAMES) * 100
-        v2_pct = (match["v2_wins"] / NUM_GAMES) * 100
-        draw_pct = (match["draws"] / NUM_GAMES) * 100
+        v1_pct = (match["v1_wins"] / num_games) * 100
+        v2_pct = (match["v2_wins"] / num_games) * 100
+        draw_pct = (match["draws"] / num_games) * 100
 
-        match_table = Table(title=f"Match Results ({NUM_GAMES} games)", box=box.ROUNDED)
+        match_table = Table(title=f"Match Results ({num_games} games from {len(openings)} openings)", box=box.ROUNDED)
         match_table.add_column("Metric", style="cyan")
         match_table.add_column("Snapshot", justify="right")
         match_table.add_column("Current", justify="right")
@@ -545,7 +581,7 @@ def main():
         else:
             console.print("[yellow]⚠ Performance regression detected[/]")
 
-        if match["draws"] == NUM_GAMES:
+        if match["draws"] == num_games:
             console.print("[dim]Note: 100% draws expected with identical code (deterministic engine)[/]")
 
         # Append results to CSV
@@ -556,6 +592,8 @@ def main():
             lm2_medians=lm2_medians,
             match_stats=match,
             positions_count=lm1_results[0]["positions_count"],
+            num_games=num_games,
+            num_openings=len(openings),
         )
 
 
