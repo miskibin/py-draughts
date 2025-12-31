@@ -20,10 +20,10 @@ from rich.panel import Panel
 from rich.table import Table
 
 # === Configuration ===
-WARMUP_ROUNDS = 3
-BENCHMARK_ROUNDS = 5
+WARMUP_ROUNDS = 5
+BENCHMARK_ROUNDS = 10
 BENCHMARK_ITERATIONS = 10  # Number of times to run the legal moves benchmark
-ENGINE_DEPTH = 3
+ENGINE_DEPTH = 2
 NUM_GAMES = 20
 
 # === Paths ===
