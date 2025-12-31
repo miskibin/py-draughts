@@ -149,7 +149,7 @@ if __name__ == "__main__":
     from draughts.engine import AlphaBetaEngine
     from draughts import get_board
 
-    engine = AlphaBetaEngine(depth=2)
+    engine = AlphaBetaEngine(depth=6)
     board = get_board("standard")
     server = Server(board=board, get_best_move_method=engine.get_best_move)
     server.run()
