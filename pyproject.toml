@@ -49,6 +49,8 @@ dev = [
     "pytest",
     "mypy",
     "sphinx",
+    "rich",
+    "pytest-benchmark",
 ]
 
 [tool.setuptools.packages.find]
