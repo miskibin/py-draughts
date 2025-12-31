@@ -112,28 +112,20 @@ class AlphaBetaEngine(Engine):
         The evaluation considers:
         - Material balance: Each piece has a value (man=1, king=2)
         - Piece positioning: Center control and advancement are valued
-        - King promotion potential
         
         Returns:
             float: Positive score favors Black, negative favors White
-            
-        Note:
-            This is a relatively simple evaluation. For stronger play,
-            consider factors like piece mobility, pawn structure, and
-            endgame patterns.
         """
         pos = board._pos
-        
-        # Material count (basic evaluation) - vectorized
-        score = -pos.sum()
         
         # Initialize position tables on first use
         if self._row_indices_50 is None:
             self._init_position_tables(len(pos))
         
-        # Vectorized positional bonus calculation
-        # White pieces (negative values) get bonus for lower rows (higher indices)
-        # Black pieces (positive values) get bonus for higher rows (lower indices)
+        # Material count - vectorized (sum gives us material with king=2)
+        score = -pos.sum()
+        
+        # Positional bonus for advancement (vectorized)
         white_mask = pos < 0
         black_mask = pos > 0
         
@@ -154,7 +146,7 @@ class AlphaBetaEngine(Engine):
             Move or tuple[Move, float]: Best move, optionally with its evaluation
         """
         self.inspected_nodes = 0
-        # Note: Transposition table is preserved between moves for better performance
+        # Note: Transposition table is preserved between moves
         move, evaluation = self.__get_engine_move(board)
         logger.debug(f"\ninspected  {self.inspected_nodes} nodes\n")
         logger.info(f"best move: {move}, evaluation: {evaluation:.2f}")
@@ -186,9 +178,9 @@ class AlphaBetaEngine(Engine):
 
             # Update alpha-beta window
             if board.turn == Color.WHITE:
-                alpha = max(alpha, evals[-1])  # type: ignore[assignment]
+                alpha = max(alpha, evals[-1])
             else:
-                beta = min(beta, evals[-1])  # type: ignore[assignment]
+                beta = min(beta, evals[-1])
                 
         # Select best move based on current player
         index = (
@@ -199,8 +191,11 @@ class AlphaBetaEngine(Engine):
         return legal_moves[index], evals[index]
     
     def _order_moves(self, moves: list[Move], board: Board) -> list[Move]:
+        """Order moves: captures first, longer captures before shorter."""
         captures = [m for m in moves if m.captured_list]
         non_captures = [m for m in moves if not m.captured_list]
+        # Sort captures by length (more captures = better)
+        captures.sort(key=lambda m: len(m.captured_list), reverse=True)
         return captures + non_captures
 
     def __alpha_beta_pruning(
@@ -238,9 +233,6 @@ class AlphaBetaEngine(Engine):
         for move in legal_moves:
             board.push(move)
             evaluation = self.__alpha_beta_pruning(board, depth - 1, alpha, beta)
-            
-            # Small penalty for not promoting to king (encourages king promotion)
-            evaluation -= np.abs(board.position[move.square_list[-1]]) == Figure.KING
             board.pop()
             
             # Update alpha-beta window
