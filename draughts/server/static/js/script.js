@@ -15,6 +15,8 @@ let turn = null;
 let legalMoves = null;
 let sourceSquare = null;
 let autoPlayId = null;
+let playWithComputerMode = false;
+let engineDepth = 6;
 
 const crownIcon = $('#board').data('crown-icon');
 
@@ -115,6 +117,12 @@ async function handleTileClick(e) {
         turn = data.turn;
         sourceSquare = null;
         updateBoard();
+        
+        // If play with computer mode is enabled and game is not over, let computer play
+        if (playWithComputerMode && turn && !data.game_over) {
+            await new Promise(resolve => setTimeout(resolve, 500)); // Add delay for UX
+            await engineMove();
+        }
     }
 }
 
@@ -178,12 +186,43 @@ function toggleAutoPlay() {
     }
 }
 
+async function loadFen() {
+    const fen = prompt('Paste FEN:');
+    if (!fen) return;
+    try {
+        const data = await $.ajax({ url: '/load_fen', method: 'POST', contentType: 'application/json', data: JSON.stringify({ fen }) });
+        board = data.position; history = data.history; turn = data.turn;
+        updateBoard();
+        notify('Loaded', 'FEN loaded', 'success');
+    } catch { notify('Error', 'Invalid FEN', 'error'); }
+}
+
+async function updateEngineDepth(depth) {
+    engineDepth = parseInt(depth);
+    $('#depthValue').text(engineDepth);
+    await api.get(`/set_depth/${engineDepth}`);
+    notify('Depth', `Engine depth set to ${engineDepth}`, 'info');
+}
+
+async function togglePlayWithComputer() {
+    playWithComputerMode = $('#playWithComputerToggle').is(':checked');
+    const mode = playWithComputerMode ? 'on' : 'off';
+    await api.get(`/set_play_mode/${mode}`);
+    $('#computerModeInfo').toggle(playWithComputerMode);
+    if (playWithComputerMode) {
+        notify('Mode', 'Play with Computer enabled', 'info');
+    } else {
+        notify('Mode', 'Play with Computer disabled', 'info');
+    }
+}
+
 // Initialize
 $(async () => {
     board = (await api.get('/position')).position;
     initBoard();
     updateBoard();
 
+    // Original button handlers
     $('#makeMove').on('click', engineMove);
     $('#popBtn').on('click', undo);
     $('#randomPos').on('click', randomPosition);
@@ -191,4 +230,13 @@ $(async () => {
     $('#copyPdn').on('click', copyPdn);
     $('#loadPdn').on('click', loadPdn);
     $('#autoPlay').on('click', toggleAutoPlay);
+
+    // New feature handlers
+    $('#loadFen').on('click', loadFen);
+
+    $('#depthSlider').on('input', function() {
+        updateEngineDepth($(this).val());
+    });
+
+    $('#playWithComputerToggle').on('change', togglePlayWithComputer);
 });

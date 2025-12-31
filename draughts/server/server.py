@@ -35,6 +35,8 @@ class Server:
     ):
         self.get_best_move_method = get_best_move_method
         self.board = board
+        self.engine_depth = 6
+        self.play_with_computer = False
         self.router = APIRouter()
         self.router.add_api_route("/", self.index)
         self.router.add_api_route(
@@ -53,6 +55,9 @@ class Server:
         self.router.add_api_route("/pop", self.pop, methods=["GET"])
         self.router.add_api_route("/pdn", self.get_pdn, methods=["GET"])
         self.router.add_api_route("/load_pdn", self.load_pdn, methods=["POST"])
+        self.router.add_api_route("/load_fen", self.load_fen, methods=["POST"])
+        self.router.add_api_route("/set_depth/{depth}", self.set_depth, methods=["GET"])
+        self.router.add_api_route("/set_play_mode/{mode}", self.set_play_mode, methods=["GET"])
         self.APP.include_router(self.router)
 
     def get_fen(self):
@@ -65,6 +70,20 @@ class Server:
         data = await request.json()
         self.board = type(self.board).from_pdn(data["pdn"])
         return self.position_json
+
+    async def load_fen(self, request: Request) -> PositionResponse:
+        data = await request.json()
+        self.board = type(self.board).from_fen(data["fen"])
+        return self.position_json
+
+    def set_depth(self, depth: int) -> dict:
+        depth = max(1, min(10, int(depth)))
+        self.engine_depth = depth
+        return {"depth": self.engine_depth}
+
+    def set_play_mode(self, mode: str) -> dict:
+        self.play_with_computer = mode.lower() == "on"
+        return {"play_with_computer": self.play_with_computer}
 
     def set_board(self, request: Request, board_type: Literal["standard", "american"]):
         if board_type == "standard":

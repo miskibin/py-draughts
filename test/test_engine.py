@@ -49,7 +49,7 @@ class TestAlphaBetaEngine:
         board = get_board("standard", fen)
         
         moves = list(board.legal_moves)
-        ordered = self.engine._order_moves(moves, board)
+        ordered = self.engine._order_moves(moves)
         
         # Captures should come before non-captures
         captures = [m for m in ordered if m.captured_list]

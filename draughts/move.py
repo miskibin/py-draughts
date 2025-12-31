@@ -24,6 +24,8 @@ class Move:
     n - 2 - number of captured pieces
     """
 
+    __slots__ = ('square_list', 'captured_list', 'captured_entities', 'is_promotion', 'halfmove_clock', '_len')
+    
     def __init__(
         self,
         visited_squares: list[int],
@@ -36,6 +38,8 @@ class Move:
         self.captured_entities = captured_entities if captured_entities is not None else []
         self.is_promotion = is_promotion
         self.halfmove_clock = 0
+        # Cache length for performance (avoids repeated len() calls)
+        self._len = len(self.captured_list) + 1
 
     def __str__(self) -> str:
         separator = "x" if self.captured_list else "-"
@@ -70,7 +74,7 @@ class Move:
         return False
 
     def __len__(self) -> int:
-        return len(self.captured_list) + 1
+        return self._len
 
     def __add__(self, other: Move) -> Move:
         """Append moves"""
@@ -78,12 +82,16 @@ class Move:
             raise ValueError(
                 f"Cannot append moves {self} and {other}. Last square of first move should be equal to first square of second move."
             )
-        return Move(
+        new_captured = self.captured_list + other.captured_list
+        move = Move(
             self.square_list + other.square_list[1:],
-            self.captured_list + other.captured_list,
+            new_captured,
             self.captured_entities + other.captured_entities,
             self.is_promotion,
         )
+        # Directly set cached length for efficiency
+        move._len = len(new_captured) + 1
+        return move
 
     @classmethod
     def from_uci(cls, move: str, legal_moves: Generator) -> Move:

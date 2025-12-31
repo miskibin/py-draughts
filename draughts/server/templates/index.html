@@ -14,11 +14,11 @@
         <div class="settings-section">
           <div class="section-title">Board</div>
           <div class="d-grid gap-1">
-            <a href="/set_board/american" class="btn btn-game">
+            <a href="/set_board/american" class="btn btn-game btn-sm">
               <i class="bi bi-grid"></i>
               American 8×8
             </a>
-            <a href="/set_board/standard" class="btn btn-game">
+            <a href="/set_board/standard" class="btn btn-game btn-sm">
               <i class="bi bi-grid-3x3-gap-fill"></i>
               Standard 10×10
             </a>
@@ -27,35 +27,67 @@
 
         <div class="divider"></div>
 
-        <!-- Controls -->
+        <!-- Engine Depth & Play Mode in compact grid -->
+        <div class="settings-section">
+          <div class="section-title">Settings</div>
+          <div class="mb-2">
+            <label class="form-label mb-1 small">Depth: <span id="depthValue" class="badge bg-primary">6</span></label>
+            <input 
+              type="range" 
+              class="form-range" 
+              id="depthSlider" 
+              min="1" 
+              max="10" 
+              value="6"
+            >
+          </div>
+          <div class="form-check form-switch">
+            <input 
+              class="form-check-input" 
+              type="checkbox" 
+              id="playWithComputerToggle"
+            >
+            <label class="form-check-label small" for="playWithComputerToggle">
+              Play vs Computer
+            </label>
+          </div>
+        </div>
+
+        <div class="divider"></div>
+
+        <!-- Controls - Icon Grid -->
         <div class="settings-section">
           <div class="section-title">Controls</div>
           <div class="d-grid gap-1">
-            <button id="makeMove" class="btn btn-game" type="button">
+            <button id="makeMove" class="btn btn-game btn-sm" type="button">
               <i class="bi bi-cpu"></i>
               Engine Move
             </button>
-            <button id="popBtn" class="btn btn-game" type="button">
+            <button id="popBtn" class="btn btn-game btn-sm" type="button">
               <i class="bi bi-arrow-counterclockwise"></i>
               Undo
             </button>
-            <button id="randomPos" class="btn btn-game" type="button">
+            <button id="randomPos" class="btn btn-game btn-sm" type="button">
               <i class="bi bi-shuffle"></i>
               Random
             </button>
-            <button id="copyFen" class="btn btn-game" type="button">
+            <button id="copyFen" class="btn btn-game btn-sm" type="button">
               <i class="bi bi-clipboard"></i>
               Copy FEN
             </button>
-            <button id="copyPdn" class="btn btn-game" type="button">
+            <button id="loadFen" class="btn btn-game btn-sm" type="button">
+              <i class="bi bi-file-earmark"></i>
+              Load FEN
+            </button>
+            <button id="copyPdn" class="btn btn-game btn-sm" type="button">
               <i class="bi bi-file-text"></i>
               Copy PDN
             </button>
-            <button id="loadPdn" class="btn btn-game" type="button">
+            <button id="loadPdn" class="btn btn-game btn-sm" type="button">
               <i class="bi bi-upload"></i>
               Load PDN
             </button>
-            <button id="autoPlay" class="btn btn-game" type="button">
+            <button id="autoPlay" class="btn btn-game btn-sm" type="button">
               <i class="bi bi-play-fill"></i>
               Auto Play
             </button>

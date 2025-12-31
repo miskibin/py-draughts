@@ -68,11 +68,15 @@ class Board(BaseBoard):
 
     @property
     def is_draw(self) -> bool:
+        # Order from cheapest to most expensive check
+        # is_25_moves_rule is just a halfmove_clock check (fastest)
+        # is_threefold_repetition checks move history
+        # is_5_moves and is_16_moves check piece counts (more expensive)
         return (
-            self.is_threefold_repetition
+            self.is_25_moves_rule
+            or self.is_threefold_repetition
             or self.is_5_moves_rule
             or self.is_16_moves_rule
-            or self.is_25_moves_rule
         )
 
     @property
@@ -110,8 +114,11 @@ class Board(BaseBoard):
     def legal_moves(self) -> list[Move]:
         all_moves = []
         has_capture = False
+        # Cache turn.value to avoid repeated enum lookups
+        turn_val = self.turn.value
+        pos = self._pos
         # Use flatnonzero - faster than transpose(nonzero())
-        squares_list = np.flatnonzero(self._pos * self.turn.value > 0)
+        squares_list = np.flatnonzero(pos * turn_val > 0)
         for square in squares_list:
             moves = self._legal_moves_from(square, has_capture)
             # Early termination: once we find captures, skip non-captures
@@ -124,8 +131,9 @@ class Board(BaseBoard):
         if not all_moves:
             return []
         # FIX: Calculate max ONCE instead of per-move (was O(n²), now O(n))
-        max_len = max(len(m) for m in all_moves)
-        return [mv for mv in all_moves if len(mv) == max_len]
+        # Use cached _len field for faster access
+        max_len = max(m._len for m in all_moves)
+        return [mv for mv in all_moves if mv._len == max_len]
 
     def _get_man_legal_moves_from(
         self, square: int, is_capture_mandatory: bool
@@ -169,31 +177,39 @@ class Board(BaseBoard):
         for direction in self.DIAGONAL_SHORT_MOVES[square]:
             dir_len = len(direction)
             for idx, target in enumerate(direction):
+                target_val = pos[target]
                 if (
                     dir_len > idx + 1
-                    and pos[target] * turn_val < 0
+                    and target_val * turn_val < 0
                     and pos[direction[idx + 1]] == EMPTY
                 ):
                     i = idx + 1
-                    target_piece = pos[target]
+                    max_len = 0  # Track max length locally
                     while i < dir_len and pos[direction[i]] == EMPTY:
                         move = Move(
-                            [square, direction[i]], [target], [target_piece]
+                            [square, direction[i]], [target], [target_val]
                         )
-                        moves.append(move)
                         self.push(move, False)
-                        moves += [
-                            move + m
-                            for m in self._get_king_legal_moves_from(direction[i], True)
-                        ]
-                        # if one move is longer then others return only this one
+                        sub_moves = self._get_king_legal_moves_from(direction[i], True)
                         self.pop(False)
-                        if moves:
-                            max_len = max(len(m) for m in moves)
-                            moves = [m for m in moves if len(m) == max_len]
+                        
+                        if sub_moves:
+                            for m in sub_moves:
+                                combined = move + m
+                                if combined._len > max_len:
+                                    max_len = combined._len
+                                    moves = [combined]
+                                elif combined._len == max_len:
+                                    moves.append(combined)
+                        else:
+                            if move._len > max_len:
+                                max_len = move._len
+                                moves = [move]
+                            elif move._len == max_len:
+                                moves.append(move)
                         i += 1
                     break
-                if pos[target] == EMPTY:
+                if target_val == EMPTY:
                     if not is_capture_mandatory:
                         # casual move - only when not in capture chain
                         moves.append(Move([square, target]))
