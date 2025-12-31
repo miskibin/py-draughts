@@ -51,10 +51,20 @@ class Server:
             "/move/{source}/{target}", self.move, methods=["POST"]
         )
         self.router.add_api_route("/pop", self.pop, methods=["GET"])
+        self.router.add_api_route("/pdn", self.get_pdn, methods=["GET"])
+        self.router.add_api_route("/load_pdn", self.load_pdn, methods=["POST"])
         self.APP.include_router(self.router)
 
     def get_fen(self):
         return {"fen": self.board.fen}
+
+    def get_pdn(self):
+        return {"pdn": self.board.pdn}
+
+    async def load_pdn(self, request: Request) -> PositionResponse:
+        data = await request.json()
+        self.board = type(self.board).from_pdn(data["pdn"])
+        return self.position_json
 
     def set_board(self, request: Request, board_type: Literal["standard", "american"]):
         if board_type == "standard":

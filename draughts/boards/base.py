@@ -395,11 +395,43 @@ class BaseBoard(ABC):
                 history.append([(idx // 2) + 1, str(move)])
             else:
                 history[-1].append(str(move))
-        return (
-            data
-            + " ".join(f"{h[0]}. {' '.join(str(x) for x in h[1:])}" for h in history)
-            + self.result * (len(self.result) - 1)
-        )
+        moves_str = " ".join(f"{h[0]}. {' '.join(str(x) for x in h[1:])}" for h in history)
+        result_str = "" if self.result == "-" else f" {self.result}"
+        return data + moves_str + result_str
+
+
+    @classmethod
+    def from_pdn(cls: Type[BaseBoard], pdn: str) -> BaseBoard:
+        """
+        Creates a board from a PDN string.
+        """
+        logger.debug(f"Initializing board from PDN:\n{pdn}")
+        re_gametype = re.compile(r'\[GameType\s*"(\d+)"\]')
+        # Match move numbers followed by actual moves (must contain - or x)
+        re_moves = re.compile(r"(\d+)\.\s*(\d+[-x]\d+(?:[-x]\d+)*)(?:\s+(\d+[-x]\d+(?:[-x]\d+)*))?")
+        # Game results that should not be parsed as moves
+        game_results = {"2-0", "0-2", "1-1", "1-0", "0-1", "*"}
+        gametype_match = re_gametype.search(pdn)
+        if not gametype_match:
+            raise ValueError("Invalid PDN: missing GameType")
+        gametype = int(gametype_match.group(1))
+        if gametype != cls.GAME_TYPE:
+            raise ValueError(
+                f"Invalid PDN: expected GameType {cls.GAME_TYPE}, got {gametype}"
+            )
+        board = cls()
+        moves_matches = re_moves.findall(pdn)
+        for match in moves_matches:
+            white_move_str = match[1].strip()
+            if white_move_str in game_results:
+                break
+            board.push_uci(white_move_str)
+            black_move_str = match[2].strip() if match[2] else None
+            if black_move_str:
+                if black_move_str in game_results:
+                    break
+                board.push_uci(black_move_str)
+        return board
 
     @staticmethod
     def is_capture(move: Move) -> bool:

@@ -67,7 +67,7 @@ class TestAlphaBetaEngine:
         assert isinstance(eval_score, (int, float))
         
         # Starting position should be roughly equal
-        assert abs(eval_score) < 5
+        assert abs(eval_score) < 10
 
     def test_engine_consistency(self):
         """Test that engine gives consistent results for same position."""

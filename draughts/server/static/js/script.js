@@ -4,8 +4,8 @@
 
 // Piece colors
 const COLORS = {
-    1: '#f0f0f0', '-1': '#1a1a1a',
-    2: '#f0f0f0', '-2': '#1a1a1a'
+    1: '#1a1a1a', '-1': '#f0f0f0',
+    2: '#1a1a1a', '-2': '#f0f0f0'
 };
 
 // Game state
@@ -46,8 +46,8 @@ function updateBoard() {
         if (piece !== 0) {
             $tile.append(`<div class="piece" style="background:${COLORS[piece]}"></div>`);
             if (Math.abs(piece) > 1) {
-                const isBlack = piece < 0;
-                $tile.append(`<img src="${crownIcon}" class="crown ${isBlack ? 'crown-light' : ''}" alt="K">`);
+                const isWhite = piece > 0;
+                $tile.append(`<img src="${crownIcon}" class="crown ${isWhite ? 'crown-light' : ''}" alt="K">`);
             }
         }
     });
@@ -149,6 +149,23 @@ async function copyFen() {
     notify('Copied', data.fen, 'success');
 }
 
+async function copyPdn() {
+    const data = await api.get('/pdn');
+    navigator.clipboard.writeText(data.pdn);
+    notify('Copied', 'PDN copied to clipboard', 'success');
+}
+
+async function loadPdn() {
+    const pdn = prompt('Paste PDN:');
+    if (!pdn) return;
+    try {
+        const data = await $.ajax({ url: '/load_pdn', method: 'POST', contentType: 'application/json', data: JSON.stringify({ pdn }) });
+        board = data.position; history = data.history; turn = data.turn;
+        updateBoard();
+        notify('Loaded', 'PDN loaded', 'success');
+    } catch { notify('Error', 'Invalid PDN', 'error'); }
+}
+
 function toggleAutoPlay() {
     const $btn = $('#autoPlay');
     if (autoPlayId) {
@@ -171,5 +188,7 @@ $(async () => {
     $('#popBtn').on('click', undo);
     $('#randomPos').on('click', randomPosition);
     $('#copyFen').on('click', copyFen);
+    $('#copyPdn').on('click', copyPdn);
+    $('#loadPdn').on('click', loadPdn);
     $('#autoPlay').on('click', toggleAutoPlay);
 });

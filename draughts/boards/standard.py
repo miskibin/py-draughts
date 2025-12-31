@@ -183,11 +183,13 @@ class Board(BaseBoard):
                         moves = [m for m in moves if len(m) == max_len]
                         i += 1
                     break
-                if (
-                    self._pos[target] == Figure.EMPTY.value and not is_capture_mandatory
-                ):  # casual move
-                    moves.append(Move([square, target]))
+                if self._pos[target] == Figure.EMPTY.value:
+                    if not is_capture_mandatory:
+                        # casual move - only when not in capture chain
+                        moves.append(Move([square, target]))
+                    # Continue searching for capturable pieces further along diagonal
                 else:
+                    # Any piece (own or enemy without landing space) blocks the path
                     break
         return moves
 
@@ -203,10 +205,17 @@ class Board(BaseBoard):
 
 
 if __name__ == "__main__":
-    board = Board()
-    for i in range(10):
-        # random move
-        move = np.random.choice(list(board.legal_moves))
-        board.push(move)
+    # board = Board()
+    # for i in range(10):
+    #     # random move
+    #     move = np.random.choice(list(board.legal_moves))
+    #     board.push(move)
+#     pdn = """
+# [GameType \"20\"]\n1. 33-28 18-23 2. 39-33 13-18 3. 44-39 18-22 4. 31-27 22x31 5. 36x27 8-13 6. 50-44 2-8 7. 41-36 20-24 8. 34-29 23x34 9. 40x20 14x25 10. 46-41 10-14 11. 44-40 5-10 12. 39-34 17-21 13. 43-39 21-26 14. 49-43 12-17 15. 27-21 16x27 16. 32x12 7x18 17. 37-32 11-16 18. 41-37 1-7 19. 37-31 26x37 20. 42x31 7-11 21. 31-27 14-20 22. 47-42 10-14 23. 42-37 20-24 24. 27-21 16x27 25. 32x21 8-12 26. 21-16 3-8 27. 16x7 12x1 28. 37-32 8-12 29. 28-23 19x37 30. 34-30 25x34 31. 39x17 14-19 32. 43-39 1-7 33. 38-32 37x28 34. 33x24 9-13 35. 40-34 4-9 36. 34-30 9-14 37. 30-25 13-18 38. 17-12 18-22 39. 12x1 22-27 40. 48-42 6-11 41. 1-23 11-17 42. 23x5 17-21 43. 5-37 21-26 44. 39-34 15-20 45. 24x15 26-31 46. 37x26 27-32 47. 42-37 32x41 48. 36x47 2-0
+#     """
+#     board = Board.from_pdn(pdn)
 
-    print(board.pdn)
+#     print(board.pdn)
+    board = Board.from_fen('[FEN "W:B:WK2,28,31,44:B20,K50"])')
+    print(board)
+    print(board.legal_moves)
