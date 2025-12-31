@@ -92,6 +92,19 @@ class AlphaBetaEngine(Engine):
         # Transposition table: stores {board_hash: (depth, score)}
         self._transposition_table = {}
 
+    # Pre-computed row indices for positional evaluation (cached at class level)
+    _row_indices_50 = None
+    _white_row_bonus_50 = None
+    _black_row_bonus_50 = None
+    
+    @classmethod
+    def _init_position_tables(cls, size: int = 50):
+        """Initialize position bonus tables once."""
+        if cls._row_indices_50 is None:
+            cls._row_indices_50 = np.arange(size) // 5
+            cls._white_row_bonus_50 = (9 - cls._row_indices_50) * cls.POSITION_BONUS
+            cls._black_row_bonus_50 = cls._row_indices_50 * cls.POSITION_BONUS
+
     def evaluate(self, board: Board):
         """
         Evaluation function for the current board position.
@@ -109,19 +122,23 @@ class AlphaBetaEngine(Engine):
             consider factors like piece mobility, pawn structure, and
             endgame patterns.
         """
-        # Material count (basic evaluation)
-        score = -board._pos.sum()
+        pos = board._pos
         
-        # Positional bonus: favor advanced pieces and center control
-        position = board.position
-        size = len(position)
-        for idx in range(size):
-            piece = position[idx]
-            if piece != 0:
-                # Award bonus for piece advancement (based on board position)
-                row_bonus = (idx // self.BOARD_WIDTH) * self.POSITION_BONUS if piece > 0 \
-                           else ((self.MAX_ROW - idx // self.BOARD_WIDTH) * self.POSITION_BONUS)
-                score += row_bonus * abs(piece)
+        # Material count (basic evaluation) - vectorized
+        score = -pos.sum()
+        
+        # Initialize position tables on first use
+        if self._row_indices_50 is None:
+            self._init_position_tables(len(pos))
+        
+        # Vectorized positional bonus calculation
+        # White pieces (negative values) get bonus for lower rows (higher indices)
+        # Black pieces (positive values) get bonus for higher rows (lower indices)
+        white_mask = pos < 0
+        black_mask = pos > 0
+        
+        score += (self._white_row_bonus_50[white_mask] * np.abs(pos[white_mask])).sum()
+        score += (self._black_row_bonus_50[black_mask] * pos[black_mask]).sum()
         
         return score
 
@@ -189,11 +206,17 @@ class AlphaBetaEngine(Engine):
     def __alpha_beta_pruning(
         self, board: Board, depth: int, alpha: float, beta: float
     ) -> float:
-        # Terminal node: game is over
-        if board.game_over:
-            if not board.is_draw:
-                return self.LOSE * board.turn.value
+        # Check for draw conditions first (cheap checks)
+        if board.is_draw:
             return -0.2 * board.turn.value
+        
+        # Generate legal moves - we need them anyway, and this avoids
+        # calling legal_moves twice (once in game_over, once here)
+        legal_moves = list(board.legal_moves)
+        
+        # Terminal node: no legal moves means game over
+        if not legal_moves:
+            return self.LOSE * board.turn.value
             
         # Terminal node: reached maximum depth
         if depth == 0:
@@ -201,14 +224,14 @@ class AlphaBetaEngine(Engine):
             return self.evaluate(board)
         
         # Check transposition table for cached position
-        board_hash = hash(board.fen)
+        # Use tuple of position bytes + turn for faster hashing than FEN string
+        board_hash = (board._pos.tobytes(), board.turn.value)
         if board_hash in self._transposition_table:
             cached_depth, cached_score = self._transposition_table[board_hash]
             if cached_depth >= depth:
                 return cached_score
         
-        # Generate legal moves with ordering for better pruning
-        legal_moves = list(board.legal_moves)
+        # Order moves for better pruning
         legal_moves = self._order_moves(legal_moves, board)
 
         # Evaluate each move

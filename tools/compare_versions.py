@@ -26,8 +26,8 @@ from rich.table import Table
 WARMUP_ROUNDS = 5
 BENCHMARK_ROUNDS = 10
 BENCHMARK_ITERATIONS = 10  # Number of times to run the legal moves benchmark
-ENGINE_DEPTH = 2
-NUM_GAMES = 20
+ENGINE_DEPTH = 3
+NUM_GAMES = 40
 
 # === Paths ===
 PROJECT_ROOT = Path(__file__).parent.parent
