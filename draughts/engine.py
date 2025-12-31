@@ -12,10 +12,13 @@ from draughts.models import Color
 # Constants
 INF = 10000.0
 CHECKMATE = 1000.0
+TT_MAX_SIZE = 500000  # Maximum transposition table entries
+IID_DEPTH = 3  # Internal Iterative Deepening threshold
+QS_MAX_DEPTH = 8  # Quiescence search depth limit
 
 # Piece values
 MAN_VALUE = 1.0
-KING_VALUE = 2.0  # Standard king value
+KING_VALUE = 2.5  # Kings are very powerful in draughts
 
 # PST Tables for men - rewards advancement (simple linear)
 PST_MAN_BLACK = np.array([
@@ -33,18 +36,18 @@ PST_MAN_BLACK = np.array([
 
 PST_MAN_WHITE = PST_MAN_BLACK[::-1]
 
-# King PST - prefers center
+# King PST - strongly prefers center, avoids edges
 PST_KING_BLACK = np.array([
-    0.00, 0.02, 0.02, 0.02, 0.00,
-    0.02, 0.05, 0.06, 0.05, 0.02,
-    0.02, 0.06, 0.08, 0.06, 0.02,
-    0.03, 0.07, 0.10, 0.07, 0.03,
-    0.04, 0.08, 0.12, 0.08, 0.04,
-    0.04, 0.08, 0.12, 0.08, 0.04,
-    0.03, 0.07, 0.10, 0.07, 0.03,
-    0.02, 0.06, 0.08, 0.06, 0.02,
-    0.02, 0.05, 0.06, 0.05, 0.02,
-    0.00, 0.02, 0.02, 0.02, 0.00
+    0.00, 0.05, 0.05, 0.05, 0.00,
+    0.05, 0.10, 0.12, 0.10, 0.05,
+    0.05, 0.12, 0.15, 0.12, 0.05,
+    0.08, 0.15, 0.20, 0.15, 0.08,
+    0.10, 0.18, 0.25, 0.18, 0.10,
+    0.10, 0.18, 0.25, 0.18, 0.10,
+    0.08, 0.15, 0.20, 0.15, 0.08,
+    0.05, 0.12, 0.15, 0.12, 0.05,
+    0.05, 0.10, 0.12, 0.10, 0.05,
+    0.00, 0.05, 0.05, 0.05, 0.00
 ])
 
 PST_KING_WHITE = PST_KING_BLACK[::-1]
@@ -145,7 +148,7 @@ class AlphaBetaEngine(Engine):
 
     def evaluate(self, board: Board) -> float:
         """
-        Advanced evaluation function with material, PST, mobility, and patterns.
+        Evaluation function with material and PST.
         Returns score from the perspective of the side to move.
         """
         pos = board._pos
@@ -156,9 +159,15 @@ class AlphaBetaEngine(Engine):
         black_men = (pos == 1)
         black_kings = (pos == 2)
         
+        # Count pieces
+        n_white_men = np.sum(white_men)
+        n_white_kings = np.sum(white_kings)
+        n_black_men = np.sum(black_men)
+        n_black_kings = np.sum(black_kings)
+        
         # Material
-        score = (np.sum(black_men) - np.sum(white_men)) * MAN_VALUE
-        score += (np.sum(black_kings) - np.sum(white_kings)) * KING_VALUE
+        score = (n_black_men - n_white_men) * MAN_VALUE
+        score += (n_black_kings - n_white_kings) * KING_VALUE
         
         # PST - Piece Square Tables
         score += np.sum(PST_MAN_BLACK[black_men])
@@ -175,6 +184,10 @@ class AlphaBetaEngine(Engine):
         self.start_time = time.time()
         self.nodes = 0
         self.stop_search = False
+        
+        # Age history table (decay old values)
+        for key in self.history:
+            self.history[key] //= 2
         
         # Initial Hash
         current_hash = self.compute_hash(board)
@@ -203,6 +216,13 @@ class AlphaBetaEngine(Engine):
                     
             except TimeoutError:
                 break
+        
+        # Limit TT size
+        if len(self.tt) > TT_MAX_SIZE:
+            # Remove oldest entries (simple approach)
+            keys_to_remove = list(self.tt.keys())[:len(self.tt) - TT_MAX_SIZE // 2]
+            for k in keys_to_remove:
+                del self.tt[k]
         
         logger.info(f"Best move: {best_move}, Score: {best_score:.2f}, Nodes: {self.nodes}")
         
@@ -254,6 +274,11 @@ class AlphaBetaEngine(Engine):
         # Check for draw
         if board.is_draw:
             return 0.0
+        
+        # Internal Iterative Deepening - if no TT move, do a shallow search first
+        tt_entry = self.tt.get(h)
+        if depth >= IID_DEPTH and (not tt_entry or tt_entry[3] is None):
+            self.negamax(board, depth - 2, alpha, beta, h)
 
         # Move Ordering
         legal_moves = self._order_moves(legal_moves, board, h, depth)
@@ -274,7 +299,7 @@ class AlphaBetaEngine(Engine):
             else:
                 # LMR (Late Move Reductions) - only for quiet moves at depth >= 3
                 reduction = 0
-                if depth >= 3 and i >= 4 and not move.captured_list:
+                if depth >= 3 and i >= 3 and not move.captured_list:
                     reduction = 1
                 
                 # Null Window Search with possible reduction
@@ -309,7 +334,7 @@ class AlphaBetaEngine(Engine):
         
         return best_value
 
-    def quiescence_search(self, board: Board, alpha: float, beta: float, h: int) -> float:
+    def quiescence_search(self, board: Board, alpha: float, beta: float, h: int, qs_depth: int = 0) -> float:
         """Search captures until position is quiet."""
         self.nodes += 1
         
@@ -321,6 +346,10 @@ class AlphaBetaEngine(Engine):
         
         if alpha < stand_pat:
             alpha = stand_pat
+        
+        # Depth limit to prevent explosion
+        if qs_depth >= QS_MAX_DEPTH:
+            return stand_pat
             
         # Generate only captures
         legal_moves = list(board.legal_moves)
@@ -335,7 +364,7 @@ class AlphaBetaEngine(Engine):
         for move in captures:
             new_hash = self._update_hash(h, board, move)
             board.push(move)
-            score = -self.quiescence_search(board, -beta, -alpha, new_hash)
+            score = -self.quiescence_search(board, -beta, -alpha, new_hash, qs_depth + 1)
             board.pop()
             
             if score >= beta:
