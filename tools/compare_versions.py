@@ -22,6 +22,7 @@ from rich.table import Table
 # === Configuration ===
 WARMUP_ROUNDS = 3
 BENCHMARK_ROUNDS = 5
+BENCHMARK_ITERATIONS = 10  # Number of times to run the legal moves benchmark
 ENGINE_DEPTH = 3
 NUM_GAMES = 20
 
@@ -224,30 +225,76 @@ def main():
             install_package(py2, PROJECT_ROOT)
         console.print("  ✓ Current ready")
 
-        # Legal moves benchmark
-        console.print(f"\n[bold]Legal moves benchmark ({BENCHMARK_ROUNDS} rounds, {WARMUP_ROUNDS} warmup)...[/]")
+        # Legal moves benchmark - run multiple iterations
+        console.print(f"\n[bold]Legal moves benchmark ({BENCHMARK_ITERATIONS} iterations, {BENCHMARK_ROUNDS} rounds each, {WARMUP_ROUNDS} warmup)...[/]")
 
-        with console.status("[green]Benchmarking snapshot..."):
-            lm1 = run_legal_moves_benchmark(py1)
-        with console.status("[green]Benchmarking current..."):
-            lm2 = run_legal_moves_benchmark(py2)
+        lm1_results = []
+        lm2_results = []
 
-        if "error" in lm1 or "error" in lm2:
-            console.print(f"[red]Error: {lm1.get('error', '')} {lm2.get('error', '')}[/]")
-            sys.exit(1)
+        for i in range(BENCHMARK_ITERATIONS):
+            with console.status(f"[green]Iteration {i + 1}/{BENCHMARK_ITERATIONS} - Benchmarking snapshot..."):
+                lm1 = run_legal_moves_benchmark(py1)
+            with console.status(f"[green]Iteration {i + 1}/{BENCHMARK_ITERATIONS} - Benchmarking current..."):
+                lm2 = run_legal_moves_benchmark(py2)
 
-        lm_table = Table(title="Legal Moves Benchmark", box=box.ROUNDED)
+            if "error" in lm1 or "error" in lm2:
+                console.print(f"[red]Error in iteration {i + 1}: {lm1.get('error', '')} {lm2.get('error', '')}[/]")
+                sys.exit(1)
+
+            lm1_results.append(lm1)
+            lm2_results.append(lm2)
+            console.print(f"  Iteration {i + 1}: Snapshot={lm1['median_ms']:.2f}ms, Current={lm2['median_ms']:.2f}ms")
+
+        # Calculate statistics across all iterations
+        from statistics import median, mean, stdev
+
+        lm1_medians = [r["median_ms"] for r in lm1_results]
+        lm2_medians = [r["median_ms"] for r in lm2_results]
+
+        lm_table = Table(title=f"Legal Moves Benchmark ({BENCHMARK_ITERATIONS} iterations)", box=box.ROUNDED)
         lm_table.add_column("Metric", style="cyan")
         lm_table.add_column("Snapshot", justify="right")
         lm_table.add_column("Current", justify="right")
         lm_table.add_column("Change", justify="right")
 
         lm_table.add_row(
-            f"All positions ({lm1['positions_count']})",
-            f"{lm1['median_ms']:.2f} ms",
-            f"{lm2['median_ms']:.2f} ms",
-            format_change(lm1["median_ms"], lm2["median_ms"]),
+            f"Positions count",
+            f"{lm1_results[0]['positions_count']}",
+            f"{lm2_results[0]['positions_count']}",
+            "",
         )
+        lm_table.add_section()
+        lm_table.add_row(
+            "Median (of medians)",
+            f"{median(lm1_medians):.2f} ms",
+            f"{median(lm2_medians):.2f} ms",
+            format_change(median(lm1_medians), median(lm2_medians)),
+        )
+        lm_table.add_row(
+            "Mean",
+            f"{mean(lm1_medians):.2f} ms",
+            f"{mean(lm2_medians):.2f} ms",
+            format_change(mean(lm1_medians), mean(lm2_medians)),
+        )
+        lm_table.add_row(
+            "Min",
+            f"{min(lm1_medians):.2f} ms",
+            f"{min(lm2_medians):.2f} ms",
+            format_change(min(lm1_medians), min(lm2_medians)),
+        )
+        lm_table.add_row(
+            "Max",
+            f"{max(lm1_medians):.2f} ms",
+            f"{max(lm2_medians):.2f} ms",
+            format_change(max(lm1_medians), max(lm2_medians)),
+        )
+        if len(lm1_medians) > 1:
+            lm_table.add_row(
+                "Std Dev",
+                f"{stdev(lm1_medians):.2f} ms",
+                f"{stdev(lm2_medians):.2f} ms",
+                "",
+            )
 
         console.print()
         console.print(lm_table)
@@ -300,7 +347,9 @@ def main():
 
         # Summary
         console.print()
-        lm_change = ((lm2["median_ms"] - lm1["median_ms"]) / lm1["median_ms"]) * 100 if lm1["median_ms"] else 0
+        lm1_median = median(lm1_medians)
+        lm2_median = median(lm2_medians)
+        lm_change = ((lm2_median - lm1_median) / lm1_median) * 100 if lm1_median else 0
         time_change = ((v2_avg_time - v1_avg_time) / v1_avg_time) * 100 if v1_avg_time else 0
 
         if abs(lm_change) < 5 and abs(time_change) < 5:
