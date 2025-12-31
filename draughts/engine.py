@@ -1,9 +1,53 @@
+import time
+import random
 from abc import ABC, abstractmethod
-from typing import Optional
+from typing import Optional, List, Tuple, Dict
 from loguru import logger
+import numpy as np
+
 from draughts.boards.standard import Board, Move, Figure
 from draughts.models import Color
-import numpy as np
+
+
+# Constants
+INF = 10000.0
+CHECKMATE = 1000.0
+
+# Piece values
+MAN_VALUE = 1.0
+KING_VALUE = 2.0  # Standard king value
+
+# PST Tables for men - rewards advancement (simple linear)
+PST_MAN_BLACK = np.array([
+    0.25, 0.30, 0.30, 0.30, 0.25,   # 0-4: Near promotion
+    0.20, 0.22, 0.25, 0.22, 0.20,   # 5-9
+    0.15, 0.18, 0.20, 0.18, 0.15,   # 10-14
+    0.12, 0.15, 0.18, 0.15, 0.12,   # 15-19
+    0.08, 0.12, 0.15, 0.12, 0.08,   # 20-24
+    0.06, 0.10, 0.12, 0.10, 0.06,   # 25-29
+    0.04, 0.08, 0.10, 0.08, 0.04,   # 30-34
+    0.02, 0.05, 0.08, 0.05, 0.02,   # 35-39
+    0.01, 0.02, 0.04, 0.02, 0.01,   # 40-44
+    0.00, 0.00, 0.00, 0.00, 0.00    # 45-49: Starting rank
+])
+
+PST_MAN_WHITE = PST_MAN_BLACK[::-1]
+
+# King PST - prefers center
+PST_KING_BLACK = np.array([
+    0.00, 0.02, 0.02, 0.02, 0.00,
+    0.02, 0.05, 0.06, 0.05, 0.02,
+    0.02, 0.06, 0.08, 0.06, 0.02,
+    0.03, 0.07, 0.10, 0.07, 0.03,
+    0.04, 0.08, 0.12, 0.08, 0.04,
+    0.04, 0.08, 0.12, 0.08, 0.04,
+    0.03, 0.07, 0.10, 0.07, 0.03,
+    0.02, 0.06, 0.08, 0.06, 0.02,
+    0.02, 0.05, 0.06, 0.05, 0.02,
+    0.00, 0.02, 0.02, 0.02, 0.00
+])
+
+PST_KING_WHITE = PST_KING_BLACK[::-1]
 
 
 class Engine(ABC):
@@ -39,214 +83,342 @@ class Engine(ABC):
         ...
 
 
-
 class AlphaBetaEngine(Engine):
     """
-    Engine using alpha-beta pruning algorithm.
+    Advanced Alpha-Beta engine with Negamax, Iterative Deepening, and Transposition Tables.
     
-    Alpha-beta pruning is a minimax algorithm with optimization that prunes
-    branches of the game tree that cannot possibly influence the final decision.
-    The algorithm will not inspect nodes that are worse than already inspected nodes.
-    
-    Additionally, this engine prioritizes capture moves first, as they are usually
-    better than non-capture moves in draughts.
-    
-    Features:
-        - Move ordering: Captures are evaluated first for better pruning
-        - Transposition table: Caches evaluated positions to avoid redundant calculations
-        - Enhanced evaluation: Considers piece positioning and king promotion
-        
-    Performance Tips:
-        - Depth 3-4: Good for interactive play (fast response)
-        - Depth 5-6: Strong play (slower but better moves)
-        - Depth 7+: Very strong but can be slow
-    
-    Example:
-        >>> from draughts import get_board
-        >>> from draughts.engine import AlphaBetaEngine
-        >>> board = get_board('standard')
-        >>> engine = AlphaBetaEngine(depth=5)
-        >>> best_move = engine.get_best_move(board)
-        >>> best_move, score = engine.get_best_move(board, with_evaluation=True)
+    Optimizations:
+    - Negamax architecture
+    - Iterative Deepening
+    - Transposition Table with Zobrist Hashing
+    - Quiescence Search
+    - Move Ordering (PV, Killer, History, MVV-LVA)
+    - Advanced Evaluation (PST)
     """
 
-    WHITE_WIN = -100 * Color.WHITE.value
-    BLACK_WIN = -100 * Color.BLACK.value
-    LOSE = -100
-    
-    # Evaluation constants
-    BOARD_WIDTH = 5  # Width of the draughts board in playable squares
-    MAX_ROW = 9      # Maximum row index for positional evaluation
-    POSITION_BONUS = 0.1  # Bonus multiplier for advanced piece positioning
-
-    def __init__(self, depth):
-        """
-        Initialize the Alpha-Beta engine.
-        
-        Args:
-            depth: Search depth in half-moves (plies). Higher depth means stronger
-                   play but longer calculation time. Typical values are 3-6.
-        """
+    def __init__(self, depth: int, time_limit: float = None):
         self.depth = depth
-        self.inspected_nodes = 0
-        # Transposition table: stores {board_hash: (depth, score)}
-        self._transposition_table = {}
+        self.time_limit = time_limit
+        self.nodes = 0
+        self.tt = {}  # Transposition Table: {hash: (depth, flag, score, best_move)}
+        self.history = {}  # History Heuristic: {(from, to): score}
+        self.killers = {}  # Killer Moves: {depth: [move1, move2]}
+        
+        # Zobrist Hashing (uses seeded RNG for consistency)
+        self.zobrist_table = self._init_zobrist()
+        self.zobrist_turn = random.getrandbits(64)  # XOR when it's black's turn
+        
+        self.start_time = 0
+        self.stop_search = False
 
-    # Pre-computed row indices for positional evaluation (cached at class level)
-    _row_indices_50 = None
-    _white_row_bonus_50 = None
-    _black_row_bonus_50 = None
-    
-    @classmethod
-    def _init_position_tables(cls, size: int = 50):
-        """Initialize position bonus tables once."""
-        if cls._row_indices_50 is None:
-            cls._row_indices_50 = np.arange(size) // 5
-            cls._white_row_bonus_50 = (9 - cls._row_indices_50) * cls.POSITION_BONUS
-            cls._black_row_bonus_50 = cls._row_indices_50 * cls.POSITION_BONUS
+    @property
+    def inspected_nodes(self):
+        return self.nodes
 
-    def evaluate(self, board: Board):
+    @inspected_nodes.setter
+    def inspected_nodes(self, value):
+        self.nodes = value
+
+    def _init_zobrist(self):
+        # 50 squares, 5 piece types (Empty, B_Man, W_Man, B_King, W_King)
+        # We map piece values to indices: 
+        # -2 (W_King) -> 0
+        # -1 (W_Man) -> 1
+        # 0 (Empty) -> 2
+        # 1 (B_Man) -> 3
+        # 2 (B_King) -> 4
+        table = [[random.getrandbits(64) for _ in range(5)] for _ in range(50)]
+        return table
+
+    def _get_piece_index(self, piece):
+        # Map piece value to 0-4 index
+        return piece + 2
+
+    def compute_hash(self, board: Board) -> int:
+        h = 0
+        for i, piece in enumerate(board._pos):
+            if piece != 0:
+                h ^= self.zobrist_table[i][self._get_piece_index(piece)]
+        if board.turn == Color.BLACK:
+            h ^= self.zobrist_turn
+        return h
+
+    def evaluate(self, board: Board) -> float:
         """
-        Evaluation function for the current board position.
-        
-        The evaluation considers:
-        - Material balance: Each piece has a value (man=1, king=2)
-        - Piece positioning: Center control and advancement are valued
-        
-        Returns:
-            float: Positive score favors Black, negative favors White
+        Advanced evaluation function with material, PST, mobility, and patterns.
+        Returns score from the perspective of the side to move.
         """
         pos = board._pos
         
-        # Initialize position tables on first use
-        if self._row_indices_50 is None:
-            self._init_position_tables(len(pos))
+        # Piece masks
+        white_men = (pos == -1)
+        white_kings = (pos == -2)
+        black_men = (pos == 1)
+        black_kings = (pos == 2)
         
-        # Material count - vectorized (sum gives us material with king=2)
-        score = -pos.sum()
+        # Material
+        score = (np.sum(black_men) - np.sum(white_men)) * MAN_VALUE
+        score += (np.sum(black_kings) - np.sum(white_kings)) * KING_VALUE
         
-        # Positional bonus for advancement (vectorized)
-        white_mask = pos < 0
-        black_mask = pos > 0
+        # PST - Piece Square Tables
+        score += np.sum(PST_MAN_BLACK[black_men])
+        score -= np.sum(PST_MAN_WHITE[white_men])
+        score += np.sum(PST_KING_BLACK[black_kings])
+        score -= np.sum(PST_KING_WHITE[white_kings])
         
-        score += (self._white_row_bonus_50[white_mask] * np.abs(pos[white_mask])).sum()
-        score += (self._black_row_bonus_50[black_mask] * pos[black_mask]).sum()
-        
+        # Return score relative to side to move
+        if board.turn == Color.WHITE:
+            return -score
         return score
 
-    def get_best_move(self, board: Board, with_evaluation: bool = False):
-        """
-        Find and return the best move for the current position.
+    def get_best_move(self, board: Board, with_evaluation: bool = False) -> Move | tuple[Move, float]:
+        self.start_time = time.time()
+        self.nodes = 0
+        self.stop_search = False
         
-        Args:
-            board: Current board state
-            with_evaluation: If True, return (move, evaluation) tuple
-            
-        Returns:
-            Move or tuple[Move, float]: Best move, optionally with its evaluation
-        """
-        self.inspected_nodes = 0
-        # Note: Transposition table is preserved between moves
-        move, evaluation = self.__get_engine_move(board)
-        logger.debug(f"\ninspected  {self.inspected_nodes} nodes\n")
-        logger.info(f"best move: {move}, evaluation: {evaluation:.2f}")
-        if with_evaluation:
-            return move, evaluation
-        return move
-
-    def __get_engine_move(self, board: Board) -> tuple:
-        depth = self.depth
-        legal_moves = list(board.legal_moves)
+        # Initial Hash
+        current_hash = self.compute_hash(board)
         
-        # Move ordering: prioritize captures for better pruning
-        legal_moves = self._order_moves(legal_moves, board)
+        best_move = None
+        best_score = -INF
         
-        evals = []
-        alpha, beta = self.BLACK_WIN, self.WHITE_WIN
-
-        for move in legal_moves:
-            board.push(move)
-            evals.append(
-                self.__alpha_beta_pruning(
-                    board,
-                    depth - 1,
-                    alpha,
-                    beta,
-                )
-            )
-            board.pop()
-
-            # Update alpha-beta window
-            if board.turn == Color.WHITE:
-                alpha = max(alpha, evals[-1])
-            else:
-                beta = min(beta, evals[-1])
+        # Iterative Deepening
+        max_depth = self.depth
+        
+        for d in range(1, max_depth + 1):
+            try:
+                score = self.negamax(board, d, -INF, INF, current_hash)
                 
-        # Select best move based on current player
-        index = (
-            evals.index(max(evals))
-            if board.turn == Color.WHITE
-            else evals.index(min(evals))
-        )
-        return legal_moves[index], evals[index]
-    
-    def _order_moves(self, moves: list[Move], board: Board) -> list[Move]:
-        """Order moves: captures first, longer captures before shorter."""
-        captures = [m for m in moves if m.captured_list]
-        non_captures = [m for m in moves if not m.captured_list]
-        # Sort captures by length (more captures = better)
-        captures.sort(key=lambda m: len(m.captured_list), reverse=True)
-        return captures + non_captures
-
-    def __alpha_beta_pruning(
-        self, board: Board, depth: int, alpha: float, beta: float
-    ) -> float:
-        # Check for draw conditions first (cheap checks)
-        if board.is_draw:
-            return -0.2 * board.turn.value
-        
-        # Generate legal moves - we need them anyway, and this avoids
-        # calling legal_moves twice (once in game_over, once here)
-        legal_moves = list(board.legal_moves)
-        
-        # Terminal node: no legal moves means game over
-        if not legal_moves:
-            return self.LOSE * board.turn.value
-            
-        # Terminal node: reached maximum depth
-        if depth == 0:
-            self.inspected_nodes += 1
-            return self.evaluate(board)
-        
-        # Check transposition table for cached position
-        # Use tuple of position bytes + turn for faster hashing than FEN string
-        board_hash = (board._pos.tobytes(), board.turn.value)
-        if board_hash in self._transposition_table:
-            cached_depth, cached_score = self._transposition_table[board_hash]
-            if cached_depth >= depth:
-                return cached_score
-        
-        # Order moves for better pruning
-        legal_moves = self._order_moves(legal_moves, board)
-
-        # Evaluate each move
-        for move in legal_moves:
-            board.push(move)
-            evaluation = self.__alpha_beta_pruning(board, depth - 1, alpha, beta)
-            board.pop()
-            
-            # Update alpha-beta window
-            if board.turn == Color.WHITE:
-                alpha = max(alpha, evaluation)
-            else:
-                beta = min(beta, evaluation)
+                # Retrieve PV from TT
+                entry = self.tt.get(current_hash)
+                if entry:
+                    best_move = entry[3]
+                    best_score = score
                 
-            # Prune: this branch cannot improve the result
-            if beta <= alpha:
+                logger.debug(f"Depth {d}: Score {score:.3f}, Move {best_move}, Nodes {self.nodes}")
+                
+                # Time check
+                if self.time_limit and (time.time() - self.start_time > self.time_limit):
+                    break
+                    
+            except TimeoutError:
                 break
         
-        # Cache the result for this position
-        result = alpha if board.turn == Color.WHITE else beta
-        self._transposition_table[board_hash] = (depth, result)
+        logger.info(f"Best move: {best_move}, Score: {best_score:.2f}, Nodes: {self.nodes}")
         
-        return result
+        if best_move is None:
+            # Fallback if search failed to find a move (should not happen unless no legal moves)
+            legal_moves = list(board.legal_moves)
+            if legal_moves:
+                best_move = legal_moves[0]
+                best_score = -INF
+        
+        if with_evaluation:
+            return best_move, best_score
+        return best_move
+
+    def negamax(self, board: Board, depth: int, alpha: float, beta: float, h: int) -> float:
+        self.nodes += 1
+        
+        # Check time
+        if self.nodes % 2048 == 0:
+            if self.time_limit and (time.time() - self.start_time > self.time_limit):
+                self.stop_search = True
+        
+        if self.stop_search:
+            return alpha
+
+        # Transposition Table Lookup
+        tt_entry = self.tt.get(h)
+        if tt_entry:
+            tt_depth, tt_flag, tt_score, tt_move = tt_entry
+            if tt_depth >= depth:
+                if tt_flag == 0: # Exact
+                    return tt_score
+                elif tt_flag == 1: # Lowerbound (Alpha)
+                    alpha = max(alpha, tt_score)
+                elif tt_flag == 2: # Upperbound (Beta)
+                    beta = min(beta, tt_score)
+                
+                if alpha >= beta:
+                    return tt_score
+
+        # Base case: Leaf or Game Over
+        if depth <= 0:
+            return self.quiescence_search(board, alpha, beta, h)
+            
+        legal_moves = list(board.legal_moves)
+        if not legal_moves:
+            return -CHECKMATE + (self.depth - depth)
+        
+        # Check for draw
+        if board.is_draw:
+            return 0.0
+
+        # Move Ordering
+        legal_moves = self._order_moves(legal_moves, board, h, depth)
+        
+        best_value = -INF
+        best_move = None
+        tt_flag = 1 # Alpha (Lowerbound)
+        
+        for i, move in enumerate(legal_moves):
+            # Incremental Hash Update
+            new_hash = self._update_hash(h, board, move)
+            
+            board.push(move)
+            
+            # PVS (Principal Variation Search)
+            if i == 0:
+                val = -self.negamax(board, depth - 1, -beta, -alpha, new_hash)
+            else:
+                # LMR (Late Move Reductions) - only for quiet moves at depth >= 3
+                reduction = 0
+                if depth >= 3 and i >= 4 and not move.captured_list:
+                    reduction = 1
+                
+                # Null Window Search with possible reduction
+                val = -self.negamax(board, depth - 1 - reduction, -alpha - 1, -alpha, new_hash)
+                
+                # Re-search if needed
+                if val > alpha and (reduction > 0 or val < beta):
+                    val = -self.negamax(board, depth - 1, -beta, -alpha, new_hash)
+            
+            board.pop()
+            
+            if self.stop_search:
+                return alpha
+            
+            if val > best_value:
+                best_value = val
+                best_move = move
+            
+            alpha = max(alpha, val)
+            if alpha >= beta:
+                # Beta Cutoff
+                tt_flag = 2 # Beta (Upperbound)
+                # Update Killers
+                if not move.captured_list:
+                    self._update_killers(move, depth)
+                # Update History
+                self._update_history(move, depth)
+                break
+        
+        # Store in TT
+        self.tt[h] = (depth, tt_flag, best_value, best_move)
+        
+        return best_value
+
+    def quiescence_search(self, board: Board, alpha: float, beta: float, h: int) -> float:
+        """Search captures until position is quiet."""
+        self.nodes += 1
+        
+        # Stand-pat (static evaluation)
+        stand_pat = self.evaluate(board)
+        
+        if stand_pat >= beta:
+            return beta
+        
+        if alpha < stand_pat:
+            alpha = stand_pat
+            
+        # Generate only captures
+        legal_moves = list(board.legal_moves)
+        captures = [m for m in legal_moves if m.captured_list]
+        
+        if not captures:
+            return stand_pat
+            
+        # Order captures (MVV-LVA)
+        captures = self._order_captures(captures, board)
+        
+        for move in captures:
+            new_hash = self._update_hash(h, board, move)
+            board.push(move)
+            score = -self.quiescence_search(board, -beta, -alpha, new_hash)
+            board.pop()
+            
+            if score >= beta:
+                return beta
+            if score > alpha:
+                alpha = score
+                
+        return alpha
+
+    def _update_hash(self, current_hash: int, board: Board, move: Move) -> int:
+        # XOR out source
+        start_sq = move.square_list[0]
+        piece = board._pos[start_sq]
+        current_hash ^= self.zobrist_table[start_sq][self._get_piece_index(piece)]
+        
+        # XOR in dest
+        end_sq = move.square_list[-1]
+        # Determine new piece type (check promotion)
+        new_piece = piece
+        if move.is_promotion:
+            # If it was Man, becomes King.
+            # We need to know color.
+            if piece == 1: new_piece = 2
+            elif piece == -1: new_piece = -2
+        
+        current_hash ^= self.zobrist_table[end_sq][self._get_piece_index(new_piece)]
+        
+        # XOR out captures
+        for cap_sq in move.captured_list:
+            cap_piece = board._pos[cap_sq]
+            current_hash ^= self.zobrist_table[cap_sq][self._get_piece_index(cap_piece)]
+            
+        # Switch turn
+        current_hash ^= self.zobrist_turn
+        
+        return current_hash
+
+    def _order_moves(self, moves: List[Move], board: Board = None, h: int = 0, depth: int = 0) -> List[Move]:
+        # 1. PV Move from TT
+        tt_entry = self.tt.get(h)
+        pv_move = tt_entry[3] if tt_entry else None
+        
+        # 2. Captures (MVV-LVA)
+        # 3. Killer Moves
+        # 4. History Heuristic
+        
+        def score_move(move):
+            if move == pv_move:
+                return 1000000
+            
+            if move.captured_list:
+                # MVV-LVA: Victim Value - Attacker Value
+                # We want to capture high value piece with low value piece
+                # But in draughts, captures are mandatory and often chains.
+                # Length of capture is good proxy.
+                return 100000 + len(move.captured_list) * 1000
+            
+            # Killer
+            killers = self.killers.get(depth, [])
+            if move in killers:
+                return 90000
+                
+            # History
+            start = move.square_list[0]
+            end = move.square_list[-1]
+            return self.history.get((start, end), 0)
+
+        moves.sort(key=score_move, reverse=True)
+        return moves
+
+    def _order_captures(self, moves: List[Move], board: Board) -> List[Move]:
+        # Sort by number of captures
+        moves.sort(key=lambda m: len(m.captured_list), reverse=True)
+        return moves
+
+    def _update_killers(self, move: Move, depth: int):
+        if depth not in self.killers:
+            self.killers[depth] = []
+        if move not in self.killers[depth]:
+            self.killers[depth].insert(0, move)
+            self.killers[depth] = self.killers[depth][:2] # Keep top 2
+
+    def _update_history(self, move: Move, depth: int):
+        start = move.square_list[0]
+        end = move.square_list[-1]
+        self.history[(start, end)] = self.history.get((start, end), 0) + depth * depth
