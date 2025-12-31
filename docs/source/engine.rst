@@ -83,3 +83,11 @@ the ``get_best_move`` method::
             if with_evaluation:
                 return move, 0.0
             return move
+
+
+Benchmarking the Engine
+-----------------------
+
+.. image:: _static/engine_benchmark.png
+   :alt: Engine Benchmark Results
+   :width: 600px
