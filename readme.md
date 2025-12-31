@@ -110,11 +110,41 @@ Legal moves are: ['31-27', '31-26', '32-28', '32-27', '33-29', '33-28', '34-30',
  1. 31-27 32-28 2. 27-23 28-24'
 ```
 
+- Reads PDN strings
+
 ```python
->>> board = get_board('standard', "W:W4,11,28,31,K33,K34,38,40,K41,43,K44,45,K46,47:BK3,21,27,32")
->>> board.fen
-'[FEN "W:W4,11,28,31,K33,K34,38,40,K41,43,K44,45,K46,47:BK3,21,27,32"]'
+>>> pdn = '''[GameType "20"]
+... 1. 32-28 19-23 2. 28x19 14x23'''
+>>> board = StandardBoard.from_pdn(pdn)
+>>> board
+ . b . b . b . b . b
+ b . b . b . b . b .
+ . b . b . b . b . b
+ b . . . b . b . b .
+ . . . b . . . . . .
+ . . . . . . . . . .
+ . w . w . w . w . w
+ w . w . w . w . w .
+ . w . w . w . w . w
+ w . w . w . w . w .
 ```
+
+- Renders board as SVG image
+
+```python
+>>> import draughts
+>>> board = draughts.StandardBoard()
+>>> draughts.svg.board(board, size=400)
+```
+
+<img src="docs/source/_static/board_standard.svg" alt="Standard draughts board" width="400">
+
+```python
+>>> board = draughts.StandardBoard.from_fen("W:WK10,K20:BK35,K45")
+>>> draughts.svg.board(board, size=400)
+```
+
+<img src="docs/source/_static/board_kings.svg" alt="Board with kings" width="400">
 - Has powerful AI engine
 
 ```python

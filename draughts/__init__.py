@@ -26,6 +26,9 @@ from draughts.boards.standard import Board as StandardBoard
 from draughts.boards.frisian import Board as FrisianBoard
 from draughts.boards.american import Board as AmericanBoard
 from draughts.server.server import Server
+from draughts import svg
+from draughts.models import Color, Figure
+from draughts.move import Move
 
 
 def get_board(

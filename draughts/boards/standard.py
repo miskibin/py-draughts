@@ -1,9 +1,7 @@
 from __future__ import annotations
 import types
 from typing import Any
-
 import numpy as np
-
 from draughts.boards.base import BaseBoard
 from draughts.models import Color, Figure
 from draughts.move import Move

@@ -11,6 +11,7 @@ Contents
     base
     move
     engine
+    svg
     standard
     american
     frisian
