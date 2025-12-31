@@ -24,6 +24,12 @@ class Figure(IntEnum):
     EMPTY = 0
 
 
+# Pre-cached values to avoid enum lookup overhead in hot paths
+EMPTY = Figure.EMPTY.value  # 0
+MAN = Figure.MAN.value      # 1
+KING = Figure.KING.value    # 2
+
+
 FIGURE_REPR = {
     Figure.BLACK_MAN: "b",
     Figure.WHITE_MAN: "w",
