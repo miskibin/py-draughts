@@ -1,8 +1,5 @@
 import numpy as np
-from easy_logs import get_logger
 from collections import defaultdict
-
-logger = get_logger(lvl=10)
 
 
 def _get_all_squares_at_the_diagonal(square: int, position_length: int) -> list[list[int]]:

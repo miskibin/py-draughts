@@ -33,7 +33,7 @@ requires-python = ">=3.9"
 dependencies = [
     "tqdm",
     "numpy",
-    "easy_logs",
+    "loguru",
     "fastapi",
     "uvicorn",
     "jinja2",

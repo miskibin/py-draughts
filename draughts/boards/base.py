@@ -5,11 +5,11 @@ from abc import ABC, abstractmethod
 from typing import Generator, Literal, Optional
 from typing import Type
 import numpy as np
+from loguru import logger
 
 from draughts.models import FIGURE_REPR, Color, Figure, SquareT
 from draughts.move import Move
 from draughts.utils import (
-    logger,
     get_diagonal_moves,
     get_short_diagonal_moves,
 )

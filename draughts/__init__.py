@@ -19,6 +19,14 @@ A draughts library with advanced (customizable) WEB UI move generation and valid
 PDN parsing and writing. Supports multiple variants of game.
 """
 from typing import Literal, Optional, Type
+import sys
+from loguru import logger
+
+# Remove default stderr handler (id=0) - users can add their own with logger.add(sys.stderr)
+try:
+    logger.remove(0)
+except ValueError:
+    pass  # Already removed
 
 # create board type
 from draughts.boards.base import BaseBoard

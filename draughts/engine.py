@@ -1,8 +1,8 @@
 from abc import ABC, abstractmethod
 from typing import Optional
+from loguru import logger
 from draughts.boards.standard import Board, Move, Figure
 from draughts.models import Color
-from draughts.utils import logger
 import numpy as np
 
 

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import numpy as np
+from loguru import logger
 
 from draughts.boards.base import BaseBoard
 from draughts.models import Color, Figure
@@ -8,7 +9,6 @@ from draughts.move import Move
 from draughts.utils import (
     get_short_vertical_and_horizontal_moves,
     get_vertical_and_horizontal_moves,
-    logger,
 )
 
 # fmt: off

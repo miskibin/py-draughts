@@ -2,13 +2,13 @@ from __future__ import annotations
 import types
 from typing import Any
 import numpy as np
+from loguru import logger
 from draughts.boards.base import BaseBoard
 from draughts.models import Color, Figure
 from draughts.move import Move
 from draughts.utils import (
     get_diagonal_moves,
     get_short_diagonal_moves,
-    logger,
 )
 
 # fmt: off
