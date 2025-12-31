@@ -7,7 +7,7 @@
 Efficient modern and flexible implementation of the draughts game with a beautiful web interface. 
 Supports multiple variants of the game and allows playing against AI.
 
-<img width="1905" height="935" alt="image" src="https://github.com/user-attachments/assets/8c3e255e-7fbb-4ae6-a9ab-2445c486c349" />
+<img width="1905"  alt="image" src="https://github.com/user-attachments/assets/8c3e255e-7fbb-4ae6-a9ab-2445c486c349" />
 
 
 ## Installation
