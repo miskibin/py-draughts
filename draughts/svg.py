@@ -449,34 +449,36 @@ def board(
     if coordinates:
         for row in range(board_size):
             # Calculate Y position for this row
+            coord_y: float
             if orientation == Color.WHITE:
-                y = row * SQUARE_SIZE + SQUARE_SIZE / 2 + board_offset
+                coord_y = row * SQUARE_SIZE + SQUARE_SIZE / 2 + board_offset
                 row_label = str(board_size - row)  # Top row is highest number
             else:
-                y = row * SQUARE_SIZE + SQUARE_SIZE / 2 + board_offset
+                coord_y = row * SQUARE_SIZE + SQUARE_SIZE / 2 + board_offset
                 row_label = str(row + 1)  # Bottom row is 1 when flipped
 
             # Left margin
-            _render_coord(svg, row_label, margin / 2, y, colors)
+            _render_coord(svg, row_label, margin / 2, coord_y, colors)
 
             # Right margin
-            _render_coord(svg, row_label, full_size - margin / 2, y, colors)
+            _render_coord(svg, row_label, full_size - margin / 2, coord_y, colors)
 
         # Draw column labels (a-j for 10x10, a-h for 8x8)
         col_labels = "abcdefghij"[:board_size]
         for col in range(board_size):
+            coord_x: float
             if orientation == Color.WHITE:
-                x = col * SQUARE_SIZE + SQUARE_SIZE / 2 + board_offset
+                coord_x = col * SQUARE_SIZE + SQUARE_SIZE / 2 + board_offset
                 col_label = col_labels[col]
             else:
-                x = col * SQUARE_SIZE + SQUARE_SIZE / 2 + board_offset
+                coord_x = col * SQUARE_SIZE + SQUARE_SIZE / 2 + board_offset
                 col_label = col_labels[board_size - 1 - col]
 
             # Top margin
-            _render_coord(svg, col_label, x, margin / 2, colors)
+            _render_coord(svg, col_label, coord_x, margin / 2, colors)
 
             # Bottom margin
-            _render_coord(svg, col_label, x, full_size - margin / 2, colors)
+            _render_coord(svg, col_label, coord_x, full_size - margin / 2, colors)
 
     # Draw square numbers on dark squares (legend)
     if legend:
@@ -552,9 +554,9 @@ def board(
 
     # Draw arrows
     for arrow in arrows:
-        try:
+        if isinstance(arrow, Arrow):
             tail, head, arrow_color = arrow.tail, arrow.head, arrow.color
-        except AttributeError:
+        else:
             tail, head = arrow
             arrow_color = "green"
 
