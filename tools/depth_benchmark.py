@@ -74,6 +74,7 @@ def main():
     print()
     print(f"{'Depth':>6} | {'Avg Time':>12} | {'Avg Nodes':>12} | {'Total Time':>12}")
     print("-" * 70)
+    sys.stdout.flush()
     
     results = []
     
@@ -94,6 +95,7 @@ def main():
             total_str = f"{total_time/60:.1f} min"
         
         print(f"{depth:>6} | {time_str:>12} | {result['avg_nodes']:>12,} | {total_str:>12}")
+        sys.stdout.flush()
         
         # Stop if taking too long (> 30s per move on average)
         if avg_time > 30000:

@@ -32,8 +32,10 @@ class Server:
         get_best_move_method: Callable = lambda board: np.random.choice(
             list(board.legal_moves)
         ),
+        engine=None,
     ):
         self.get_best_move_method = get_best_move_method
+        self.engine = engine
         self.board = board
         self.engine_depth = 6
         self.play_with_computer = False
@@ -79,6 +81,8 @@ class Server:
     def set_depth(self, depth: int) -> dict:
         depth = max(1, min(10, int(depth)))
         self.engine_depth = depth
+        if self.engine is not None and hasattr(self.engine, 'depth'):
+            self.engine.depth = depth
         return {"depth": self.engine_depth}
 
     def set_play_mode(self, mode: str) -> dict:
@@ -170,5 +174,5 @@ if __name__ == "__main__":
 
     engine = AlphaBetaEngine(depth=6)
     board = get_board("standard")
-    server = Server(board=board, get_best_move_method=engine.get_best_move)
+    server = Server(board=board, get_best_move_method=engine.get_best_move, engine=engine)
     server.run()
