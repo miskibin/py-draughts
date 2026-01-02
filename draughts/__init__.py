@@ -37,6 +37,7 @@ from draughts.server.server import Server
 from draughts import svg
 from draughts.models import Color, Figure
 from draughts.move import Move
+from draughts.hub import HubEngine
 
 
 def get_board(

@@ -1,52 +1,76 @@
 /**
  * py-draughts - Game Client
+ * Clean, modular implementation with dual engine support
  */
 
-// Piece colors
+// =============================================================================
+// Constants & State
+// =============================================================================
+
 const COLORS = {
     1: '#1a1a1a', '-1': '#f0f0f0',
     2: '#1a1a1a', '-2': '#f0f0f0'
 };
 
-// Game state
-let board = null;
-let history = null;
-let turn = null;
-let legalMoves = null;
-let sourceSquare = null;
-let autoPlayId = null;
-let autoPlayRunning = false;
-let autoPlayNonce = 0;
-let autoPlayRequest = null;
-let engineMoveInFlight = false;
-let playWithComputerMode = false;
-let engineDepth = 6;
-let lastGameOver = false;
+const state = {
+    board: null,
+    history: null,
+    turn: null,
+    legalMoves: null,
+    sourceSquare: null,
+    autoPlayId: null,
+    autoPlayRunning: false,
+    autoPlayNonce: 0,
+    autoPlayRequest: null,
+    engineMoveInFlight: false,
+    engineDepth: 6,
+    lastGameOver: false,
+    hasDualEngines: false,
+    whiteEngineName: null,
+    blackEngineName: null
+};
 
 const crownIcon = $('#board').data('crown-icon');
 
-// API calls
+// =============================================================================
+// API
+// =============================================================================
+
 const api = {
     get: (url) => $.get(url),
-    post: (url) => $.post(url)
+    post: (url, data) => data 
+        ? $.ajax({ url, method: 'POST', contentType: 'application/json', data: JSON.stringify(data) })
+        : $.post(url)
 };
 
-// Show toast notification
+// =============================================================================
+// Notifications
+// =============================================================================
+
 function notify(title, message, type = 'success') {
-    const icons = { success: 'check-circle-fill text-success', error: 'x-circle-fill text-danger', info: 'info-circle-fill text-info' };
+    const icons = {
+        success: 'check-circle-fill text-success',
+        error: 'x-circle-fill text-danger',
+        info: 'info-circle-fill text-info'
+    };
     $('#toastIcon').attr('class', `bi bi-${icons[type]} me-2`);
     $('#toastTitle').text(title);
     $('#toastMessage').text(message);
     new bootstrap.Toast($('#notificationToast')[0]).show();
 }
 
-// Update the board display
-function updateBoard() {
-    const size = Math.sqrt(board.length);
-    $('#board').css('grid-template-columns', `repeat(${size}, 1fr)`);
-    $('#board').css('grid-template-rows', `repeat(${size}, 1fr)`);
+// =============================================================================
+// Board Rendering
+// =============================================================================
 
-    board.forEach((piece, i) => {
+function updateBoard() {
+    const size = Math.sqrt(state.board.length);
+    $('#board').css({
+        'grid-template-columns': `repeat(${size}, 1fr)`,
+        'grid-template-rows': `repeat(${size}, 1fr)`
+    });
+
+    state.board.forEach((piece, i) => {
         const $tile = $(`#tile-${i}`);
         $tile.removeClass('highlight').find('.piece, .crown').remove();
 
@@ -59,63 +83,96 @@ function updateBoard() {
         }
     });
 
-    // Update turn
-    $('#turn').text(turn || 'White');
-    $('#turnIndicator').removeClass('turn-white turn-black').addClass(turn === 'Black' ? 'turn-black' : 'turn-white');
-
-    // Update history
-    const $list = $('#moveList').empty();
-    if (!history?.length) {
-        $list.html('<div class="text-muted text-center py-3">No moves yet</div>');
-    } else {
-        history.forEach(m => {
-            const moveNo = m[0];
-            const white = m[1] || '';
-            const black = m[2] || '';
-            const whitePly = (moveNo - 1) * 2 + 1;
-            const blackPly = (moveNo - 1) * 2 + 2;
-
-            $list.append(
-                `<div class="move-row">
-                    <span class="move-number">${moveNo}.</span>
-                    <span class="move-white move-cell" data-ply="${whitePly}">${white}</span>
-                    <span class="move-black move-cell" data-ply="${blackPly}">${black}</span>
-                </div>`
-            );
-        });
-        $list.scrollTop($list[0].scrollHeight);
-    }
+    updateTurnIndicator();
+    updateMoveHistory();
+    updateEngineIndicator();
 }
 
-// Initialize board tiles
+function updateTurnIndicator() {
+    const turn = state.turn || 'White';
+    const capitalizedTurn = turn.charAt(0).toUpperCase() + turn.slice(1);
+    $('#turn').text(capitalizedTurn);
+    $('#turnIndicator')
+        .removeClass('turn-white turn-black')
+        .addClass(turn.toLowerCase() === 'black' ? 'turn-black' : 'turn-white');
+}
+
+function updateMoveHistory() {
+    const $list = $('#moveList').empty();
+    
+    if (!state.history?.length) {
+        $list.html('<div class="text-muted text-center py-3">No moves yet</div>');
+        return;
+    }
+
+    state.history.forEach(m => {
+        const moveNo = m[0];
+        const white = m[1] || '';
+        const black = m[2] || '';
+        const whitePly = (moveNo - 1) * 2 + 1;
+        const blackPly = (moveNo - 1) * 2 + 2;
+
+        $list.append(`
+            <div class="move-row">
+                <span class="move-number">${moveNo}.</span>
+                <span class="move-white move-cell" data-ply="${whitePly}">${white}</span>
+                <span class="move-black move-cell" data-ply="${blackPly}">${black}</span>
+            </div>
+        `);
+    });
+    
+    $list.scrollTop($list[0].scrollHeight);
+}
+
+function updateEngineIndicator() {
+    const $indicator = $('#engineIndicator');
+    
+    if (!state.hasDualEngines) {
+        $indicator.hide();
+        return;
+    }
+
+    const currentEngine = state.turn === 'white' 
+        ? state.whiteEngineName 
+        : state.blackEngineName;
+    
+    $indicator.show();
+    $('#currentEngineName').text(currentEngine || 'Engine');
+}
+
 function initBoard() {
-    const size = Math.sqrt(board.length);
-    board.forEach((_, i) => {
+    const size = Math.sqrt(state.board.length);
+    
+    state.board.forEach((_, i) => {
         const $tile = $(`#tile-${i}`);
         const isLight = (i + Math.floor(i / size)) % 2 !== 0;
 
         $tile.addClass(isLight ? 'light-tile' : 'dark-tile');
-        if (isLight) $(`#tile-${i}-text`).text(Math.floor(i / 2) + 1);
-
+        if (isLight) {
+            $(`#tile-${i}-text`).text(Math.floor(i / 2) + 1);
+        }
         $tile.on('click', handleTileClick);
     });
 }
 
-// Handle clicking a tile
+// =============================================================================
+// User Interaction
+// =============================================================================
+
 async function handleTileClick(e) {
     const $tile = $(e.currentTarget);
     const $piece = $tile.find('.piece');
     const tileNum = parseInt($tile.find('.tile-text').text());
 
-    // If clicking a piece, show legal moves
+    // Clicking a piece: show legal moves
     if ($piece.length && !$(e.target).hasClass('tile')) {
         $('.highlight').removeClass('highlight');
         const data = await api.get('/legal_moves');
-        legalMoves = JSON.parse(data.legal_moves);
+        state.legalMoves = JSON.parse(data.legal_moves);
 
-        if (legalMoves[tileNum - 1]) {
-            sourceSquare = tileNum;
-            legalMoves[tileNum - 1].flat().forEach(target => {
+        if (state.legalMoves[tileNum - 1]) {
+            state.sourceSquare = tileNum;
+            state.legalMoves[tileNum - 1].flat().forEach(target => {
                 $('.tile').each(function() {
                     if (parseInt($(this).find('.tile-text').text()) - 1 === target) {
                         $(this).addClass('highlight');
@@ -126,202 +183,247 @@ async function handleTileClick(e) {
         return;
     }
 
-    // If clicking highlighted tile, make move
-    if (sourceSquare && legalMoves[sourceSquare - 1]?.includes(tileNum - 1)) {
-        const data = await api.post(`/move/${sourceSquare}/${tileNum}`);
-        board = data.position;
-        history = data.history;
-        turn = data.turn;
-        sourceSquare = null;
+    // Clicking highlighted tile: make move
+    if (state.sourceSquare && state.legalMoves[state.sourceSquare - 1]?.includes(tileNum - 1)) {
+        const data = await api.post(`/move/${state.sourceSquare}/${tileNum}`);
+        updateState(data);
+        state.sourceSquare = null;
         updateBoard();
-        
-        // If play with computer mode is enabled and game is not over, let computer play
-        if (playWithComputerMode && turn && !data.game_over) {
-            await new Promise(resolve => setTimeout(resolve, 500)); // Add delay for UX
-            await engineMove();
-        }
     }
 }
 
-// Button handlers
-async function engineMove(opts = { autoplay: false, nonce: 0 }) {
-    // Prevent overlapping calls (autoplay depth 10 can exceed interval)
-    if (engineMoveInFlight) return;
-    engineMoveInFlight = true;
+// =============================================================================
+// Game Actions
+// =============================================================================
 
-    const $btn = $('#makeMove').prop('disabled', true).html('<span class="spinner-border spinner-border-sm"></span>');
+async function engineMove(opts = { autoplay: false, nonce: 0 }) {
+    if (state.engineMoveInFlight) return;
+    state.engineMoveInFlight = true;
+
+    const $btn = $('#makeMove')
+        .prop('disabled', true)
+        .html('<span class="spinner-border spinner-border-sm"></span>');
+
     try {
         const req = api.get('/best_move');
-        autoPlayRequest = req;
+        state.autoPlayRequest = req;
         const data = await req;
 
-        // Ignore autoplay responses if stopped/restarted mid-flight.
-        if (opts.autoplay && (!autoPlayRunning || opts.nonce !== autoPlayNonce)) {
+        // Ignore stale autoplay responses
+        if (opts.autoplay && (!state.autoPlayRunning || opts.nonce !== state.autoPlayNonce)) {
             return;
         }
 
-        board = data.position; history = data.history; turn = data.turn;
+        updateState(data);
         updateBoard();
 
-        // Game-over acknowledgement
-        if (data.game_over && !lastGameOver) {
+        // Game over handling
+        if (data.game_over && !state.lastGameOver) {
             notify('Game Over', `Result: ${data.result || '-'}`, 'info');
+            stopAutoPlay();
         }
-        lastGameOver = !!data.game_over;
+        state.lastGameOver = !!data.game_over;
 
-        if (data.game_over) {
-            // Stop autoplay if running
-            autoPlayRunning = false;
-            if (autoPlayId) {
-                clearTimeout(autoPlayId);
-                autoPlayId = null;
-            }
-            $('#autoPlay').html('<i class="bi bi-play-fill"></i> Auto Play');
+    } catch (err) {
+        if (err.statusText !== 'abort') {
+            notify('Error', 'Engine failed', 'error');
         }
-    } catch {
-        notify('Error', 'Engine failed', 'error');
     } finally {
         $btn.prop('disabled', false).html('<i class="bi bi-cpu"></i> Engine Move');
-        engineMoveInFlight = false;
+        state.engineMoveInFlight = false;
     }
 }
 
 async function undo() {
     const data = await api.get('/pop');
-    board = data.position; history = data.history; turn = data.turn;
+    updateState(data);
     updateBoard();
     notify('Undo', 'Move undone', 'info');
-}
-
-async function randomPosition() {
-    const data = await api.get('/set_random_position');
-    board = data.position; history = data.history; turn = data.turn;
-    updateBoard();
-    notify('Random', 'New position set', 'success');
-}
-
-async function copyFen() {
-    const data = await api.get('/fen');
-    navigator.clipboard.writeText(data.fen);
-    notify('Copied', data.fen, 'success');
-}
-
-async function copyPdn() {
-    const data = await api.get('/pdn');
-    navigator.clipboard.writeText(data.pdn);
-    notify('Copied', 'PDN copied to clipboard', 'success');
-}
-
-async function loadPdn() {
-    const pdn = prompt('Paste PDN:');
-    if (!pdn) return;
-    try {
-        const data = await $.ajax({ url: '/load_pdn', method: 'POST', contentType: 'application/json', data: JSON.stringify({ pdn }) });
-        board = data.position; history = data.history; turn = data.turn;
-        updateBoard();
-        notify('Loaded', 'PDN loaded', 'success');
-    } catch { notify('Error', 'Invalid PDN', 'error'); }
-}
-
-function toggleAutoPlay() {
-    const $btn = $('#autoPlay');
-    if (autoPlayRunning) {
-        autoPlayRunning = false;
-        if (autoPlayId) {
-            clearTimeout(autoPlayId);
-            autoPlayId = null;
-        }
-        if (autoPlayRequest && typeof autoPlayRequest.abort === 'function') {
-            autoPlayRequest.abort();
-        }
-        autoPlayRequest = null;
-        $btn.html('<i class="bi bi-play-fill"></i> Auto Play');
-        return;
-    }
-
-    // Start autoplay: chain moves so there is never more than one in-flight request.
-    autoPlayRunning = true;
-    autoPlayNonce += 1;
-    const nonce = autoPlayNonce;
-    $btn.html('<i class="bi bi-stop-fill"></i> Stop');
-
-    const tick = async () => {
-        if (!autoPlayRunning || nonce !== autoPlayNonce) return;
-        await engineMove({ autoplay: true, nonce });
-        if (!autoPlayRunning || nonce !== autoPlayNonce) return;
-        autoPlayId = setTimeout(tick, 800);
-    };
-
-    // Run first move immediately.
-    tick();
 }
 
 async function gotoPly(ply) {
     const p = parseInt(ply);
     if (!Number.isFinite(p) || p < 0) return;
+    
     const data = await api.get(`/goto/${p}`);
-    board = data.position; history = data.history; turn = data.turn;
+    updateState(data);
     updateBoard();
+}
+
+// =============================================================================
+// Auto Play
+// =============================================================================
+
+function toggleAutoPlay() {
+    if (state.autoPlayRunning) {
+        stopAutoPlay();
+    } else {
+        startAutoPlay();
+    }
+}
+
+function startAutoPlay() {
+    state.autoPlayRunning = true;
+    state.autoPlayNonce += 1;
+    const nonce = state.autoPlayNonce;
+    
+    $('#autoPlay').html('<i class="bi bi-stop-fill"></i> Stop');
+
+    const tick = async () => {
+        if (!state.autoPlayRunning || nonce !== state.autoPlayNonce) return;
+        await engineMove({ autoplay: true, nonce });
+        if (!state.autoPlayRunning || nonce !== state.autoPlayNonce) return;
+        state.autoPlayId = setTimeout(tick, 800);
+    };
+
+    tick();
+}
+
+function stopAutoPlay() {
+    state.autoPlayRunning = false;
+    
+    if (state.autoPlayId) {
+        clearTimeout(state.autoPlayId);
+        state.autoPlayId = null;
+    }
+    
+    if (state.autoPlayRequest?.abort) {
+        state.autoPlayRequest.abort();
+    }
+    state.autoPlayRequest = null;
+    
+    $('#autoPlay').html('<i class="bi bi-play-fill"></i> Auto Play');
+}
+
+// =============================================================================
+// FEN/PDN Operations
+// =============================================================================
+
+async function copyFen() {
+    const data = await api.get('/fen');
+    await navigator.clipboard.writeText(data.fen);
+    notify('Copied', data.fen, 'success');
+}
+
+async function copyPdn() {
+    const data = await api.get('/pdn');
+    await navigator.clipboard.writeText(data.pdn);
+    notify('Copied', 'PDN copied to clipboard', 'success');
 }
 
 async function loadFen() {
     const fen = prompt('Paste FEN:');
     if (!fen) return;
+    
     try {
-        const data = await $.ajax({ url: '/load_fen', method: 'POST', contentType: 'application/json', data: JSON.stringify({ fen }) });
-        board = data.position; history = data.history; turn = data.turn;
+        const data = await api.post('/load_fen', { fen });
+        updateState(data);
         updateBoard();
         notify('Loaded', 'FEN loaded', 'success');
-    } catch { notify('Error', 'Invalid FEN', 'error'); }
-}
-
-async function updateEngineDepth(depth) {
-    engineDepth = parseInt(depth);
-    $('#depthValue').text(engineDepth);
-    await api.get(`/set_depth/${engineDepth}`);
-    notify('Depth', `Engine depth set to ${engineDepth}`, 'info');
-}
-
-async function togglePlayWithComputer() {
-    playWithComputerMode = $('#playWithComputerToggle').is(':checked');
-    const mode = playWithComputerMode ? 'on' : 'off';
-    await api.get(`/set_play_mode/${mode}`);
-    $('#computerModeInfo').toggle(playWithComputerMode);
-    if (playWithComputerMode) {
-        notify('Mode', 'Play with Computer enabled', 'info');
-    } else {
-        notify('Mode', 'Play with Computer disabled', 'info');
+    } catch {
+        notify('Error', 'Invalid FEN', 'error');
     }
 }
 
-// Initialize
+async function loadPdn() {
+    const pdn = prompt('Paste PDN:');
+    if (!pdn) return;
+    
+    try {
+        const data = await api.post('/load_pdn', { pdn });
+        updateState(data);
+        updateBoard();
+        notify('Loaded', 'PDN loaded', 'success');
+    } catch {
+        notify('Error', 'Invalid PDN', 'error');
+    }
+}
+
+// =============================================================================
+// Settings
+// =============================================================================
+
+async function updateEngineDepth(depth) {
+    state.engineDepth = parseInt(depth);
+    $('#depthValue').text(state.engineDepth);
+    await api.get(`/set_depth/${state.engineDepth}`);
+    notify('Depth', `Engine depth set to ${state.engineDepth}`, 'info');
+}
+
+// =============================================================================
+// Engine Info
+// =============================================================================
+
+async function loadEngineInfo() {
+    try {
+        const info = await api.get('/engine_info');
+        state.hasDualEngines = !!(info.white_engine && info.black_engine);
+        state.whiteEngineName = info.white_engine;
+        state.blackEngineName = info.black_engine;
+        state.engineDepth = info.depth;
+        
+        $('#depthSlider').val(info.depth);
+        $('#depthValue').text(info.depth);
+        
+        updateEngineDisplay();
+    } catch {
+        // Engine info not available
+    }
+}
+
+function updateEngineDisplay() {
+    if (state.hasDualEngines) {
+        $('#engineMatchInfo').show();
+        $('#whiteEngineName').text(state.whiteEngineName);
+        $('#blackEngineName').text(state.blackEngineName);
+    } else {
+        $('#engineMatchInfo').hide();
+    }
+}
+
+// =============================================================================
+// Utilities
+// =============================================================================
+
+function updateState(data) {
+    state.board = data.position;
+    state.history = data.history;
+    state.turn = data.turn;
+}
+
+// =============================================================================
+// Initialization
+// =============================================================================
+
 $(async () => {
-    board = (await api.get('/position')).position;
+    // Load initial state
+    const positionData = await api.get('/position');
+    state.board = positionData.position;
+    state.history = positionData.history;
+    state.turn = positionData.turn;
+    
+    await loadEngineInfo();
+    
     initBoard();
     updateBoard();
 
-    // Original button handlers
-    $('#makeMove').on('click', engineMove);
+    // Button handlers
+    $('#makeMove').on('click', () => engineMove());
     $('#popBtn').on('click', undo);
-    $('#randomPos').on('click', randomPosition);
     $('#copyFen').on('click', copyFen);
     $('#copyPdn').on('click', copyPdn);
+    $('#loadFen').on('click', loadFen);
     $('#loadPdn').on('click', loadPdn);
     $('#autoPlay').on('click', toggleAutoPlay);
 
-    // Clickable move history -> jump to that ply
-    $('#moveList').on('click', '.move-cell', function () {
+    // Move history navigation
+    $('#moveList').on('click', '.move-cell', function() {
         const ply = $(this).data('ply');
-        if (!ply) return;
-        gotoPly(ply);
+        if (ply) gotoPly(ply);
     });
 
-    // New feature handlers
-    $('#loadFen').on('click', loadFen);
-
+    // Depth slider
     $('#depthSlider').on('input', function() {
         updateEngineDepth($(this).val());
     });
-
-    $('#playWithComputerToggle').on('change', togglePlayWithComputer);
 });

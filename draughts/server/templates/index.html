@@ -1,4 +1,3 @@
-<!-- extends base.html -->
 {% extends "base.html" %} 
 
 {% block content %}
@@ -7,96 +6,62 @@
     
     <!-- Left Panel - Controls -->
     <div class="side-panel panel">
-      <div class="panel-header">Game</div>
+      <div class="panel-header">Controls</div>
       <div class="panel-body">
         
-        <!-- Board Type -->
-        <div class="settings-section">
-          <div class="section-title">Board</div>
-          <div class="d-grid gap-1">
-            <a href="/set_board/american" class="btn btn-game btn-sm">
-              <i class="bi bi-grid"></i>
-              American 8×8
-            </a>
-            <a href="/set_board/standard" class="btn btn-game btn-sm">
-              <i class="bi bi-grid-3x3-gap-fill"></i>
-              Standard 10×10
-            </a>
-          </div>
+        <!-- Board Type - Compact -->
+        <div class="btn-group-vertical w-100 mb-3">
+          <a href="/set_board/american" class="btn btn-game btn-sm">8×8</a>
+          <a href="/set_board/standard" class="btn btn-game btn-sm">10×10</a>
         </div>
 
-        <div class="divider"></div>
-
-        <!-- Engine Depth & Play Mode in compact grid -->
-        <div class="settings-section">
-          <div class="section-title">Settings</div>
-          <div class="mb-2">
-            <label class="form-label mb-1 small">Depth: <span id="depthValue" class="badge bg-primary">6</span></label>
-            <input 
-              type="range" 
-              class="form-range" 
-              id="depthSlider" 
-              min="1" 
-              max="10" 
-              value="6"
-            >
-          </div>
-          <div class="form-check form-switch">
-            <input 
-              class="form-check-input" 
-              type="checkbox" 
-              id="playWithComputerToggle"
-            >
-            <label class="form-check-label small" for="playWithComputerToggle">
-              Play vs Computer
-            </label>
-          </div>
+        <!-- Engine Depth -->
+        <div class="depth-control mb-3">
+          <span class="small text-muted">Depth</span>
+          <span id="depthValue" class="depth-badge">6</span>
+          <input type="range" class="form-range" id="depthSlider" min="1" max="10" value="6">
         </div>
 
-        <div class="divider"></div>
-
-        <!-- Controls - Icon Grid -->
-        <div class="settings-section">
-          <div class="section-title">Controls</div>
-          <div class="d-grid gap-1">
-            <button id="makeMove" class="btn btn-game btn-sm" type="button">
-              <i class="bi bi-cpu"></i>
-              Engine Move
-            </button>
-            <button id="popBtn" class="btn btn-game btn-sm" type="button">
-              <i class="bi bi-arrow-counterclockwise"></i>
-              Undo
-            </button>
-            <button id="randomPos" class="btn btn-game btn-sm" type="button">
-              <i class="bi bi-shuffle"></i>
-              Random
-            </button>
-            <button id="copyFen" class="btn btn-game btn-sm" type="button">
-              <i class="bi bi-clipboard"></i>
-              Copy FEN
-            </button>
-            <button id="loadFen" class="btn btn-game btn-sm" type="button">
-              <i class="bi bi-file-earmark"></i>
-              Load FEN
-            </button>
-            <button id="copyPdn" class="btn btn-game btn-sm" type="button">
-              <i class="bi bi-file-text"></i>
-              Copy PDN
-            </button>
-            <button id="loadPdn" class="btn btn-game btn-sm" type="button">
-              <i class="bi bi-upload"></i>
-              Load PDN
-            </button>
-            <button id="autoPlay" class="btn btn-game btn-sm" type="button">
-              <i class="bi bi-play-fill"></i>
-              Auto Play
-            </button>
-          </div>
+        <!-- Engine Match Info -->
+        <div id="engineMatchInfo" class="engine-match-compact mb-3" style="display: none;">
+          <span id="whiteEngineName" class="engine-tag white">-</span>
+          <span class="vs">vs</span>
+          <span id="blackEngineName" class="engine-tag black">-</span>
         </div>
+
+        <!-- Primary Actions -->
+        <div class="d-grid gap-1 mb-3">
+          <button id="makeMove" class="btn btn-game btn-sm" type="button">
+            <i class="bi bi-cpu"></i> Engine Move
+          </button>
+          <button id="autoPlay" class="btn btn-game btn-sm" type="button">
+            <i class="bi bi-play-fill"></i> Auto Play
+          </button>
+          <button id="popBtn" class="btn btn-game btn-sm" type="button">
+            <i class="bi bi-arrow-counterclockwise"></i> Undo
+          </button>
+        </div>
+
+        <!-- Import/Export -->
+        <div class="d-grid gap-1">
+          <button id="copyFen" class="btn btn-game btn-sm" type="button">
+            <i class="bi bi-clipboard"></i> Copy FEN
+          </button>
+          <button id="loadFen" class="btn btn-game btn-sm" type="button">
+            <i class="bi bi-file-earmark"></i> Load FEN
+          </button>
+          <button id="copyPdn" class="btn btn-game btn-sm" type="button">
+            <i class="bi bi-file-text"></i> Copy PDN
+          </button>
+          <button id="loadPdn" class="btn btn-game btn-sm" type="button">
+            <i class="bi bi-upload"></i> Load PDN
+          </button>
+        </div>
+
       </div>
     </div>
 
-    <!-- Board Area - Center -->
+    <!-- Board Area -->
     <div class="board-area">
       <div 
         id="board" 
@@ -113,22 +78,14 @@
 
     <!-- Right Panel - Info -->
     <div class="side-panel panel">
-      <div class="panel-header">Info</div>
+      <div class="panel-header">
+        <div id="turnIndicator" class="turn-compact turn-white">
+          <span class="turn-dot"></span>
+          <span id="turn">White</span>
+        </div>
+      </div>
       <div class="panel-body">
-        
-        <!-- Turn -->
-        <div id="turnIndicator" class="turn-indicator turn-white">
-          <div class="turn-dot"></div>
-          <span id="turn" class="turn-text">White</span>
-          <span class="turn-text ms-auto">to move</span>
-        </div>
-
-        <!-- Move History -->
-        <div class="section-title">Moves</div>
-        <div id="moveList" class="move-list">
-          <!-- Move rows inserted here -->
-        </div>
-
+        <div id="moveList" class="move-list"></div>
       </div>
     </div>
     
@@ -137,11 +94,11 @@
 
 <!-- Toast -->
 <div class="toast-container position-fixed bottom-0 end-0 p-3">
-  <div id="notificationToast" class="toast" role="alert" aria-live="assertive" aria-atomic="true">
+  <div id="notificationToast" class="toast" role="alert">
     <div class="toast-header">
       <i class="bi bi-check-circle-fill text-success me-2" id="toastIcon"></i>
-      <strong class="me-auto" id="toastTitle">Notification</strong>
-      <button type="button" class="btn-close btn-close-white" data-bs-dismiss="toast" aria-label="Close"></button>
+      <strong class="me-auto" id="toastTitle">Done</strong>
+      <button type="button" class="btn-close btn-close-white" data-bs-dismiss="toast"></button>
     </div>
     <div class="toast-body" id="toastMessage"></div>
   </div>

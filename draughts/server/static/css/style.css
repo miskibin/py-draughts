@@ -141,8 +141,8 @@ body {
     background-color: var(--color-surface-hover);
     border: none;
     color: var(--color-text-primary);
-    padding: 0.6rem 0.75rem;
-    font-size: 0.85rem;
+    padding: 0.5rem 0.75rem;
+    font-size: 0.8rem;
     font-weight: 500;
     text-align: left;
     transition: var(--transition-fast);
@@ -172,6 +172,119 @@ body {
     width: 0.9rem;
     height: 0.9rem;
     border-width: 0.12em;
+}
+
+/* Icon Buttons - Minimalist */
+.btn-icon {
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--color-surface-hover);
+    border: none;
+    border-radius: var(--radius-md);
+    color: var(--color-text-secondary);
+    font-size: 1.1rem;
+    cursor: pointer;
+    transition: var(--transition-fast);
+}
+
+.btn-icon:hover {
+    background: var(--color-accent);
+    color: #fff;
+}
+
+.btn-icon:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+.btn-icon .spinner-border {
+    width: 1rem;
+    height: 1rem;
+    border-width: 0.15em;
+}
+
+/* Action Grid */
+.action-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: var(--spacing-xs);
+}
+
+/* Depth Control - Compact */
+.depth-control {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    flex-wrap: wrap;
+}
+
+.depth-control .form-range {
+    flex: 1;
+    min-width: 80px;
+}
+
+.depth-badge {
+    background: var(--color-accent);
+    color: #fff;
+    font-size: 0.75rem;
+    font-weight: 600;
+    padding: 0.15rem 0.5rem;
+    border-radius: var(--radius-sm);
+}
+
+/* Engine Match - Compact */
+.engine-match-compact {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--spacing-xs);
+    font-size: 0.75rem;
+}
+
+.engine-tag {
+    padding: 0.2rem 0.4rem;
+    border-radius: var(--radius-sm);
+    font-weight: 500;
+}
+
+.engine-tag.white {
+    background: var(--color-piece-white);
+    color: #1a1a1a;
+}
+
+.engine-tag.black {
+    background: var(--color-piece-black);
+    color: #f0f0f0;
+}
+
+.engine-match-compact .vs {
+    color: var(--color-text-muted);
+    font-size: 0.65rem;
+    text-transform: uppercase;
+}
+
+/* Turn Indicator - Compact */
+.turn-compact {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-xs);
+    font-size: 0.8rem;
+    font-weight: 500;
+}
+
+.turn-compact .turn-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: var(--color-piece-white);
+    border: 1px solid var(--color-border);
+}
+
+.turn-compact.turn-black .turn-dot {
+    background: var(--color-piece-black);
 }
 
 
@@ -494,4 +607,63 @@ body {
 /* auto scroll to bottom */
 .history-container {
     scroll-behavior: smooth;
+}
+
+
+/* ==========================================================================
+   Engine Match Display
+   ========================================================================== */
+
+.engine-match-display {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--spacing-sm);
+    padding: var(--spacing-sm);
+    background: var(--color-surface-hover);
+    border-radius: var(--radius-md);
+    font-size: 0.85rem;
+}
+
+.engine-player {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-xs);
+}
+
+.engine-color {
+    width: 12px;
+    height: 12px;
+    border-radius: var(--radius-full);
+    border: 1px solid var(--color-border);
+}
+
+.engine-color.white-dot {
+    background: var(--color-piece-white);
+}
+
+.engine-color.black-dot {
+    background: var(--color-piece-black);
+}
+
+.engine-name {
+    font-weight: 500;
+    color: var(--color-text-primary);
+}
+
+.engine-vs {
+    color: var(--color-text-muted);
+    font-size: 0.75rem;
+    text-transform: uppercase;
+}
+
+.engine-indicator {
+    display: flex;
+    align-items: center;
+    padding: var(--spacing-xs) var(--spacing-sm);
+    background: rgba(124, 156, 255, 0.15);
+    border-radius: var(--radius-sm);
+    font-size: 0.8rem;
+    color: var(--color-accent);
+    margin-top: var(--spacing-sm);
 }

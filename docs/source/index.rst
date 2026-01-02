@@ -11,6 +11,7 @@ Contents
     base
     move
     engine
+    server
     svg
     standard
     american

@@ -2,7 +2,7 @@
 __pycache__/
 *.py[cod]
 *$py.class
-
+*.exe
 # C extensions
 *.so
 dist/
@@ -12,7 +12,10 @@ snapshots/
 .Python
 build/
 develop-eggs/
-
+scan_engine/data/
+*.ini
+/data/
+scan_engine/
 # dist/ # we need this to publish
 downloads/
 eggs/

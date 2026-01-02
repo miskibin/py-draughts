@@ -173,43 +173,151 @@ Advanced Example - Greedy Capture Engine::
 Running Custom Engines with the Server
 ---------------------------------------
 
-The ``Server`` class accepts any engine implementation through the ``engine`` parameter
-or via the ``get_best_move_method`` callback.
+The ``Server`` class accepts engine implementations for white and black sides.
+You can use the same engine for both sides, or pit different engines against each other.
 
-Method 1: Using the ``engine`` Parameter (Recommended)::
+Single Engine for Both Sides::
 
     from draughts import StandardBoard
     from draughts.engine import AlphaBetaEngine
     from draughts.server import Server
-    import uvicorn
     
-    # Create board and engine
     board = StandardBoard()
     engine = AlphaBetaEngine(depth=6)
     
-    # Create server with engine
-    server = Server(board=board, engine=engine)
-    
-    # Run server on http://localhost:8000
-    uvicorn.run(server.APP, host="127.0.0.1", port=8000)
+    # Same engine plays for both colors
+    server = Server(
+        board=board,
+        white_engine=engine,
+        black_engine=engine
+    )
+    server.run(host="127.0.0.1", port=8000)
 
-Method 2: Using ``get_best_move_method`` Callback::
+Engine vs Engine Match::
 
     from draughts import StandardBoard
+    from draughts.engine import AlphaBetaEngine
     from draughts.server import Server
-    import uvicorn
     
     board = StandardBoard()
     
-    # Define custom move selection function
-    def my_move_strategy(board):
-        # Your custom logic here
-        legal_moves = list(board.legal_moves)
-        return legal_moves[0]  # Simple example
+    # Different engines/configurations for each side
+    white_engine = AlphaBetaEngine(depth=6)
+    black_engine = AlphaBetaEngine(depth=4)
     
-    server = Server(board=board, get_best_move_method=my_move_strategy)
-    uvicorn.run(server.APP, host="127.0.0.1", port=8000)
+    server = Server(
+        board=board,
+        white_engine=white_engine,
+        black_engine=black_engine
+    )
+    server.run(host="127.0.0.1", port=8000)
 
+See the :doc:`server` documentation for more details on the web interface.
+
+
+HubEngine - External Engine Support
+------------------------------------
+
+The ``HubEngine`` class allows you to use external draughts engines that implement
+the Hub protocol (like `Scan <https://hjetten.home.xs4all.nl/scan/scan.html>`_).
+
+.. autoclass:: draughts.hub.HubEngine
+    :members: __init__, start, quit, get_best_move
+
+Hub Protocol Overview
+~~~~~~~~~~~~~~~~~~~~~
+
+The Hub protocol is a text-based communication protocol for draughts engines,
+similar to UCI for chess. It supports:
+
+- **Position format**: 51-character string (side-to-move + 50 squares)
+- **Move format**: ``32-28`` (quiet moves) or ``28x19x23`` (captures with intermediate squares)
+- **Search control**: Time-per-move or fixed depth
+- **Variants**: Standard (international 10x10), Frisian, and others
+
+Basic Usage
+~~~~~~~~~~~
+
+Using HubEngine with a context manager (recommended)::
+
+    from draughts import HubEngine, StandardBoard
+    
+    with HubEngine("path/to/scan.exe") as engine:
+        board = StandardBoard()
+        
+        # Get best move with 1 second think time
+        move, score = engine.get_best_move(board, with_evaluation=True)
+        print(f"Best move: {move}, Score: {score}")
+
+Manual lifecycle management::
+
+    from draughts import HubEngine, StandardBoard
+    
+    engine = HubEngine("path/to/scan.exe")
+    engine.start()
+    
+    try:
+        board = StandardBoard()
+        move = engine.get_best_move(board)
+        board.push(move)
+    finally:
+        engine.quit()
+
+Search Options
+~~~~~~~~~~~~~~
+
+Time-based search (default)::
+
+    # 2 seconds per move
+    engine = HubEngine("scan.exe", time_per_move=2.0)
+
+Fixed depth search::
+
+    # Search to depth 15
+    engine = HubEngine("scan.exe", depth=15)
+
+Engine vs HubEngine Match
+~~~~~~~~~~~~~~~~~~~~~~~~~
+
+You can pit the built-in AlphaBetaEngine against an external Hub engine::
+
+    from draughts import StandardBoard, HubEngine
+    from draughts.engine import AlphaBetaEngine
+    
+    board = StandardBoard()
+    alphabeta = AlphaBetaEngine(depth=6)
+    
+    with HubEngine("scan.exe", time_per_move=1.0) as scan:
+        while not board.is_over():
+            if board.turn.value == 0:  # White
+                move = alphabeta.get_best_move(board)
+            else:  # Black
+                move = scan.get_best_move(board)
+            board.push(move)
+        
+        print(f"Result: {board.result()}")
+
+Variant Auto-Detection
+~~~~~~~~~~~~~~~~~~~~~~
+
+HubEngine automatically detects the variant from the board type:
+
+- ``StandardBoard`` → ``"normal"`` (International 10x10 draughts)
+- ``FrisianBoard`` → ``"frisian"`` (Frisian draughts with extra capture rules)
+
+Logging
+~~~~~~~
+
+HubEngine uses the ``loguru`` logger for debugging. Enable debug output::
+
+    from loguru import logger
+    import sys
+    
+    logger.add(sys.stderr, level="DEBUG")
+    
+    with HubEngine("scan.exe") as engine:
+        move = engine.get_best_move(board)
+        # Will show all Hub protocol communication
 
 Benchmarking the Engine
 -----------------------

@@ -165,37 +165,84 @@ The engine uses **alpha-beta pruning** with several optimizations:
 - Depth 5-6: Strong play with reasonable speed (~1-5s per move)
 - Depth 7+: Very strong but slower, best for analysis (>10s per move)
 
-## UI
+### External Engine Support (Hub Protocol)
 
-1. Allows to play against AI.
-2. Allows to play vs another player. (on the same computer)
-3. Allows to test and find bugs in your engine.
+You can also use external draughts engines like [Scan](https://hjetten.home.xs4all.nl/scan/scan.html) 
+via the Hub protocol:
+
+```python
+>>> from draughts import HubEngine, StandardBoard
+>>> with HubEngine("path/to/scan.exe", time_per_move=1.0) as engine:
+...     board = StandardBoard()
+...     move, score = engine.get_best_move(board, with_evaluation=True)
+...     print(f"Best move: {move}, Score: {score}")
+Best move: 32-28, Score: 0.15
+```
+
+The `HubEngine` class:
+- Manages the external engine subprocess lifecycle
+- Auto-detects variant from board type (Standard, Frisian)
+- Supports time-based or depth-based search
+- Works as a drop-in replacement for `AlphaBetaEngine`
+
+## Web UI
+
+The server provides a web interface for:
+
+1. Playing draughts with interactive board
+2. Running engine vs engine matches
+3. Testing and debugging custom engines
 
 ```python
 python -m draughts.server.server
 ```
 
-#### Use for testing your engine.
+#### Engine vs Engine Match
 
-
-
-_Example with simplest possible engine._
-
-
+Pit two engines against each other and watch them play:
 
 ```python
->>> from draughts import Server
->>> import numpy as np
->>> get_best_mv = lambda board: np.random.choice(list(board.legal_moves))
->>> server = Server(get_best_move_method=get_best_mv)
->>> server.run()
-INFO:     Started server process [1617]
-INFO:     Waiting for application startup.
-INFO:     Application startup complete.
-INFO:     Uvicorn running on http://127.0.0.1:8000 (Press CTRL+C to quit)
+from draughts import get_board
+from draughts.engine import AlphaBetaEngine
+from draughts.server import Server
+
+board = get_board('standard')
+
+# Create engines with different configurations
+white_engine = AlphaBetaEngine(depth=6)
+black_engine = AlphaBetaEngine(depth=4)
+
+server = Server(
+    board=board,
+    white_engine=white_engine,
+    black_engine=black_engine
+)
+server.run()
 ```
 
-_It is as simple as that!_
+Open http://localhost:8000 and click "Auto Play" to watch the match!
+
+#### Custom Engine Integration
+
+```python
+from draughts import get_board
+from draughts.engine import Engine
+from draughts.server import Server
+import random
+
+class MyEngine(Engine):
+    def get_best_move(self, board, with_evaluation=False):
+        move = random.choice(list(board.legal_moves))
+        return (move, 0.0) if with_evaluation else move
+
+board = get_board('standard')
+server = Server(
+    board=board,
+    white_engine=MyEngine(),
+    black_engine=AlphaBetaEngine(depth=5)
+)
+server.run()
+```
 
 > [!Warning]  
 > Server will not start when using _google colab_
