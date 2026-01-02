@@ -406,13 +406,17 @@ class HubEngine(Engine):
         
         logger.info(f"Starting Hub engine: {self.path}")
         
+        # Run from the engine's directory so it can find its data files
+        engine_dir = self.path.parent.resolve()
+        
         self.process = subprocess.Popen(
-            [str(self.path), "hub"],
+            [str(self.path.resolve()), "hub"],
             stdin=subprocess.PIPE,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             text=True,
             bufsize=1,  # Line buffered
+            cwd=str(engine_dir),  # Run from engine's directory
         )
         
         # Send hub command to start initialization
