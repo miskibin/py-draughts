@@ -125,18 +125,90 @@ With time limits::
 Custom Engine Implementation
 -----------------------------
 
-To create your own engine, inherit from the ``Engine`` class and implement
-the ``get_best_move`` method::
+To create your own engine, inherit from the ``Engine`` abstract class and implement
+the ``get_best_move`` method. Your engine can use any search algorithm or heuristic.
+
+Basic Example - Random Engine::
 
     from draughts.engine import Engine
     import random
     
     class RandomEngine(Engine):
+        """A simple engine that makes random legal moves."""
+        
         def get_best_move(self, board, with_evaluation=False):
             move = random.choice(list(board.legal_moves))
             if with_evaluation:
                 return move, 0.0
             return move
+
+Advanced Example - Greedy Capture Engine::
+
+    from draughts.engine import Engine
+    
+    class GreedyEngine(Engine):
+        """Prioritizes capturing moves over quiet moves."""
+        
+        def get_best_move(self, board, with_evaluation=False):
+            legal_moves = list(board.legal_moves)
+            
+            # Prefer captures (sorted by length)
+            captures = sorted(
+                [m for m in legal_moves if m.captured_list],
+                key=lambda m: len(m.captured_list),
+                reverse=True
+            )
+            
+            move = captures[0] if captures else legal_moves[0]
+            
+            # Simple evaluation: count remaining pieces
+            white_count = (board._pos == -1).sum() + (board._pos == -2).sum()
+            black_count = (board._pos == 1).sum() + (board._pos == 2).sum()
+            score = (black_count - white_count) if board.turn.value == 0 else (white_count - black_count)
+            
+            if with_evaluation:
+                return move, float(score)
+            return move
+
+Running Custom Engines with the Server
+---------------------------------------
+
+The ``Server`` class accepts any engine implementation through the ``engine`` parameter
+or via the ``get_best_move_method`` callback.
+
+Method 1: Using the ``engine`` Parameter (Recommended)::
+
+    from draughts import StandardBoard
+    from draughts.engine import AlphaBetaEngine
+    from draughts.server import Server
+    import uvicorn
+    
+    # Create board and engine
+    board = StandardBoard()
+    engine = AlphaBetaEngine(depth=6)
+    
+    # Create server with engine
+    server = Server(board=board, engine=engine)
+    
+    # Run server on http://localhost:8000
+    uvicorn.run(server.APP, host="127.0.0.1", port=8000)
+
+Method 2: Using ``get_best_move_method`` Callback::
+
+    from draughts import StandardBoard
+    from draughts.server import Server
+    import uvicorn
+    
+    board = StandardBoard()
+    
+    # Define custom move selection function
+    def my_move_strategy(board):
+        # Your custom logic here
+        legal_moves = list(board.legal_moves)
+        return legal_moves[0]  # Simple example
+    
+    server = Server(board=board, get_best_move_method=my_move_strategy)
+    uvicorn.run(server.APP, host="127.0.0.1", port=8000)
 
 
 Benchmarking the Engine
