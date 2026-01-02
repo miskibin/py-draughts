@@ -15,8 +15,13 @@ let turn = null;
 let legalMoves = null;
 let sourceSquare = null;
 let autoPlayId = null;
+let autoPlayRunning = false;
+let autoPlayNonce = 0;
+let autoPlayRequest = null;
+let engineMoveInFlight = false;
 let playWithComputerMode = false;
 let engineDepth = 6;
+let lastGameOver = false;
 
 const crownIcon = $('#board').data('crown-icon');
 
@@ -64,7 +69,19 @@ function updateBoard() {
         $list.html('<div class="text-muted text-center py-3">No moves yet</div>');
     } else {
         history.forEach(m => {
-            $list.append(`<div class="move-row"><span class="move-number">${m[0]}.</span><span class="move-white">${m[1] || ''}</span><span class="move-black">${m[2] || ''}</span></div>`);
+            const moveNo = m[0];
+            const white = m[1] || '';
+            const black = m[2] || '';
+            const whitePly = (moveNo - 1) * 2 + 1;
+            const blackPly = (moveNo - 1) * 2 + 2;
+
+            $list.append(
+                `<div class="move-row">
+                    <span class="move-number">${moveNo}.</span>
+                    <span class="move-white move-cell" data-ply="${whitePly}">${white}</span>
+                    <span class="move-black move-cell" data-ply="${blackPly}">${black}</span>
+                </div>`
+            );
         });
         $list.scrollTop($list[0].scrollHeight);
     }
@@ -127,14 +144,46 @@ async function handleTileClick(e) {
 }
 
 // Button handlers
-async function engineMove() {
+async function engineMove(opts = { autoplay: false, nonce: 0 }) {
+    // Prevent overlapping calls (autoplay depth 10 can exceed interval)
+    if (engineMoveInFlight) return;
+    engineMoveInFlight = true;
+
     const $btn = $('#makeMove').prop('disabled', true).html('<span class="spinner-border spinner-border-sm"></span>');
     try {
-        const data = await api.get('/best_move');
+        const req = api.get('/best_move');
+        autoPlayRequest = req;
+        const data = await req;
+
+        // Ignore autoplay responses if stopped/restarted mid-flight.
+        if (opts.autoplay && (!autoPlayRunning || opts.nonce !== autoPlayNonce)) {
+            return;
+        }
+
         board = data.position; history = data.history; turn = data.turn;
         updateBoard();
-    } catch { notify('Error', 'Engine failed', 'error'); }
-    $btn.prop('disabled', false).html('<i class="bi bi-cpu"></i> Engine Move');
+
+        // Game-over acknowledgement
+        if (data.game_over && !lastGameOver) {
+            notify('Game Over', `Result: ${data.result || '-'}`, 'info');
+        }
+        lastGameOver = !!data.game_over;
+
+        if (data.game_over) {
+            // Stop autoplay if running
+            autoPlayRunning = false;
+            if (autoPlayId) {
+                clearTimeout(autoPlayId);
+                autoPlayId = null;
+            }
+            $('#autoPlay').html('<i class="bi bi-play-fill"></i> Auto Play');
+        }
+    } catch {
+        notify('Error', 'Engine failed', 'error');
+    } finally {
+        $btn.prop('disabled', false).html('<i class="bi bi-cpu"></i> Engine Move');
+        engineMoveInFlight = false;
+    }
 }
 
 async function undo() {
@@ -176,14 +225,43 @@ async function loadPdn() {
 
 function toggleAutoPlay() {
     const $btn = $('#autoPlay');
-    if (autoPlayId) {
-        clearInterval(autoPlayId);
-        autoPlayId = null;
+    if (autoPlayRunning) {
+        autoPlayRunning = false;
+        if (autoPlayId) {
+            clearTimeout(autoPlayId);
+            autoPlayId = null;
+        }
+        if (autoPlayRequest && typeof autoPlayRequest.abort === 'function') {
+            autoPlayRequest.abort();
+        }
+        autoPlayRequest = null;
         $btn.html('<i class="bi bi-play-fill"></i> Auto Play');
-    } else {
-        autoPlayId = setInterval(engineMove, 800);
-        $btn.html('<i class="bi bi-stop-fill"></i> Stop');
+        return;
     }
+
+    // Start autoplay: chain moves so there is never more than one in-flight request.
+    autoPlayRunning = true;
+    autoPlayNonce += 1;
+    const nonce = autoPlayNonce;
+    $btn.html('<i class="bi bi-stop-fill"></i> Stop');
+
+    const tick = async () => {
+        if (!autoPlayRunning || nonce !== autoPlayNonce) return;
+        await engineMove({ autoplay: true, nonce });
+        if (!autoPlayRunning || nonce !== autoPlayNonce) return;
+        autoPlayId = setTimeout(tick, 800);
+    };
+
+    // Run first move immediately.
+    tick();
+}
+
+async function gotoPly(ply) {
+    const p = parseInt(ply);
+    if (!Number.isFinite(p) || p < 0) return;
+    const data = await api.get(`/goto/${p}`);
+    board = data.position; history = data.history; turn = data.turn;
+    updateBoard();
 }
 
 async function loadFen() {
@@ -230,6 +308,13 @@ $(async () => {
     $('#copyPdn').on('click', copyPdn);
     $('#loadPdn').on('click', loadPdn);
     $('#autoPlay').on('click', toggleAutoPlay);
+
+    // Clickable move history -> jump to that ply
+    $('#moveList').on('click', '.move-cell', function () {
+        const ply = $(this).data('ply');
+        if (!ply) return;
+        gotoPly(ply);
+    });
 
     // New feature handlers
     $('#loadFen').on('click', loadFen);

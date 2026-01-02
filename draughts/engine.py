@@ -107,9 +107,10 @@ class AlphaBetaEngine(Engine):
         self.history: dict[tuple[int, int], int] = {}  # {(from, to): score}
         self.killers: dict[int, list[Move]] = {}  # {depth: [move1, move2]}
         
-        # Zobrist Hashing (uses seeded RNG for consistency)
+        # Zobrist Hashing (deterministic per-engine; does not perturb global RNG)
+        self._zobrist_rng = random.Random(0)
         self.zobrist_table = self._init_zobrist()
-        self.zobrist_turn = random.getrandbits(64)  # XOR when it's black's turn
+        self.zobrist_turn = self._zobrist_rng.getrandbits(64)  # XOR when it's black's turn
         
         self.start_time: float = 0.0
         self.stop_search: bool = False
@@ -130,7 +131,7 @@ class AlphaBetaEngine(Engine):
         # 0 (Empty) -> 2
         # 1 (B_Man) -> 3
         # 2 (B_King) -> 4
-        table = [[random.getrandbits(64) for _ in range(5)] for _ in range(50)]
+        table = [[self._zobrist_rng.getrandbits(64) for _ in range(5)] for _ in range(50)]
         return table
 
     def _get_piece_index(self, piece):

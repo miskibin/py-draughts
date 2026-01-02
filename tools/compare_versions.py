@@ -15,6 +15,7 @@ import sys
 import tempfile
 from datetime import datetime
 from pathlib import Path
+from typing import Any
 
 from rich import box
 from rich.console import Console
@@ -51,9 +52,9 @@ def load_openings() -> list[dict]:
     return openings
 
 
-def get_hardware_info() -> dict:
+def get_hardware_info() -> dict[str, Any]:
     """Collect hardware and system information."""
-    info = {
+    info: dict[str, Any] = {
         "platform": platform.system(),
         "platform_release": platform.release(),
         "platform_version": platform.version(),
@@ -215,7 +216,7 @@ class EngineWorker:
     
     def __init__(self, python: Path):
         self.python = python
-        self.process = None
+        self.process: subprocess.Popen[str] | None = None
     
     def start(self):
         """Start the worker process."""
@@ -229,6 +230,7 @@ class EngineWorker:
             bufsize=1,  # Line buffered
         )
         # Wait for ready signal
+        assert self.process.stdout is not None
         ready = self.process.stdout.readline()
         if not ready or "ready" not in ready:
             raise RuntimeError(f"Worker failed to start: {ready}")
@@ -237,6 +239,8 @@ class EngineWorker:
         """Get engine move from persistent worker."""
         if not self.process or self.process.poll() is not None:
             raise RuntimeError("Worker not running")
+        assert self.process.stdin is not None
+        assert self.process.stdout is not None
         
         cmd = json.dumps({"cmd": "move", "fen": fen, "depth": depth})
         self.process.stdin.write(cmd + "\n")
@@ -251,6 +255,7 @@ class EngineWorker:
         """Stop the worker process."""
         if self.process and self.process.poll() is None:
             try:
+                assert self.process.stdin is not None
                 self.process.stdin.write(json.dumps({"cmd": "quit"}) + "\n")
                 self.process.stdin.flush()
                 self.process.wait(timeout=2)
@@ -261,7 +266,7 @@ class EngineWorker:
         self.start()
         return self
     
-    def __exit__(self, *args):
+    def __exit__(self, exc_type, exc, tb):
         self.stop()
 
 
@@ -320,6 +325,7 @@ def play_match(python1: Path, python2: Path, openings: list[dict], depth: int) -
                     fen = opening_fen
                     move_count = 0
                     result = {}
+                    termination = ""
                     
                     # Determine whose turn it is from FEN
                     # FEN starts with 'W:' or 'B:' to indicate turn
@@ -328,13 +334,20 @@ def play_match(python1: Path, python2: Path, openings: list[dict], depth: int) -
                     else:
                         is_white_turn = True  # Default to white's turn
 
-                    while move_count < 200:
+                    while move_count < 400:
                         current_worker = white_worker if is_white_turn else black_worker
                         current_ver = white_ver if is_white_turn else ("v2" if white_ver == "v1" else "v1")
 
                         result = current_worker.get_move(fen, depth)
 
-                        if result.get("error") or result.get("game_over") or not result.get("move"):
+                        if result.get("error"):
+                            termination = "error"
+                            break
+                        if result.get("game_over"):
+                            termination = "game_over"
+                            break
+                        if not result.get("move"):
+                            termination = "no_move"
                             break
 
                         # Track stats
@@ -351,6 +364,9 @@ def play_match(python1: Path, python2: Path, openings: list[dict], depth: int) -
                         move_count += 1
                         is_white_turn = not is_white_turn
 
+                    if move_count >= 400 and not termination:
+                        termination = "move_limit"
+
                     # Determine winner
                     game_result = result.get("result", "1/2-1/2")
                     if game_result == "1-0":
@@ -359,6 +375,19 @@ def play_match(python1: Path, python2: Path, openings: list[dict], depth: int) -
                         winner = "v2" if white_ver == "v1" else "v1"
                     else:
                         winner = "draw"
+
+                    winner_label = "draw"
+                    if winner == "v1":
+                        winner_label = "snapshot"
+                    elif winner == "v2":
+                        winner_label = "current"
+
+                    full_moves = (move_count + 1) // 2
+                    term_suffix = f", term={termination}" if termination else ""
+                    console.print(
+                        f"Game {game_num}/{num_games} | {opening_name} ({color_info}) | moves={full_moves} (plies={move_count}) | result={game_result} | winner={winner_label}{term_suffix}",
+                        highlight=False,
+                    )
 
                     if winner == "v1":
                         stats["v1_wins"] += 1

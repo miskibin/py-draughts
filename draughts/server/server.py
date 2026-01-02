@@ -2,6 +2,7 @@ import json
 from collections import defaultdict
 from pathlib import Path
 from typing import Literal, Callable
+import threading
 
 import numpy as np
 import uvicorn
@@ -17,6 +18,8 @@ class PositionResponse(BaseModel):
     position: list = Field(description="Current board position")
     history: list = Field(description="History of moves")
     turn: Literal["white", "black"] = Field(description="Current turn")
+    game_over: bool = Field(description="Whether the game is over")
+    result: str = Field(description="Game result string")
 
 
 class Server:
@@ -37,6 +40,7 @@ class Server:
         self.get_best_move_method = get_best_move_method
         self.engine = engine
         self.board = board
+        self._lock = threading.RLock()
         self.engine_depth = 6
         self.play_with_computer = False
         self.router = APIRouter()
@@ -51,6 +55,7 @@ class Server:
         )
         self.router.add_api_route("/best_move", self.get_best_move, methods=["GET"])
         self.router.add_api_route("/position", self.get_position, methods=["GET"])
+        self.router.add_api_route("/goto/{ply}", self.goto_ply, methods=["GET"])
         self.router.add_api_route(
             "/move/{source}/{target}", self.move, methods=["POST"]
         )
@@ -70,47 +75,54 @@ class Server:
 
     async def load_pdn(self, request: Request) -> PositionResponse:
         data = await request.json()
-        self.board = type(self.board).from_pdn(data["pdn"])
-        return self.position_json
+        with self._lock:
+            self.board = type(self.board).from_pdn(data["pdn"])
+            return self.position_json
 
     async def load_fen(self, request: Request) -> PositionResponse:
         data = await request.json()
-        self.board = type(self.board).from_fen(data["fen"])
-        return self.position_json
+        with self._lock:
+            self.board = type(self.board).from_fen(data["fen"])
+            return self.position_json
 
     def set_depth(self, depth: int) -> dict:
         depth = max(1, min(10, int(depth)))
-        self.engine_depth = depth
-        if self.engine is not None and hasattr(self.engine, 'depth'):
-            self.engine.depth = depth
-        return {"depth": self.engine_depth}
+        with self._lock:
+            self.engine_depth = depth
+            if self.engine is not None and hasattr(self.engine, 'depth'):
+                self.engine.depth = depth
+            return {"depth": self.engine_depth}
 
     def set_play_mode(self, mode: str) -> dict:
-        self.play_with_computer = mode.lower() == "on"
-        return {"play_with_computer": self.play_with_computer}
+        with self._lock:
+            self.play_with_computer = mode.lower() == "on"
+            return {"play_with_computer": self.play_with_computer}
 
     def set_board(self, request: Request, board_type: Literal["standard", "american"]):
-        if board_type == "standard":
-            from draughts import StandardBoard
+        with self._lock:
+            if board_type == "standard":
+                from draughts import StandardBoard
 
-            self.board = StandardBoard()
-        elif board_type == "american":
-            from draughts import AmericanBoard
+                self.board = StandardBoard()
+            elif board_type == "american":
+                from draughts import AmericanBoard
 
-            self.board = AmericanBoard()
+                self.board = AmericanBoard()
 
-        return RedirectResponse(url="/")
+            return RedirectResponse(url="/")
 
     def get_legal_moves(self):
-        moves_dict = defaultdict(list)
-        for move in list(self.board.legal_moves):
-            moves_dict[int(move.square_list[0])].extend(map(int, move.square_list[1:]))
-        return {
-            "legal_moves": json.dumps(moves_dict),
-        }
+        with self._lock:
+            moves_dict = defaultdict(list)
+            for move in list(self.board.legal_moves):
+                moves_dict[int(move.square_list[0])].extend(map(int, move.square_list[1:]))
+            return {
+                "legal_moves": json.dumps(moves_dict),
+            }
 
     @property
     def position_json(self) -> PositionResponse:
+        # Note: callers should hold self._lock if they need a consistent snapshot.
         history = []  # (number, white, black)
         stack = self.board._moves_stack
         for idx in range(len(stack)):
@@ -122,38 +134,77 @@ class Server:
             position=self.board.friendly_form.tolist(),
             history=history,
             turn="white" if self.board.turn == Color.WHITE else "black",
+            game_over=bool(self.board.game_over),
+            result=str(getattr(self.board, "result", "-")),
         )
 
     def get_position(self, request: Request) -> PositionResponse:
-        return self.position_json
+        with self._lock:
+            return self.position_json
 
     def set_random_position(self, request: Request) -> PositionResponse:
-        STARTING_POSITION = np.random.choice(
-            [2, 0, -2, 1, -1],
-            size=len(self.board.STARTING_POSITION),
-            replace=True,
-            p=[0.1, 0.6, 0.1, 0.1, 0.1],
-        )
-        self.board._moves_stack = []
-        self.board._pos = STARTING_POSITION
-        return self.position_json
+        with self._lock:
+            STARTING_POSITION = np.random.choice(
+                [2, 0, -2, 1, -1],
+                size=len(self.board.STARTING_POSITION),
+                replace=True,
+                p=[0.1, 0.6, 0.1, 0.1, 0.1],
+            )
+            self.board._moves_stack = []
+            self.board._pos = STARTING_POSITION
+            return self.position_json
 
     def get_best_move(self, request: Request) -> PositionResponse:
-        move = self.get_best_move_method(self.board)
-        if self.board.game_over:
-            print("Game over")
+        # IMPORTANT: /best_move can be called concurrently (autoplay + long searches).
+        # Serialize access to the shared board and reject stale/illegal moves.
+        with self._lock:
+            if self.board.game_over:
+                return self.position_json
+
+            move = self.get_best_move_method(self.board)
+
+            legal_moves = list(self.board.legal_moves)
+            if not legal_moves:
+                return self.position_json
+
+            if move not in legal_moves:
+                # Stale/illegal engine result (e.g., TT corruption or overlapping requests).
+                # Fall back to a legal move so the UI always progresses.
+                move = legal_moves[0]
+
+            self.board.push(move)
             return self.position_json
-        self.board.push(move)
-        return self.position_json
+
+    def goto_ply(self, request: Request, ply: int) -> PositionResponse:
+        """Jump to a historical position by ply count.
+
+        ply=0 is the starting position (no moves applied).
+        ply=N is the position after N half-moves have been applied.
+
+        If ply is less than current history length, this will pop moves until
+        the requested ply is reached.
+        """
+        with self._lock:
+            ply = int(ply)
+            if ply < 0:
+                ply = 0
+            current = len(self.board._moves_stack)
+            if ply > current:
+                ply = current
+            while len(self.board._moves_stack) > ply:
+                self.board.pop()
+            return self.position_json
 
     def move(self, request: Request, source: str, target: str) -> PositionResponse:
-        move_str = f"{source}-{target}"
-        self.board.push_uci(move_str)
-        return self.position_json
+        with self._lock:
+            move_str = f"{source}-{target}"
+            self.board.push_uci(move_str)
+            return self.position_json
 
     def pop(self, request: Request) -> PositionResponse:
-        self.board.pop()
-        return self.position_json
+        with self._lock:
+            self.board.pop()
+            return self.position_json
 
     def index(self, request: Request):
         return self.templates.TemplateResponse(
