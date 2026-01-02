@@ -169,14 +169,31 @@ class Board(BaseBoard):
         return moves
 
     def _get_king_legal_moves_from(
-        self, square: int, is_capture_mandatory: bool
+        self, square: int, is_capture_mandatory: bool, forbidden_squares: set[int] | None = None
     ) -> list[Move]:
+        """
+        Generate legal moves for a king from a given square.
+        
+        Args:
+            square: The current square of the king
+            is_capture_mandatory: Whether we're in a capture sequence
+            forbidden_squares: Squares of previously captured pieces that cannot be crossed
+        """
+        if forbidden_squares is None:
+            forbidden_squares = set()
+        
         moves = []
         pos = self._pos  # Local reference for faster access
         turn_val = self.turn.value
+        max_len = 0  # Track max length across ALL directions
+        
         for direction in self.DIAGONAL_SHORT_MOVES[square]:
             dir_len = len(direction)
             for idx, target in enumerate(direction):
+                # Check if path crosses a forbidden square (previously captured piece)
+                if target in forbidden_squares:
+                    break
+                    
                 target_val = pos[target]
                 if (
                     dir_len > idx + 1
@@ -184,13 +201,19 @@ class Board(BaseBoard):
                     and pos[direction[idx + 1]] == EMPTY
                 ):
                     i = idx + 1
-                    max_len = 0  # Track max length locally
                     while i < dir_len and pos[direction[i]] == EMPTY:
+                        # Check landing square is not forbidden
+                        if direction[i] in forbidden_squares:
+                            i += 1
+                            continue
+                            
                         move = Move(
                             [square, direction[i]], [target], [target_val]
                         )
                         self.push(move, False)
-                        sub_moves = self._get_king_legal_moves_from(direction[i], True)
+                        # Add the captured square to forbidden set for subsequent captures
+                        new_forbidden = forbidden_squares | {target}
+                        sub_moves = self._get_king_legal_moves_from(direction[i], True, new_forbidden)
                         self.pop(False)
                         
                         if sub_moves:

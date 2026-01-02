@@ -25,7 +25,7 @@ from rich.table import Table
 # === Configuration ===
 WARMUP_ROUNDS = 5
 BENCHMARK_ROUNDS = 10
-BENCHMARK_ITERATIONS = 1  # Number of times to run the legal moves benchmark
+BENCHMARK_ITERATIONS = 10  # Number of times to run the legal moves benchmark
 ENGINE_DEPTH = 4
 
 # === Paths ===
