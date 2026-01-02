@@ -169,6 +169,11 @@ class Server:
 
 
 if __name__ == "__main__":
+    from loguru import logger
+    import sys
+
+    logger.add(sys.stderr, level="DEBUG")
+    
     from draughts.engine import AlphaBetaEngine
     from draughts import get_board
 

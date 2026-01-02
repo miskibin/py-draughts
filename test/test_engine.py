@@ -1,6 +1,9 @@
 import pytest
 from draughts import get_board
 from draughts.engine import AlphaBetaEngine
+from draughts.boards.standard import Board as StandardBoard
+
+from test._test_helpers import seeded_range, standard_board_after_random_play
 
 
 class TestAlphaBetaEngine:
@@ -80,3 +83,66 @@ class TestAlphaBetaEngine:
         legal_moves = list(self.board.legal_moves)
         assert move1 in legal_moves
         assert move2 in legal_moves
+
+
+def _snapshot(board: StandardBoard):
+    return {
+        "fen": board.fen,
+        "turn": board.turn,
+        "halfmove_clock": board.halfmove_clock,
+        "pos": board.position.copy(),
+        "stack_len": len(board._moves_stack),
+    }
+
+
+@pytest.mark.parametrize("seed", list(seeded_range(15)))
+def test_engine_get_best_move_does_not_mutate_board(seed):
+    board = standard_board_after_random_play(seed=seed, plies=30)
+    engine = AlphaBetaEngine(depth=2)
+
+    if board.game_over:
+        return
+
+    before = _snapshot(board)
+    move = engine.get_best_move(board)
+    after = _snapshot(board)
+
+    assert move in list(board.legal_moves)
+    assert before["fen"] == after["fen"]
+    assert before["turn"] == after["turn"]
+    assert before["halfmove_clock"] == after["halfmove_clock"]
+    assert before["stack_len"] == after["stack_len"]
+    assert (before["pos"] == after["pos"]).all()
+
+
+@pytest.mark.parametrize("seed", list(seeded_range(15)))
+def test_engine_hash_is_stable_across_push_pop(seed):
+    board = standard_board_after_random_play(seed=seed, plies=25)
+    engine = AlphaBetaEngine(depth=1)
+
+    legal = list(board.legal_moves)
+    if not legal:
+        return
+
+    h1 = engine.compute_hash(board)
+    board.push(legal[0])
+    board.pop()
+    h2 = engine.compute_hash(board)
+    assert h1 == h2
+
+
+@pytest.mark.parametrize("seed", list(seeded_range(10)))
+def test_engine_populates_transposition_table_for_root(seed):
+    board = standard_board_after_random_play(seed=seed, plies=20)
+    engine = AlphaBetaEngine(depth=2)
+
+    if board.game_over:
+        return
+
+    root_hash = engine.compute_hash(board)
+    engine.get_best_move(board)
+
+    entry = engine.tt.get(root_hash)
+    assert entry is not None
+    _depth, _flag, _score, best_move = entry
+    assert best_move in list(board.legal_moves)

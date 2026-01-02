@@ -181,7 +181,7 @@ def append_results_to_csv(
 
 def create_venv(path: Path) -> Path:
     """Create virtualenv and return python executable path."""
-    subprocess.run(["uv", "venv", str(path)], check=True, capture_output=True)
+    subprocess.run(["uv", "venv", str(path), "--native-tls"], check=True, capture_output=True)
     if sys.platform == "win32":
         python = path / "Scripts" / "python.exe"
     else:
@@ -192,11 +192,10 @@ def create_venv(path: Path) -> Path:
 def install_package(python: Path, source: Path):
     """Install py-draughts from wheel or source."""
     subprocess.run(
-        ["uv", "pip", "install", "--python", str(python), str(source), "-q"],
+        ["uv", "pip", "install", "--python", str(python), str(source), "-q", "--native-tls"],
         check=True,
         capture_output=True,
     )
-
 
 def run_legal_moves_benchmark(python: Path) -> dict:
     """Run legal moves benchmark in isolated environment."""

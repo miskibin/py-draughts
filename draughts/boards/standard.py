@@ -112,7 +112,7 @@ class Board(BaseBoard):
 
     @property
     def legal_moves(self) -> list[Move]:
-        all_moves = []
+        all_moves: list[Move] = []
         has_capture = False
         # Cache turn.value to avoid repeated enum lookups
         turn_val = self.turn.value

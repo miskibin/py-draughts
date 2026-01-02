@@ -1,7 +1,7 @@
 import time
 import random
 from abc import ABC, abstractmethod
-from typing import Optional, List, Tuple, Dict
+from typing import Optional, List
 from loguru import logger
 import numpy as np
 
@@ -99,27 +99,27 @@ class AlphaBetaEngine(Engine):
     - Advanced Evaluation (PST)
     """
 
-    def __init__(self, depth: int, time_limit: float = None):
+    def __init__(self, depth: int, time_limit: float | None = None):
         self.depth = depth
         self.time_limit = time_limit
-        self.nodes = 0
-        self.tt = {}  # Transposition Table: {hash: (depth, flag, score, best_move)}
-        self.history = {}  # History Heuristic: {(from, to): score}
-        self.killers = {}  # Killer Moves: {depth: [move1, move2]}
+        self.nodes: int = 0
+        self.tt: dict[int, tuple[int, int, float, Move | None]] = {}  # {hash: (depth, flag, score, best_move)}
+        self.history: dict[tuple[int, int], int] = {}  # {(from, to): score}
+        self.killers: dict[int, list[Move]] = {}  # {depth: [move1, move2]}
         
         # Zobrist Hashing (uses seeded RNG for consistency)
         self.zobrist_table = self._init_zobrist()
         self.zobrist_turn = random.getrandbits(64)  # XOR when it's black's turn
         
-        self.start_time = 0
-        self.stop_search = False
+        self.start_time: float = 0.0
+        self.stop_search: bool = False
 
     @property
-    def inspected_nodes(self):
+    def inspected_nodes(self) -> int:
         return self.nodes
 
     @inspected_nodes.setter
-    def inspected_nodes(self, value):
+    def inspected_nodes(self, value: int) -> None:
         self.nodes = value
 
     def _init_zobrist(self):
@@ -192,7 +192,7 @@ class AlphaBetaEngine(Engine):
         # Initial Hash
         current_hash = self.compute_hash(board)
         
-        best_move = None
+        best_move: Move | None = None
         best_score = -INF
         
         # Iterative Deepening
@@ -225,16 +225,18 @@ class AlphaBetaEngine(Engine):
                 del self.tt[k]
         
         logger.info(f"Best move: {best_move}, Score: {best_score:.2f}, Nodes: {self.nodes}")
-        
+
+        legal_moves = list(board.legal_moves)
+        if not legal_moves:
+            raise ValueError("No legal moves available")
+
         if best_move is None:
-            # Fallback if search failed to find a move (should not happen unless no legal moves)
-            legal_moves = list(board.legal_moves)
-            if legal_moves:
-                best_move = legal_moves[0]
-                best_score = -INF
-        
+            # Fallback if search failed to find a move.
+            best_move = legal_moves[0]
+            best_score = -INF
+
         if with_evaluation:
-            return best_move, best_score
+            return best_move, float(best_score)
         return best_move
 
     def negamax(self, board: Board, depth: int, alpha: float, beta: float, h: int) -> float:
@@ -402,7 +404,7 @@ class AlphaBetaEngine(Engine):
         
         return current_hash
 
-    def _order_moves(self, moves: List[Move], board: Board = None, h: int = 0, depth: int = 0) -> List[Move]:
+    def _order_moves(self, moves: List[Move], board: Board | None = None, h: int = 0, depth: int = 0) -> List[Move]:
         # 1. PV Move from TT
         tt_entry = self.tt.get(h)
         pv_move = tt_entry[3] if tt_entry else None
