@@ -34,7 +34,7 @@ def play_game(scan_path: str, max_moves: int = 100) -> None:
     board = StandardBoard()
     
     # AlphaBeta plays White
-    alphabeta = AlphaBetaEngine(depth=9)
+    alphabeta = AlphaBetaEngine(depth_limit=9)
     
     # Scan plays Black
     print(f"Starting Scan engine from: {scan_path}")
@@ -43,7 +43,7 @@ def play_game(scan_path: str, max_moves: int = 100) -> None:
         scan.new_game()
         
         print("\n=== Game Start ===")
-        print(f"White: AlphaBeta (depth=9)")
+        print(f"White: AlphaBeta (depth_limit=9)")
         print(f"Black: {scan.info.name} {scan.info.version}")
         print()
         

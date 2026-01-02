@@ -150,7 +150,7 @@ Legal moves are: ['31-27', '31-26', '32-28', '32-27', '33-29', '33-28', '34-30',
 
 ```python
 >>> from draughts.engine import AlphaBetaEngine
->>> engine = AlphaBetaEngine(depth=5)
+>>> engine = AlphaBetaEngine(depth_limit=5)
 >>> engine.get_best_move(board, with_evaluation=True)
 Move: 28->37, 3.0
 ```
@@ -172,7 +172,7 @@ via the Hub protocol:
 
 ```python
 >>> from draughts import HubEngine, StandardBoard
->>> with HubEngine("path/to/scan.exe", time_per_move=1.0) as engine:
+>>> with HubEngine("path/to/scan.exe", time_limit=1.0) as engine:
 ...     board = StandardBoard()
 ...     move, score = engine.get_best_move(board, with_evaluation=True)
 ...     print(f"Best move: {move}, Score: {score}")
@@ -182,7 +182,7 @@ Best move: 32-28, Score: 0.15
 The `HubEngine` class:
 - Manages the external engine subprocess lifecycle
 - Auto-detects variant from board type (Standard, Frisian)
-- Supports time-based or depth-based search
+- Supports time-based (`time_limit`) or depth-based (`depth_limit`) search
 - Works as a drop-in replacement for `AlphaBetaEngine`
 
 ## Web UI
@@ -209,8 +209,8 @@ from draughts.server import Server
 board = get_board('standard')
 
 # Create engines with different configurations
-white_engine = AlphaBetaEngine(depth=6)
-black_engine = AlphaBetaEngine(depth=4)
+white_engine = AlphaBetaEngine(depth_limit=6)
+black_engine = AlphaBetaEngine(depth_limit=4)
 
 server = Server(
     board=board,
@@ -239,7 +239,7 @@ board = get_board('standard')
 server = Server(
     board=board,
     white_engine=MyEngine(),
-    black_engine=AlphaBetaEngine(depth=5)
+    black_engine=AlphaBetaEngine(depth_limit=5)
 )
 server.run()
 ```

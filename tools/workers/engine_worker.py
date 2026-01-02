@@ -32,7 +32,7 @@ def handle_move(fen: str | None, depth: int) -> dict:
             "time_ms": 0,
         }
     
-    engine = AlphaBetaEngine(depth=depth)
+    engine = AlphaBetaEngine(depth_limit=depth)
     start = time.perf_counter()
     move = engine.get_best_move(board)
     elapsed_ms = (time.perf_counter() - start) * 1000

@@ -3,12 +3,12 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.testclient import TestClient
 
 from draughts import get_board
-from draughts.engine import AlphaBetaEngine
+from draughts.engine import AlphaBetaEngine, Engine
 from draughts.server.server import Server
 from draughts.move import Move
 
 
-class _SlowStaleEngine:
+class _SlowStaleEngine(Engine):
     """Engine stub that always returns the same *initial* move after a delay.
 
     This simulates autoplay overlap: a long search returns a move that was legal
@@ -22,8 +22,10 @@ class _SlowStaleEngine:
         self._delay_s = delay_s
         self._time = time
 
-    def get_best_move(self, _board):
+    def get_best_move(self, _board, with_evaluation=False):
         self._time.sleep(self._delay_s)
+        if with_evaluation:
+            return self._stale_move, 0.0
         return self._stale_move
 
 
@@ -122,21 +124,21 @@ def test_set_depth_clamps_and_updates_engine():
     try:
         Server.APP = _new_test_app()
         board = get_board("standard")
-        engine = AlphaBetaEngine(depth=6)
+        engine = AlphaBetaEngine(depth_limit=6)
         server = Server(
-            board=board, get_best_move_method=engine.get_best_move, engine=engine
+            board=board, white_engine=engine, black_engine=engine
         )
         client = TestClient(server.APP)
 
         r = client.get("/set_depth/0")
         assert r.status_code == 200
         assert r.json()["depth"] == 1
-        assert engine.depth == 1
+        assert engine.depth_limit == 1
 
         r = client.get("/set_depth/999")
         assert r.status_code == 200
         assert r.json()["depth"] == 10
-        assert engine.depth == 10
+        assert engine.depth_limit == 10
     finally:
         Server.APP = old_app
 
@@ -158,7 +160,7 @@ def test_overlapping_best_move_requests_do_not_corrupt_board():
         stale_move = list(board.legal_moves)[0]
 
         engine = _SlowStaleEngine(stale_move=stale_move, delay_s=0.15)
-        server = Server(board=board, get_best_move_method=engine.get_best_move, engine=engine)
+        server = Server(board=board, white_engine=engine, black_engine=engine)
         client = TestClient(server.APP)
 
         barrier = threading.Barrier(3)
@@ -200,11 +202,14 @@ def test_best_move_falls_back_if_engine_returns_illegal_move():
         Server.APP = _new_test_app()
         board = get_board("standard")
 
-        def bad_engine(_board):
-            # Definitely illegal: no-op move
-            return Move([0, 0])
+        class BadEngine(Engine):
+            def get_best_move(self, _board, with_evaluation=False):
+                # Definitely illegal: no-op move
+                move = Move([0, 0])
+                return (move, 0.0) if with_evaluation else move
 
-        server = Server(board=board, get_best_move_method=bad_engine)
+        bad_engine = BadEngine()
+        server = Server(board=board, white_engine=bad_engine, black_engine=bad_engine)
         client = TestClient(server.APP)
 
         r = client.get("/best_move")

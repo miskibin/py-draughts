@@ -76,7 +76,7 @@ class Engine(ABC):
             Either a Move object, or tuple of (Move, float) if with_evaluation=True
         
         Example:
-            >>> engine = AlphaBetaEngine(depth=3)
+            >>> engine = AlphaBetaEngine(depth_limit=3)
             >>> move = engine.get_best_move(board)
             >>> move, score = engine.get_best_move(board, with_evaluation=True)
         
@@ -99,8 +99,8 @@ class AlphaBetaEngine(Engine):
     - Advanced Evaluation (PST)
     """
 
-    def __init__(self, depth: int, time_limit: float | None = None):
-        self.depth = depth
+    def __init__(self, depth_limit: int = 6, time_limit: float | None = None):
+        self.depth_limit = depth_limit
         self.time_limit = time_limit
         self.nodes: int = 0
         self.tt: dict[int, tuple[int, int, float, Move | None]] = {}  # {hash: (depth, flag, score, best_move)}
@@ -197,7 +197,7 @@ class AlphaBetaEngine(Engine):
         best_score = -INF
         
         # Iterative Deepening
-        max_depth = self.depth
+        max_depth = self.depth_limit
         
         for d in range(1, max_depth + 1):
             try:
@@ -272,7 +272,7 @@ class AlphaBetaEngine(Engine):
             
         legal_moves = list(board.legal_moves)
         if not legal_moves:
-            return -CHECKMATE + (self.depth - depth)
+            return -CHECKMATE + (self.depth_limit - depth)
         
         # Check for draw
         if board.is_draw:

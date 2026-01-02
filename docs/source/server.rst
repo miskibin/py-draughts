@@ -34,7 +34,7 @@ To enable the "Engine Move" button in the UI, pass an engine to the server::
     from draughts.server import Server
     
     board = get_board('standard')
-    engine = AlphaBetaEngine(depth=6)
+    engine = AlphaBetaEngine(depth_limit=6)
     
     # Engine plays for both sides when you click "Engine Move"
     server = Server(
@@ -57,8 +57,8 @@ for testing and comparing engine implementations::
     board = get_board('standard')
     
     # Create two engines with different configurations
-    white_engine = AlphaBetaEngine(depth=6)
-    black_engine = AlphaBetaEngine(depth=4)
+    white_engine = AlphaBetaEngine(depth_limit=6)
+    black_engine = AlphaBetaEngine(depth_limit=4)
     
     server = Server(
         board=board,

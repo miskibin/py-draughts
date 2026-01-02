@@ -12,7 +12,7 @@ class TestAlphaBetaEngine:
     @pytest.fixture(autouse=True)
     def setup(self):
         self.board = get_board("standard")
-        self.engine = AlphaBetaEngine(depth=3)
+        self.engine = AlphaBetaEngine(depth_limit=3)
         yield
         del self.board
         del self.engine
@@ -98,7 +98,7 @@ def _snapshot(board: StandardBoard):
 @pytest.mark.parametrize("seed", list(seeded_range(15)))
 def test_engine_get_best_move_does_not_mutate_board(seed):
     board = standard_board_after_random_play(seed=seed, plies=30)
-    engine = AlphaBetaEngine(depth=2)
+    engine = AlphaBetaEngine(depth_limit=2)
 
     if board.game_over:
         return
@@ -118,7 +118,7 @@ def test_engine_get_best_move_does_not_mutate_board(seed):
 @pytest.mark.parametrize("seed", list(seeded_range(15)))
 def test_engine_hash_is_stable_across_push_pop(seed):
     board = standard_board_after_random_play(seed=seed, plies=25)
-    engine = AlphaBetaEngine(depth=1)
+    engine = AlphaBetaEngine(depth_limit=1)
 
     legal = list(board.legal_moves)
     if not legal:
@@ -134,7 +134,7 @@ def test_engine_hash_is_stable_across_push_pop(seed):
 @pytest.mark.parametrize("seed", list(seeded_range(10)))
 def test_engine_populates_transposition_table_for_root(seed):
     board = standard_board_after_random_play(seed=seed, plies=20)
-    engine = AlphaBetaEngine(depth=2)
+    engine = AlphaBetaEngine(depth_limit=2)
 
     if board.game_over:
         return

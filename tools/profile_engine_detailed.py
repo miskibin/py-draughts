@@ -9,7 +9,7 @@ def run_benchmark(depth=4):
     """Run benchmark with configurable depth."""
     # Test with starting position
     board = Board()
-    engine = AlphaBetaEngine(depth=depth)
+    engine = AlphaBetaEngine(depth_limit=depth)
     
     # Get one move at specified depth
     move = engine.get_best_move(board)
@@ -28,7 +28,7 @@ def run_mid_game_benchmark(depth=4):
         if moves:
             board.push(moves[0])
     
-    engine = AlphaBetaEngine(depth=depth)
+    engine = AlphaBetaEngine(depth_limit=depth)
     print(f"\nMid-game position (after 6 moves):")
     print(board)
     

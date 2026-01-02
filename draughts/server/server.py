@@ -20,6 +20,7 @@ from pydantic import BaseModel, Field
 
 from draughts.boards.base import BaseBoard, Color
 from draughts.engine import Engine
+from draughts.hub import HubEngine
 
 
 class PositionResponse(BaseModel):
@@ -73,6 +74,11 @@ class Server:
         self.black_engine = black_engine
         self._lock = threading.RLock()
         self.engine_depth = 6
+        
+        # Start any HubEngine instances
+        for engine in [self.white_engine, self.black_engine]:
+            if isinstance(engine, HubEngine) and not engine._started:
+                engine.start()
         
         self._setup_routes()
 
@@ -284,10 +290,10 @@ class Server:
         with self._lock:
             self.engine_depth = depth
             
-            # Update depth on both engines if they have the attribute
+            # Update depth_limit on both engines if they have the attribute
             for engine in [self.white_engine, self.black_engine]:
-                if engine is not None and hasattr(engine, 'depth'):
-                    engine.depth = depth
+                if engine is not None and hasattr(engine, 'depth_limit'):
+                    engine.depth_limit = depth
             
             return {"depth": self.engine_depth}
 
@@ -304,7 +310,19 @@ class Server:
 
     def run(self, **kwargs):
         """Start the server."""
-        uvicorn.run(self.APP, **kwargs)
+        try:
+            uvicorn.run(self.APP, **kwargs)
+        finally:
+            self._cleanup_engines()
+    
+    def _cleanup_engines(self) -> None:
+        """Quit any HubEngine instances."""
+        for engine in [self.white_engine, self.black_engine]:
+            if isinstance(engine, HubEngine):
+                try:
+                    engine.quit()
+                except Exception:
+                    pass
 
 
 if __name__ == "__main__":
@@ -314,11 +332,11 @@ if __name__ == "__main__":
     logger.add(sys.stderr, level="DEBUG")
     
     from draughts.engine import AlphaBetaEngine
-    from draughts import get_board
+    from draughts import get_board , HubEngine
 
     # Example: Two engines playing against each other
-    white_engine = AlphaBetaEngine(depth=6)
-    black_engine = AlphaBetaEngine(depth=6)
+    white_engine = AlphaBetaEngine(depth_limit=6)
+    black_engine = HubEngine('./scan_engine/scan.exe', depth_limit=6)
     
     board = get_board("standard")
     server = Server(

@@ -105,7 +105,7 @@ Basic usage::
     from draughts.engine import AlphaBetaEngine
     
     board = get_board('standard')
-    engine = AlphaBetaEngine(depth=5)
+    engine = AlphaBetaEngine(depth_limit=5)
     
     # Get best move
     best_move = engine.get_best_move(board)
@@ -118,9 +118,9 @@ Basic usage::
 With time limits::
 
     # Search with 1-second time limit instead of fixed depth
-    engine = AlphaBetaEngine(depth=20, time_limit=1.0)
+    engine = AlphaBetaEngine(depth_limit=20, time_limit=1.0)
     move, score = engine.get_best_move(board, with_evaluation=True)
-    # Engine will iteratively deepen up to depth 20 or until time expires
+    # Engine will iteratively deepen up to depth_limit or until time expires
 
 Custom Engine Implementation
 -----------------------------
@@ -183,7 +183,7 @@ Single Engine for Both Sides::
     from draughts.server import Server
     
     board = StandardBoard()
-    engine = AlphaBetaEngine(depth=6)
+    engine = AlphaBetaEngine(depth_limit=6)
     
     # Same engine plays for both colors
     server = Server(
@@ -202,8 +202,8 @@ Engine vs Engine Match::
     board = StandardBoard()
     
     # Different engines/configurations for each side
-    white_engine = AlphaBetaEngine(depth=6)
-    black_engine = AlphaBetaEngine(depth=4)
+    white_engine = AlphaBetaEngine(depth_limit=6)
+    black_engine = AlphaBetaEngine(depth_limit=4)
     
     server = Server(
         board=board,
@@ -269,12 +269,12 @@ Search Options
 Time-based search (default)::
 
     # 2 seconds per move
-    engine = HubEngine("scan.exe", time_per_move=2.0)
+    engine = HubEngine("scan.exe", time_limit=2.0)
 
 Fixed depth search::
 
     # Search to depth 15
-    engine = HubEngine("scan.exe", depth=15)
+    engine = HubEngine("scan.exe", depth_limit=15)
 
 Engine vs HubEngine Match
 ~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -285,9 +285,9 @@ You can pit the built-in AlphaBetaEngine against an external Hub engine::
     from draughts.engine import AlphaBetaEngine
     
     board = StandardBoard()
-    alphabeta = AlphaBetaEngine(depth=6)
+    alphabeta = AlphaBetaEngine(depth_limit=6)
     
-    with HubEngine("scan.exe", time_per_move=1.0) as scan:
+    with HubEngine("scan.exe", time_limit=1.0) as scan:
         while not board.is_over():
             if board.turn.value == 0:  # White
                 move = alphabeta.get_best_move(board)

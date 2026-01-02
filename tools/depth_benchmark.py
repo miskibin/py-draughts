@@ -30,7 +30,7 @@ MOVES_PER_POSITION = 3  # Number of moves to make per position
 
 def benchmark_depth(depth: int) -> dict:
     """Benchmark engine at given depth, return stats."""
-    engine = AlphaBetaEngine(depth=depth)
+    engine = AlphaBetaEngine(depth_limit=depth)
     
     total_time = 0.0
     total_moves = 0
