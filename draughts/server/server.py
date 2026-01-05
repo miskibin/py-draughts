@@ -187,7 +187,7 @@ class Server:
     def get_legal_moves(self) -> dict:
         """Get all legal moves for the current position."""
         with self._lock:
-            moves_dict = defaultdict(list)
+            moves_dict: dict[int, list[int]] = defaultdict(list)
             for move in list(self.board.legal_moves):
                 moves_dict[int(move.square_list[0])].extend(
                     map(int, move.square_list[1:])
@@ -235,7 +235,8 @@ class Server:
             if not legal_moves:
                 return self.position_json
 
-            move = engine.get_best_move(self.board)
+            result = engine.get_best_move(self.board, with_evaluation=False)
+            move = result if not isinstance(result, tuple) else result[0]
 
             # Validate move is legal (handles stale TT or overlapping requests)
             if move not in legal_moves:

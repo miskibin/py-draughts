@@ -5,6 +5,7 @@ from typing import Optional, List
 from loguru import logger
 import numpy as np
 
+from draughts.boards.base import BaseBoard
 from draughts.boards.standard import Board, Move, Figure
 from draughts.models import Color
 
@@ -63,7 +64,7 @@ class Engine(ABC):
 
     @abstractmethod
     def get_best_move(
-        self, board: Board, with_evaluation: bool
+        self, board: BaseBoard, with_evaluation: bool
     ) -> Move | tuple[Move, float]:
         """
         Returns best move for given board.
@@ -138,7 +139,7 @@ class AlphaBetaEngine(Engine):
         # Map piece value to 0-4 index
         return piece + 2
 
-    def compute_hash(self, board: Board) -> int:
+    def compute_hash(self, board: BaseBoard) -> int:
         h = 0
         for i, piece in enumerate(board._pos):
             if piece != 0:
@@ -147,7 +148,7 @@ class AlphaBetaEngine(Engine):
             h ^= self.zobrist_turn
         return h
 
-    def evaluate(self, board: Board) -> float:
+    def evaluate(self, board: BaseBoard) -> float:
         """
         Evaluation function with material and PST.
         Returns score from the perspective of the side to move.
@@ -181,7 +182,7 @@ class AlphaBetaEngine(Engine):
             return -score
         return score
 
-    def get_best_move(self, board: Board, with_evaluation: bool = False) -> Move | tuple[Move, float]:
+    def get_best_move(self, board: BaseBoard, with_evaluation: bool = False) -> Move | tuple[Move, float]:
         self.start_time = time.time()
         self.nodes = 0
         self.stop_search = False
@@ -240,7 +241,7 @@ class AlphaBetaEngine(Engine):
             return best_move, float(best_score)
         return best_move
 
-    def negamax(self, board: Board, depth: int, alpha: float, beta: float, h: int) -> float:
+    def negamax(self, board: BaseBoard, depth: int, alpha: float, beta: float, h: int) -> float:
         self.nodes += 1
         
         # Check time
@@ -337,7 +338,7 @@ class AlphaBetaEngine(Engine):
         
         return best_value
 
-    def quiescence_search(self, board: Board, alpha: float, beta: float, h: int, qs_depth: int = 0) -> float:
+    def quiescence_search(self, board: BaseBoard, alpha: float, beta: float, h: int, qs_depth: int = 0) -> float:
         """Search captures until position is quiet."""
         self.nodes += 1
         
@@ -377,7 +378,7 @@ class AlphaBetaEngine(Engine):
                 
         return alpha
 
-    def _update_hash(self, current_hash: int, board: Board, move: Move) -> int:
+    def _update_hash(self, current_hash: int, board: BaseBoard, move: Move) -> int:
         # XOR out source
         start_sq = move.square_list[0]
         piece = board._pos[start_sq]
@@ -405,7 +406,7 @@ class AlphaBetaEngine(Engine):
         
         return current_hash
 
-    def _order_moves(self, moves: List[Move], board: Board | None = None, h: int = 0, depth: int = 0) -> List[Move]:
+    def _order_moves(self, moves: List[Move], board: BaseBoard | None = None, h: int = 0, depth: int = 0) -> List[Move]:
         # 1. PV Move from TT
         tt_entry = self.tt.get(h)
         pv_move = tt_entry[3] if tt_entry else None
@@ -438,7 +439,7 @@ class AlphaBetaEngine(Engine):
         moves.sort(key=score_move, reverse=True)
         return moves
 
-    def _order_captures(self, moves: List[Move], board: Board) -> List[Move]:
+    def _order_captures(self, moves: List[Move], board: BaseBoard) -> List[Move]:
         # Sort by number of captures
         moves.sort(key=lambda m: len(m.captured_list), reverse=True)
         return moves
