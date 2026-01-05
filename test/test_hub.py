@@ -8,7 +8,7 @@ from draughts.boards.standard import Board as StandardBoard
 from draughts.boards.frisian import Board as FrisianBoard
 from draughts.models import Color, Figure
 from draughts.move import Move
-from draughts.hub import (
+from draughts.engines.hub import (
     board_to_hub_position,
     hub_position_to_board,
     move_to_hub_notation,

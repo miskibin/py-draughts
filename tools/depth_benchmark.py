@@ -12,7 +12,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from draughts.boards.standard import Board
-from draughts.engine import AlphaBetaEngine
+from draughts.engines import AlphaBetaEngine
 
 
 # Test positions - mix of opening, midgame, and endgame

@@ -1,6 +1,6 @@
 import pytest
 from draughts import get_board
-from draughts.engine import AlphaBetaEngine
+from draughts.engines import AlphaBetaEngine
 from draughts.boards.standard import Board as StandardBoard
 
 from test._test_helpers import seeded_range, standard_board_after_random_play

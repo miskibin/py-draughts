@@ -7,6 +7,7 @@ import numpy as np
 
 from draughts.boards.base import BaseBoard
 from draughts.boards.standard import Board, Move, Figure
+from draughts.engines.engine import Engine
 from draughts.models import Color
 
 
@@ -53,38 +54,6 @@ PST_KING_BLACK = np.array([
 
 PST_KING_WHITE = PST_KING_BLACK[::-1]
 
-
-class Engine(ABC):
-    """
-    Interface for engine compatible with Server class.
-    
-    This abstract class defines the interface that all engines must implement
-    to be compatible with the Server class for playing games.
-    """
-
-    @abstractmethod
-    def get_best_move(
-        self, board: BaseBoard, with_evaluation: bool
-    ) -> Move | tuple[Move, float]:
-        """
-        Returns best move for given board.
-        
-        Args:
-            board: The current board state
-            with_evaluation: If True, return tuple of (move, evaluation score)
-        
-        Returns:
-            Either a Move object, or tuple of (Move, float) if with_evaluation=True
-        
-        Example:
-            >>> engine = AlphaBetaEngine(depth_limit=3)
-            >>> move = engine.get_best_move(board)
-            >>> move, score = engine.get_best_move(board, with_evaluation=True)
-        
-        Note:
-            To get list of legal moves use ``board.legal_moves``
-        """
-        ...
 
 
 class AlphaBetaEngine(Engine):

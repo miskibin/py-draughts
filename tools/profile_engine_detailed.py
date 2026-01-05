@@ -3,7 +3,7 @@ import cProfile
 import pstats
 from io import StringIO
 from draughts.boards.standard import Board
-from draughts.engine import AlphaBetaEngine
+from draughts.engines import AlphaBetaEngine
 
 def run_benchmark(depth=4):
     """Run benchmark with configurable depth."""

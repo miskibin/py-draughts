@@ -34,7 +34,7 @@ from typing import Optional, Generator
 from loguru import logger
 
 from draughts.boards.base import BaseBoard
-from draughts.engine import Engine
+from draughts.engines.engine import Engine
 from draughts.models import Color, Figure
 from draughts.move import Move
 
@@ -349,7 +349,7 @@ class HubEngine(Engine):
         self,
         path: str | Path,
         time_limit: float = 1.0,
-        depth_limit: Optional[int] = None,
+        depth_limit: int = 6,
         init_timeout: float = 10.0,
     ):
         """
@@ -358,7 +358,7 @@ class HubEngine(Engine):
         Args:
             path: Path to the engine executable
             time_limit: Time limit per move in seconds (default 1.0)
-            depth_limit: Maximum search depth, or None for time-based
+            depth_limit: Maximum search depth
             init_timeout: Timeout for engine initialization in seconds
         """
         self.path = Path(path)
@@ -642,7 +642,8 @@ class HubEngine(Engine):
         result = SearchResult(move="", info=SearchInfo())
         
         while True:
-            line = self._read_line(timeout=max(self.time_limit * 2, 30.0))
+            timeout_val = self.time_limit * 2 if self.time_limit else 30.0
+            line = self._read_line(timeout=max(timeout_val, 30.0))
             if line is None:
                 continue
             

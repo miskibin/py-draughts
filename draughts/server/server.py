@@ -19,8 +19,8 @@ from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel, Field
 
 from draughts.boards.base import BaseBoard, Color
-from draughts.engine import Engine
-from draughts.hub import HubEngine
+from draughts.engines import Engine
+from draughts.engines import HubEngine
 
 
 class PositionResponse(BaseModel):
@@ -332,7 +332,7 @@ if __name__ == "__main__":
 
     logger.add(sys.stderr, level="DEBUG")
     
-    from draughts.engine import AlphaBetaEngine
+    from draughts.engines import AlphaBetaEngine
     from draughts import get_board , HubEngine
 
     # Example: Two engines playing against each other

@@ -19,8 +19,8 @@ import sys
 logger.add(sys.stderr, level="DEBUG")
 
 from draughts import StandardBoard, Color
-from draughts.engine import AlphaBetaEngine
-from draughts.hub import HubEngine
+from draughts.engines import AlphaBetaEngine
+from draughts.engines import HubEngine
 
 
 def play_game(scan_path: str, max_moves: int = 100) -> None:

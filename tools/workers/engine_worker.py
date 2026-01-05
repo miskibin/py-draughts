@@ -15,7 +15,7 @@ import time
 
 # Import once at startup
 from draughts import get_board
-from draughts.engine import AlphaBetaEngine
+from draughts.engines import AlphaBetaEngine
 
 
 def handle_move(fen: str | None, depth: int) -> dict:
