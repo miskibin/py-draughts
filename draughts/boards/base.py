@@ -12,6 +12,8 @@ from draughts.move import Move
 from draughts.utils import (
     get_diagonal_moves,
     get_short_diagonal_moves,
+    generate_man_attack_tables,
+    generate_king_attack_tables,
 )
 
 # fmt: off
@@ -97,6 +99,16 @@ class BaseBoard(ABC):
     Despite the name, this contains LONG moves (all squares on diagonal) for kings.
     (one for move and one for capture)
     """
+    
+    # Pre-computed attack tables for optimized move generation
+    WHITE_MAN_ATTACKS = ...
+    """Pre-computed attack table for white men: square -> list of (target, jump_over, land_on)"""
+    
+    BLACK_MAN_ATTACKS = ...
+    """Pre-computed attack table for black men: square -> list of (target, jump_over, land_on)"""
+    
+    KING_DIAGONALS = ...
+    """Pre-computed diagonal lines for kings: square -> [up-right, up-left, down-right, down-left]"""
 
     def __init_subclass__(cls, **kwargs):
         parent_class = cls.__bases__[0]
@@ -110,6 +122,10 @@ class BaseBoard(ABC):
         # (first 2 squares) which is sufficient for men who only move/capture one square at a time
         cls.DIAGONAL_SHORT_MOVES = get_diagonal_moves(len(cls.STARTING_POSITION))
         cls.DIAGONAL_LONG_MOVES = get_short_diagonal_moves(len(cls.STARTING_POSITION))
+        
+        # Generate pre-computed attack tables for optimized move generation
+        cls.WHITE_MAN_ATTACKS, cls.BLACK_MAN_ATTACKS = generate_man_attack_tables(len(cls.STARTING_POSITION))
+        cls.KING_DIAGONALS = generate_king_attack_tables(len(cls.STARTING_POSITION))
 
     def __init__(
         self,

@@ -349,7 +349,7 @@ class HubEngine(Engine):
         self,
         path: str | Path,
         time_limit: float = 1.0,
-        depth_limit: int = 6,
+        depth_limit: Optional[int] = None,
         init_timeout: float = 10.0,
     ):
         """
@@ -358,7 +358,7 @@ class HubEngine(Engine):
         Args:
             path: Path to the engine executable
             time_limit: Time limit per move in seconds (default 1.0)
-            depth_limit: Maximum search depth
+            depth_limit: Maximum search depth (None for no limit)
             init_timeout: Timeout for engine initialization in seconds
         """
         self.path = Path(path)

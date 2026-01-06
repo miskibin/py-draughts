@@ -6,10 +6,6 @@ from loguru import logger
 from draughts.boards.base import BaseBoard
 from draughts.models import Color, Figure, EMPTY, MAN, KING
 from draughts.move import Move
-from draughts.utils import (
-    get_diagonal_moves,
-    get_short_diagonal_moves,
-)
 
 # fmt: off
 SQUARES=  [ B10, D10, F10, H10, J10,
@@ -141,31 +137,33 @@ class Board(BaseBoard):
         moves = []
         pos = self._pos  # Local reference for faster access
         turn_val = self.turn.value
-        # white can move only on even directions
-        for idx, direction in enumerate(self.DIAGONAL_LONG_MOVES[square]):
-            if (
-                len(direction) > 0
-                and (turn_val + idx)
-                in [-1, 0, 3, 4]  # TERRIBLE HACK get only directions for given piece
-                and pos[direction[0]] == EMPTY
-                and not is_capture_mandatory
-            ):
-                moves.append(Move([square, direction[0]]))
-            elif (
-                len(direction) > 1
-                and pos[direction[0]] * turn_val < 0
-                and pos[direction[1]] == EMPTY
-            ):
-                move = Move(
-                    [square, direction[1]], [direction[0]], [pos[direction[0]]]
-                )
-                # moves.append(move)
-                self.push(move, False)
-                new_moves = [
-                    move + m for m in self._get_man_legal_moves_from(direction[1], True)
-                ]
-                moves += [move] if len(new_moves) == 0 else new_moves
-                self.pop(False)
+        
+        # Use pre-computed attack tables based on turn
+        attack_table = self.WHITE_MAN_ATTACKS if turn_val < 0 else self.BLACK_MAN_ATTACKS
+        
+        for entry in attack_table[square]:
+            target = entry.target
+            jump_over = entry.jump_over
+            land_on = entry.land_on
+            
+            # Regular move (only if target is valid and not in capture mode)
+            if target >= 0 and not is_capture_mandatory:
+                if pos[target] == EMPTY:
+                    moves.append(Move([square, target]))
+            
+            # Capture move (jump over enemy, land on empty)
+            if jump_over >= 0 and land_on >= 0:
+                if pos[jump_over] * turn_val < 0 and pos[land_on] == EMPTY:
+                    move = Move(
+                        [square, land_on], [jump_over], [pos[jump_over]]
+                    )
+                    self.push(move, False)
+                    new_moves = [
+                        move + m for m in self._get_man_legal_moves_from(land_on, True)
+                    ]
+                    moves += [move] if len(new_moves) == 0 else new_moves
+                    self.pop(False)
+        
         return moves
 
     def _get_king_legal_moves_from(
@@ -173,6 +171,7 @@ class Board(BaseBoard):
     ) -> list[Move]:
         """
         Generate legal moves for a king from a given square.
+        Uses pre-computed KING_DIAGONALS for optimized diagonal traversal.
         
         Args:
             square: The current square of the king
@@ -184,7 +183,8 @@ class Board(BaseBoard):
         turn_val = self.turn.value
         max_len = 0  # Track max length across ALL directions
         
-        for direction in self.DIAGONAL_SHORT_MOVES[square]:
+        # Use pre-computed king diagonal table
+        for direction in self.KING_DIAGONALS[square]:
             dir_len = len(direction)
             for idx, target in enumerate(direction):
                 # Check if path crosses a forbidden square (previously captured piece)

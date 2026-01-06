@@ -228,12 +228,22 @@ class EngineWorker:
             stderr=subprocess.PIPE,
             text=True,
             bufsize=1,  # Line buffered
+            env={**__import__("os").environ, "PYTHONUNBUFFERED": "1"},
         )
         # Wait for ready signal
         assert self.process.stdout is not None
         ready = self.process.stdout.readline()
-        if not ready or "ready" not in ready:
-            raise RuntimeError(f"Worker failed to start: {ready}")
+        if not ready:
+            # Try to get stderr for better error message
+            assert self.process.stderr is not None
+            stderr = self.process.stderr.read()
+            raise RuntimeError(f"Worker failed to start (no output). stderr: {stderr}")
+        try:
+            data = json.loads(ready)
+            if data.get("status") != "ready":
+                raise RuntimeError(f"Worker failed to start: {ready}")
+        except json.JSONDecodeError:
+            raise RuntimeError(f"Worker failed to start (invalid JSON): {ready}")
     
     def get_move(self, fen: str | None, depth: int) -> dict:
         """Get engine move from persistent worker."""

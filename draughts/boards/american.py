@@ -5,7 +5,7 @@ from typing import Generator
 import numpy as np
 
 from draughts.boards.base import BaseBoard
-from draughts.models import Color, Figure
+from draughts.models import Color, Figure, EMPTY, MAN, KING
 from draughts.move import Move
 
 # fmt: off
@@ -46,58 +46,77 @@ class Board(BaseBoard):
 
     @property
     def legal_moves(self) -> Generator[Move, None, None]:
-        if self.turn == Color.BLACK:
-            squares_list = np.transpose(np.nonzero(self._pos > 0))
-        else:
-            squares_list = np.transpose(np.nonzero(self._pos < 0))
-        for square in squares_list.flatten():
+        # Use flatnonzero for faster piece lookup
+        turn_val = self.turn.value
+        squares_list = np.flatnonzero(self._pos * turn_val > 0)
+        for square in squares_list:
             moves = self._legal_moves_from(square)
             for move in moves:
                 yield move
 
     def _legal_moves_from(
         self, square: int, is_after_capture=False
-    ) -> Generator[Move, None, None]:
-        row = self.ROW_IDX[square]
+    ) -> list[Move]:
+        """
+        Generate legal moves using pre-computed attack tables.
+        American checkers: men can only capture forward, kings can capture in all directions.
+        """
         moves = []
-        odd = bool(row % 2 != 0 and self.turn == Color.BLACK) or (
-            row % 2 == 0 and self.turn == Color.WHITE
-        )
-        is_king = bool(self[square] == self.turn.value * Figure.KING)
-        # is_king = False  # DEBUG
-        for mv_offset, cap_offset, dir in [
-            (4 - odd, 7, self.turn.value),
-            (5 - odd, 9, self.turn.value),
-        ] + is_king * [
-            (4 - (not odd), 7, -self.turn.value),
-            (5 - (not odd), 9, -self.turn.value),
-        ]:
-            move_sq = square + mv_offset * (dir)
-            capture_sq = square + cap_offset * (dir)
-
-            if (
-                0 <= move_sq < len(self._pos)
-                and row + 1 * (dir) == self.ROW_IDX[move_sq]
-                and self[move_sq] == 0
-                and not is_after_capture
-            ):
-                moves.append(Move([square, move_sq]))
-            elif (
-                0 <= capture_sq < len(self._pos)
-                and row + 2 * (dir) == self.ROW_IDX[capture_sq]
-                and self[capture_sq] == 0
-                and self[move_sq] * self.turn.value < 0
-            ):
-                move = Move(
-                    [square, capture_sq],
-                    captured_list=[move_sq],
-                    captured_entities=[self[move_sq]],
-                )
-                moves.append(move)
-                self.push(move, False)
-                moves += [move + m for m in self._legal_moves_from(capture_sq, True)]
-                self.pop(False)
-
+        pos = self._pos
+        turn_val = self.turn.value
+        piece_val = abs(pos[square])
+        is_king = piece_val == KING
+        
+        # Use pre-computed attack tables
+        attack_table = self.WHITE_MAN_ATTACKS if turn_val < 0 else self.BLACK_MAN_ATTACKS
+        
+        if is_king:
+            # Kings can move and capture in all directions using KING_DIAGONALS
+            for direction in self.KING_DIAGONALS[square]:
+                if len(direction) >= 1:
+                    target = direction[0]
+                    # Regular move (not after capture)
+                    if pos[target] == EMPTY and not is_after_capture:
+                        moves.append(Move([square, target]))
+                    # Capture
+                    if len(direction) >= 2:
+                        jump_over = direction[0]
+                        land_on = direction[1]
+                        if pos[jump_over] * turn_val < 0 and pos[land_on] == EMPTY:
+                            move = Move(
+                                [square, land_on],
+                                captured_list=[jump_over],
+                                captured_entities=[pos[jump_over]],
+                            )
+                            moves.append(move)
+                            self.push(move, False)
+                            moves += [move + m for m in self._legal_moves_from(land_on, True)]
+                            self.pop(False)
+        else:
+            # Men use attack table (forward moves only, but can capture forward)
+            for entry in attack_table[square]:
+                target = entry.target
+                jump_over = entry.jump_over
+                land_on = entry.land_on
+                
+                # Regular move (only forward, not after capture)
+                if target >= 0 and not is_after_capture:
+                    if pos[target] == EMPTY:
+                        moves.append(Move([square, target]))
+                
+                # Capture move (men can only capture forward in American checkers)
+                if jump_over >= 0 and land_on >= 0:
+                    if pos[jump_over] * turn_val < 0 and pos[land_on] == EMPTY:
+                        move = Move(
+                            [square, land_on],
+                            captured_list=[jump_over],
+                            captured_entities=[pos[jump_over]],
+                        )
+                        moves.append(move)
+                        self.push(move, False)
+                        moves += [move + m for m in self._legal_moves_from(land_on, True)]
+                        self.pop(False)
+        
         return moves
 
 
