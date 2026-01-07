@@ -3,6 +3,102 @@ Benchmarking (Internal)
 
 This page documents the internal benchmarking tools used for performance testing py-draughts.
 
+Performance Results
+-------------------
+
+The following benchmarks were run on January 7, 2026.
+
+Legal Moves Generation
+~~~~~~~~~~~~~~~~~~~~~~
+
+Performance of the legal moves generator across different board positions:
+
+.. image:: _static/legal_moves_benchmark.png
+   :alt: Legal Moves Generation Benchmark
+   :align: center
+   :width: 80%
+
+.. list-table:: Legal Moves Generation Performance
+   :header-rows: 1
+   :widths: 30 20 20
+
+   * - Position Type
+     - Time (µs)
+     - Move Count
+   * - Opening
+     - 11.93
+     - 9
+   * - King Captures
+     - 28.10
+     - 2
+   * - Midgame
+     - 9.36
+     - 9
+   * - Complex
+     - 12.64
+     - 7
+   * - Start Position
+     - 24.90
+     - 9
+
+Engine Depth Performance
+~~~~~~~~~~~~~~~~~~~~~~~~
+
+AlphaBeta engine search performance at different depths:
+
+.. image:: _static/engine_benchmark.png
+   :alt: Engine Depth Benchmark
+   :align: center
+   :width: 80%
+
+.. list-table:: Engine Depth Performance
+   :header-rows: 1
+   :widths: 15 25 30
+
+   * - Depth
+     - Avg Time
+     - Avg Nodes
+   * - 1
+     - 1.03 ms
+     - 27
+   * - 2
+     - 8.37 ms
+     - 117
+   * - 3
+     - 12.64 ms
+     - 312
+   * - 4
+     - 35.92 ms
+     - 971
+   * - 5
+     - 130.32 ms
+     - 3,525
+   * - 6
+     - 349.03 ms
+     - 9,537
+   * - 7
+     - 932.85 ms
+     - 25,202
+   * - 8
+     - 4.90 s
+     - 122,168
+   * - 9
+     - 5.93 s
+     - 153,152
+   * - 10
+     - 25.90 s
+     - 641,085
+
+.. image:: _static/engine_depth_time.png
+   :alt: Engine Search Time by Depth
+   :align: center
+   :width: 80%
+
+.. image:: _static/engine_depth_nodes.png
+   :alt: Engine Nodes Searched by Depth
+   :align: center
+   :width: 80%
+
 Overview
 --------
 
@@ -128,3 +224,27 @@ Or for more detailed analysis:
    python tools/profile_engine_detailed.py 5  # depth 5
 
 This uses Python's ``cProfile`` to identify bottlenecks in the engine.
+
+Generating Benchmark Charts
+---------------------------
+
+To regenerate the benchmark charts and tables for documentation:
+
+.. code-block:: bash
+
+   python tools/generate_benchmark_charts.py
+
+This will:
+
+- Run legal moves generation benchmarks across various position types
+- Run engine depth benchmarks from depth 1 to 10
+- Generate PNG charts in ``docs/source/_static/``
+- Output RST table content for copying into documentation
+
+The generated charts include:
+
+- ``legal_moves_benchmark.png`` - Bar chart of legal moves generation time by position type
+- ``engine_benchmark.png`` - Combined time and nodes chart for engine depths
+- ``engine_depth_time.png`` - Logarithmic time chart by depth
+- ``engine_depth_nodes.png`` - Logarithmic nodes searched chart by depth
+

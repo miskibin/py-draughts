@@ -336,8 +336,9 @@ if __name__ == "__main__":
     from draughts import get_board , HubEngine
 
     # Example: Two engines playing against each other
-    white_engine = AlphaBetaEngine(depth_limit=6)
-    black_engine = HubEngine('./scan_engine/scan.exe', depth_limit=6)
+    white_engine = AlphaBetaEngine(depth_limit=9)
+    black_engine = AlphaBetaEngine(depth_limit=9)
+    # black_engine = HubEngine('./scan_engine/scan.exe', depth_limit=6)
     
     board = get_board("standard")
     server = Server(

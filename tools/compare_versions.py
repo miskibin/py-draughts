@@ -26,7 +26,7 @@ from rich.table import Table
 WARMUP_ROUNDS = 5
 BENCHMARK_ROUNDS = 10
 BENCHMARK_ITERATIONS = 10  # Number of times to run the legal moves benchmark
-ENGINE_DEPTH = 4
+ENGINE_DEPTH = 3
 
 # === Paths ===
 PROJECT_ROOT = Path(__file__).parent.parent
@@ -191,18 +191,29 @@ def create_venv(path: Path) -> Path:
 
 
 def install_package(python: Path, source: Path):
-    """Install py-draughts from wheel or source."""
+    """Install py-draughts from wheel or source, plus psutil for benchmarking."""
     subprocess.run(
         ["uv", "pip", "install", "--python", str(python), str(source), "-q", "--native-tls"],
         check=True,
         capture_output=True,
     )
+    # Install psutil for high priority/CPU affinity in benchmarks
+    subprocess.run(
+        ["uv", "pip", "install", "--python", str(python), "psutil", "-q", "--native-tls"],
+        check=True,
+        capture_output=True,
+    )
 
-def run_legal_moves_benchmark(python: Path) -> dict:
-    """Run legal moves benchmark in isolated environment."""
+def run_legal_moves_benchmark(python: Path, iterations: int = 1) -> dict:
+    """Run legal moves benchmark in isolated environment.
+    
+    Args:
+        python: Path to Python executable
+        iterations: Number of iterations to run (all in one process for stability)
+    """
     worker = WORKERS_DIR / "benchmark_legal_moves.py"
     result = subprocess.run(
-        [str(python), str(worker), str(POSITIONS_FILE), str(WARMUP_ROUNDS), str(BENCHMARK_ROUNDS)],
+        [str(python), str(worker), str(POSITIONS_FILE), str(WARMUP_ROUNDS), str(BENCHMARK_ROUNDS), str(iterations)],
         capture_output=True,
         text=True,
     )
@@ -245,16 +256,67 @@ class EngineWorker:
         except json.JSONDecodeError:
             raise RuntimeError(f"Worker failed to start (invalid JSON): {ready}")
     
-    def get_move(self, fen: str | None, depth: int) -> dict:
-        """Get engine move from persistent worker."""
+    def new_game(self, fen: str | None) -> dict:
+        """Start a new game from given position."""
         if not self.process or self.process.poll() is not None:
-            raise RuntimeError("Worker not running")
+            try:
+                self.start()
+            except Exception as e:
+                return {"error": f"Worker restart failed: {e}"}
         assert self.process.stdin is not None
         assert self.process.stdout is not None
         
-        cmd = json.dumps({"cmd": "move", "fen": fen, "depth": depth})
-        self.process.stdin.write(cmd + "\n")
-        self.process.stdin.flush()
+        cmd = json.dumps({"cmd": "new_game", "fen": fen})
+        try:
+            self.process.stdin.write(cmd + "\n")
+            self.process.stdin.flush()
+        except (BrokenPipeError, OSError) as e:
+            return {"error": f"Worker communication failed: {e}"}
+        
+        response = self.process.stdout.readline()
+        if not response:
+            return {"error": "Worker died"}
+        return json.loads(response)
+    
+    def get_move(self, depth: int) -> dict:
+        """Get engine move from persistent worker (uses current board state)."""
+        if not self.process or self.process.poll() is not None:
+            # Worker died, try to restart it
+            try:
+                self.start()
+            except Exception as e:
+                return {"error": f"Worker restart failed: {e}"}
+        assert self.process.stdin is not None
+        assert self.process.stdout is not None
+        
+        cmd = json.dumps({"cmd": "move", "depth": depth})
+        try:
+            self.process.stdin.write(cmd + "\n")
+            self.process.stdin.flush()
+        except (BrokenPipeError, OSError) as e:
+            return {"error": f"Worker communication failed: {e}"}
+        
+        response = self.process.stdout.readline()
+        if not response:
+            return {"error": "Worker died"}
+        return json.loads(response)
+    
+    def apply_move(self, move_str: str) -> dict:
+        """Apply opponent's move to our board."""
+        if not self.process or self.process.poll() is not None:
+            try:
+                self.start()
+            except Exception as e:
+                return {"error": f"Worker restart failed: {e}"}
+        assert self.process.stdin is not None
+        assert self.process.stdout is not None
+        
+        cmd = json.dumps({"cmd": "apply_move", "move": move_str})
+        try:
+            self.process.stdin.write(cmd + "\n")
+            self.process.stdin.flush()
+        except (BrokenPipeError, OSError) as e:
+            return {"error": f"Worker communication failed: {e}"}
         
         response = self.process.stdout.readline()
         if not response:
@@ -331,24 +393,32 @@ def play_match(python1: Path, python2: Path, openings: list[dict], depth: int) -
                         white_worker, black_worker = worker2, worker1
                         white_ver = "v2"
 
-                    # Start from opening position
-                    fen = opening_fen
+                    # Initialize both workers with the opening position
+                    # Each worker maintains its own board state for proper draw detection
+                    init1 = worker1.new_game(opening_fen)
+                    init2 = worker2.new_game(opening_fen)
+                    
+                    if init1.get("error") or init2.get("error"):
+                        console.print(f"[red]Failed to init game: {init1.get('error') or init2.get('error')}[/]")
+                        continue
+
                     move_count = 0
                     result = {}
                     termination = ""
                     
                     # Determine whose turn it is from FEN
                     # FEN starts with 'W:' or 'B:' to indicate turn
-                    if fen and fen.startswith("B:"):
+                    if opening_fen and opening_fen.startswith("B:"):
                         is_white_turn = False
                     else:
                         is_white_turn = True  # Default to white's turn
 
                     while move_count < 400:
                         current_worker = white_worker if is_white_turn else black_worker
+                        other_worker = black_worker if is_white_turn else white_worker
                         current_ver = white_ver if is_white_turn else ("v2" if white_ver == "v1" else "v1")
 
-                        result = current_worker.get_move(fen, depth)
+                        result = current_worker.get_move(depth)
 
                         if result.get("error"):
                             termination = "error"
@@ -370,7 +440,13 @@ def play_match(python1: Path, python2: Path, openings: list[dict], depth: int) -
                             stats["v2_time_ms"] += result.get("time_ms", 0)
                             stats["v2_moves"] += 1
 
-                        fen = result["fen"]
+                        # Sync the move to the other worker's board
+                        # This preserves move history for proper draw detection
+                        sync_result = other_worker.apply_move(result["move"])
+                        if sync_result.get("error"):
+                            termination = "sync_error"
+                            break
+                        
                         move_count += 1
                         is_white_turn = not is_white_turn
 
@@ -481,31 +557,32 @@ def main():
             install_package(py2, PROJECT_ROOT)
         console.print("  ✓ Current ready")
 
-        # Legal moves benchmark - run multiple iterations
+        # Legal moves benchmark - run all iterations in single process for stability
         console.print(f"\n[bold]Legal moves benchmark ({BENCHMARK_ITERATIONS} iterations, {BENCHMARK_ROUNDS} rounds each, {WARMUP_ROUNDS} warmup)...[/]")
 
-        lm1_results = []
-        lm2_results = []
+        with console.status("[green]Benchmarking snapshot (all iterations in one process)..."):
+            lm1 = run_legal_moves_benchmark(py1, BENCHMARK_ITERATIONS)
+        
+        if "error" in lm1:
+            console.print(f"[red]Snapshot benchmark error: {lm1['error']}[/]")
+            sys.exit(1)
+            
+        with console.status("[green]Benchmarking current (all iterations in one process)..."):
+            lm2 = run_legal_moves_benchmark(py2, BENCHMARK_ITERATIONS)
+        
+        if "error" in lm2:
+            console.print(f"[red]Current benchmark error: {lm2['error']}[/]")
+            sys.exit(1)
 
-        for i in range(BENCHMARK_ITERATIONS):
-            with console.status(f"[green]Iteration {i + 1}/{BENCHMARK_ITERATIONS} - Benchmarking snapshot..."):
-                lm1 = run_legal_moves_benchmark(py1)
-            with console.status(f"[green]Iteration {i + 1}/{BENCHMARK_ITERATIONS} - Benchmarking current..."):
-                lm2 = run_legal_moves_benchmark(py2)
-
-            if "error" in lm1 or "error" in lm2:
-                console.print(f"[red]Error in iteration {i + 1}: {lm1.get('error', '')} {lm2.get('error', '')}[/]")
-                sys.exit(1)
-
-            lm1_results.append(lm1)
-            lm2_results.append(lm2)
-            console.print(f"  Iteration {i + 1}: Snapshot={lm1['median_ms']:.2f}ms, Current={lm2['median_ms']:.2f}ms")
+        # Display individual iteration results
+        lm1_medians = lm1.get("iteration_medians", [lm1["median_ms"]])
+        lm2_medians = lm2.get("iteration_medians", [lm2["median_ms"]])
+        
+        for i in range(len(lm1_medians)):
+            console.print(f"  Iteration {i + 1}: Snapshot={lm1_medians[i]:.2f}ms, Current={lm2_medians[i]:.2f}ms")
 
         # Calculate statistics across all iterations
         from statistics import median, mean, stdev
-
-        lm1_medians = [r["median_ms"] for r in lm1_results]
-        lm2_medians = [r["median_ms"] for r in lm2_results]
 
         lm_table = Table(title=f"Legal Moves Benchmark ({BENCHMARK_ITERATIONS} iterations)", box=box.ROUNDED)
         lm_table.add_column("Metric", style="cyan")
@@ -515,8 +592,8 @@ def main():
 
         lm_table.add_row(
             f"Positions count",
-            f"{lm1_results[0]['positions_count']}",
-            f"{lm2_results[0]['positions_count']}",
+            f"{lm1['positions_count']}",
+            f"{lm2['positions_count']}",
             "",
         )
         lm_table.add_section()
@@ -629,7 +706,7 @@ def main():
             lm1_medians=lm1_medians,
             lm2_medians=lm2_medians,
             match_stats=match,
-            positions_count=lm1_results[0]["positions_count"],
+            positions_count=lm1["positions_count"],
             num_games=num_games,
             num_openings=len(openings),
         )
