@@ -196,11 +196,13 @@ class Server:
 
     def get_fen(self) -> dict:
         """Get the current FEN string."""
-        return {"fen": self.board.fen}
+        with self._lock:
+            return {"fen": self.board.fen}
 
     def get_pdn(self) -> dict:
         """Get the current PDN string."""
-        return {"pdn": self.board.pdn}
+        with self._lock:
+            return {"pdn": self.board.pdn}
 
     def get_engine_info(self) -> EngineInfo:
         """Get information about configured engines."""
