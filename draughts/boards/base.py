@@ -12,8 +12,6 @@ from draughts.move import Move
 from draughts.utils import (
     get_diagonal_moves,
     get_short_diagonal_moves,
-    generate_man_attack_tables,
-    generate_king_attack_tables,
 )
 
 # fmt: off
@@ -99,16 +97,6 @@ class BaseBoard(ABC):
     Despite the name, this contains LONG moves (all squares on diagonal) for kings.
     (one for move and one for capture)
     """
-    
-    # Pre-computed attack tables for optimized move generation
-    WHITE_MAN_ATTACKS = ...
-    """Pre-computed attack table for white men: square -> list of (target, jump_over, land_on)"""
-    
-    BLACK_MAN_ATTACKS = ...
-    """Pre-computed attack table for black men: square -> list of (target, jump_over, land_on)"""
-    
-    KING_DIAGONALS = ...
-    """Pre-computed diagonal lines for kings: square -> [up-right, up-left, down-right, down-left]"""
 
     def __init_subclass__(cls, **kwargs):
         parent_class = cls.__bases__[0]
@@ -122,10 +110,6 @@ class BaseBoard(ABC):
         # (first 2 squares) which is sufficient for men who only move/capture one square at a time
         cls.DIAGONAL_SHORT_MOVES = get_diagonal_moves(len(cls.STARTING_POSITION))
         cls.DIAGONAL_LONG_MOVES = get_short_diagonal_moves(len(cls.STARTING_POSITION))
-        
-        # Generate pre-computed attack tables for optimized move generation
-        cls.WHITE_MAN_ATTACKS, cls.BLACK_MAN_ATTACKS = generate_man_attack_tables(len(cls.STARTING_POSITION))
-        cls.KING_DIAGONALS = generate_king_attack_tables(len(cls.STARTING_POSITION))
 
     def __init__(
         self,
@@ -465,6 +449,20 @@ class BaseBoard(ABC):
                 board += f" {FIGURE_REPR[position[i*self.shape[0] + j]]}"
             board += "\n"
         return board
+
+    def __str__(self) -> str:
+        """
+        Displays board representation from __repr__ on the left 
+        and corresponding numbers on the right 
+        """
+        n = self.shape[0]
+        lines = []
+        for i, line in enumerate(repr(self).strip().split('\n')):
+            sq = iter(range(i * n // 2 + 1, (i + 1) * n // 2 + 1))
+            nums = ' '.join(f"{next(sq):2d}" if (i + j) % 2 else "." for j in range(n))
+            lines.append(f"{line}     {nums}")
+        return '\n'.join(lines)
+
 
     def __iter__(self) -> Generator[Figure, None, None]:
         for sq in self.position:
