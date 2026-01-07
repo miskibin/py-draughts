@@ -311,7 +311,16 @@ class TestHubEngineIntegration:
         
         return process
 
-    def test_start_handshake(self, mock_process):
+    @pytest.fixture
+    def mock_select(self):
+        """Mock select.select to work on Linux CI/CD (where it's used instead of blocking reads)."""
+        # On Linux, select.select is called to check if stdout is ready.
+        # We return the stdout as ready so readline() gets called.
+        def select_side_effect(rlist, wlist, xlist, timeout=None):
+            return (rlist, [], [])
+        return patch("select.select", side_effect=select_side_effect)
+
+    def test_start_handshake(self, mock_process, mock_select):
         """Test the initialization handshake."""
         # Simulate engine responses
         responses = iter([
@@ -324,20 +333,21 @@ class TestHubEngineIntegration:
         
         with patch("subprocess.Popen", return_value=mock_process):
             with patch("pathlib.Path.exists", return_value=True):
-                engine = HubEngine("mock.exe")
-                engine.start()
-                
-                assert engine._started
-                assert engine.info.name == "MockEngine"
-                assert engine.info.version == "1.0"
-                assert "variant" in engine.params
-                
-                # Check that hub and init were sent
-                calls = [call[0][0] for call in mock_process.stdin.write.call_args_list]
-                assert "hub\n" in calls
-                assert "init\n" in calls
+                with mock_select:
+                    engine = HubEngine("mock.exe")
+                    engine.start()
+                    
+                    assert engine._started
+                    assert engine.info.name == "MockEngine"
+                    assert engine.info.version == "1.0"
+                    assert "variant" in engine.params
+                    
+                    # Check that hub and init were sent
+                    calls = [call[0][0] for call in mock_process.stdin.write.call_args_list]
+                    assert "hub\n" in calls
+                    assert "init\n" in calls
 
-    def test_get_best_move(self, mock_process):
+    def test_get_best_move(self, mock_process, mock_select):
         """Test getting best move from engine."""
         responses = iter([
             "id name=MockEngine version=1.0",
@@ -350,17 +360,18 @@ class TestHubEngineIntegration:
         
         with patch("subprocess.Popen", return_value=mock_process):
             with patch("pathlib.Path.exists", return_value=True):
-                engine = HubEngine("mock.exe")
-                engine.start()
-                
-                board = StandardBoard()
-                move, score = engine.get_best_move(board, with_evaluation=True)
-                
-                # Verify the move was parsed correctly
-                assert str(move) == "32-28"
-                assert score == 0.5
+                with mock_select:
+                    engine = HubEngine("mock.exe")
+                    engine.start()
+                    
+                    board = StandardBoard()
+                    move, score = engine.get_best_move(board, with_evaluation=True)
+                    
+                    # Verify the move was parsed correctly
+                    assert str(move) == "32-28"
+                    assert score == 0.5
 
-    def test_context_manager(self, mock_process):
+    def test_context_manager(self, mock_process, mock_select):
         """Test context manager usage."""
         responses = iter([
             "id name=MockEngine version=1.0",
@@ -371,11 +382,12 @@ class TestHubEngineIntegration:
         
         with patch("subprocess.Popen", return_value=mock_process):
             with patch("pathlib.Path.exists", return_value=True):
-                with HubEngine("mock.exe") as engine:
-                    assert engine._started
-                
-                # After exiting, engine should be stopped
-                assert not engine._started
+                with mock_select:
+                    with HubEngine("mock.exe") as engine:
+                        assert engine._started
+                    
+                    # After exiting, engine should be stopped
+                    assert not engine._started
 
 
 class TestVariantMapping:
