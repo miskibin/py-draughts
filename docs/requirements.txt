@@ -2,4 +2,5 @@ myst-parser
 sphinx
 # readthedocs theme
 sphinx_rtd_theme
+sphinxcontrib-jquery
 sphinxcontrib-mermaid==0.8.1
