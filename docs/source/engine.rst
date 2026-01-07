@@ -7,13 +7,13 @@ is the ``AlphaBetaEngine``, which uses Negamax search with alpha-beta pruning an
 Engine Interface
 ----------------
 
-.. autoclass:: draughts.engine.Engine
+.. autoclass:: draughts.engines.engine.Engine
     :members:
 
 AlphaBetaEngine
 ---------------
 
-.. autoclass:: draughts.engine.AlphaBetaEngine
+.. autoclass:: draughts.engines.alpha_beta.AlphaBetaEngine
     :members: __init__, evaluate, get_best_move
 
 Algorithm Overview
@@ -221,7 +221,7 @@ HubEngine - External Engine Support
 The ``HubEngine`` class allows you to use external draughts engines that implement
 the Hub protocol (like `Scan <https://hjetten.home.xs4all.nl/scan/scan.html>`_).
 
-.. autoclass:: draughts.hub.HubEngine
+.. autoclass:: draughts.engines.hub.HubEngine
     :members: __init__, start, quit, get_best_move
 
 Hub Protocol Overview

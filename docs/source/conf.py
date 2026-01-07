@@ -2,7 +2,7 @@ import os
 import sys
 
 # Import the chess module.
-sys.path.insert(0, os.path.abspath(".."))
+sys.path.insert(0, os.path.abspath("../.."))
 import draughts
 
 # Do not resolve these.
@@ -39,11 +39,15 @@ master_doc = "index"
 
 # General information about the project.
 project = "py-draughts"
-copyright = "2023, Michal Skibinski"
+copyright = "2023-2024, Michal Skibinski"
 
 # The version.
-# version = draughts.__version__
-# release = draughts.__version__
+try:
+    version = draughts.__version__
+    release = draughts.__version__
+except AttributeError:
+    version = "1.5.8"
+    release = "1.5.8"
 
 
 myst_enable_extensions = [

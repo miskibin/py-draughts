@@ -142,24 +142,24 @@ API Endpoints
 
 The server exposes the following REST API endpoints:
 
-=================== ======= ===============================================
-Endpoint            Method  Description
-=================== ======= ===============================================
-``/``               GET     Main game page
-``/position``       GET     Get current board position
-``/legal_moves``    GET     Get legal moves for current position
-``/fen``            GET     Get FEN string
-``/pdn``            GET     Get PDN string
-``/engine_info``    GET     Get configured engine information
-``/move/{src}/{tgt}`` POST  Make a move
-``/best_move``      GET     Get and play engine's best move
-``/pop``            GET     Undo last move
-``/goto/{ply}``     GET     Jump to specific ply in history
-``/load_fen``       POST    Load position from FEN
-``/load_pdn``       POST    Load game from PDN
-``/set_depth/{n}``  GET     Set engine search depth
-``/set_board/{type}`` GET   Switch board type (standard/american)
-=================== ======= ===============================================
+======================= ======= ===============================================
+Endpoint                Method  Description
+======================= ======= ===============================================
+``/``                   GET     Main game page
+``/position``           GET     Get current board position
+``/legal_moves``        GET     Get legal moves for current position
+``/fen``                GET     Get FEN string
+``/pdn``                GET     Get PDN string
+``/engine_info``        GET     Get configured engine information
+``/move/{src}/{tgt}``   POST    Make a move
+``/best_move``          GET     Get and play engine's best move
+``/pop``                GET     Undo last move
+``/goto/{ply}``         GET     Jump to specific ply in history
+``/load_fen``           POST    Load position from FEN
+``/load_pdn``           POST    Load game from PDN
+``/set_depth/{n}``      GET     Set engine search depth
+``/set_board/{type}``   GET     Switch board type (standard/american)
+======================= ======= ===============================================
 
 Running from Command Line
 -------------------------
