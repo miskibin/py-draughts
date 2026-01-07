@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-
+from typing import Optional
 
 from draughts.boards.base import BaseBoard
 from draughts.boards.standard import Board, Move, Figure
@@ -12,11 +12,14 @@ class Engine(ABC):
     This abstract class defines the interface that all engines must implement
     to be compatible with the Server class for playing games.
     """
+    
+    depth_limit: Optional[int]
+    time_limit: Optional[float]
 
     def __init__(
         self,
-        depth_limit: int = 6,
-        time_limit: float | None = None,
+        depth_limit: Optional[int] = 6,
+        time_limit: Optional[float] = None,
     ):
         """
         Initializes the engine with optional depth and time limits.

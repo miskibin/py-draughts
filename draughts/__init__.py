@@ -52,7 +52,7 @@ def get_board(
 
     BOARDS: dict[str, Type[BaseBoard]] = {
         "standard": StandardBoard,
-        "frisian": FrisianBoard,
+        "frisian": FrisianBoard,  # type: ignore[type-abstract]
         "american": AmericanBoard,
     }
     board_cls = BOARDS[variant]

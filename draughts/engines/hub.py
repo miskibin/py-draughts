@@ -29,7 +29,7 @@ import subprocess
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Optional, Generator
+from typing import Optional, Generator, Iterable
 
 from loguru import logger
 
@@ -199,7 +199,7 @@ def move_to_hub_notation(move: Move) -> str:
 
 def parse_hub_move(
     move_str: str,
-    legal_moves: Generator[Move, None, None],
+    legal_moves: Iterable[Move],
     board: Optional[BaseBoard] = None,
 ) -> Move:
     """

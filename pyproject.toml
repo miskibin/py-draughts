@@ -37,6 +37,7 @@ dependencies = [
     "fastapi",
     "uvicorn",
     "jinja2",
+    "httpx>=0.28.1",
 ]
 
 [project.urls]

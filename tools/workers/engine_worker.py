@@ -15,7 +15,10 @@ import time
 
 # Import once at startup
 from draughts import get_board
-from draughts.engines import AlphaBetaEngine
+try:
+    from draughts.engines import AlphaBetaEngine
+except ImportError:
+    from draughts.engine import AlphaBetaEngine # older version
 
 
 def handle_move(fen: str | None, depth: int) -> dict:
@@ -36,14 +39,14 @@ def handle_move(fen: str | None, depth: int) -> dict:
     start = time.perf_counter()
     move = engine.get_best_move(board)
     elapsed_ms = (time.perf_counter() - start) * 1000
-    
-    if move:
+    is_over = board.game_over
+    if move and not is_over:
         board.push(move)
         return {
             "move": str(move),
             "fen": board.fen,
-            "game_over": board.game_over,
-            "result": board.result if board.game_over else None,
+            "game_over": is_over,
+            "result": board.result if is_over else None,
             "nodes": engine.inspected_nodes,
             "time_ms": elapsed_ms,
         }
@@ -51,7 +54,7 @@ def handle_move(fen: str | None, depth: int) -> dict:
         return {
             "move": None,
             "fen": board.fen,
-            "game_over": True,
+            "game_over": is_over,
             "result": "no_move",
             "nodes": 0,
             "time_ms": 0,

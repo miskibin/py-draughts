@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Generator
+from typing import Iterable
 
 from draughts.models import Figure
 
@@ -26,6 +26,9 @@ class Move:
 
     __slots__ = ('square_list', 'captured_list', 'captured_entities', 'is_promotion', 'halfmove_clock', '_len')
     
+    # Singleton empty list to avoid creating new empty lists for simple moves
+    _EMPTY_LIST: list = []
+    
     def __init__(
         self,
         visited_squares: list[int],
@@ -34,12 +37,13 @@ class Move:
         is_promotion: bool = False,
     ) -> None:
         self.square_list = visited_squares
-        self.captured_list = captured_list if captured_list is not None else []
-        self.captured_entities = captured_entities if captured_entities is not None else []
+        # Use singleton empty list for non-captures (most common case)
+        self.captured_list = captured_list if captured_list else Move._EMPTY_LIST
+        self.captured_entities = captured_entities if captured_entities else Move._EMPTY_LIST
         self.is_promotion = is_promotion
         self.halfmove_clock = 0
-        # Cache length for performance (avoids repeated len() calls)
-        self._len = len(self.captured_list) + 1
+        # Cache length - use direct len for captures, 1 for simple moves
+        self._len = len(captured_list) + 1 if captured_list else 1
 
     def __str__(self) -> str:
         separator = "x" if self.captured_list else "-"
@@ -94,7 +98,7 @@ class Move:
         return move
 
     @classmethod
-    def from_uci(cls, move: str, legal_moves: Generator) -> Move:
+    def from_uci(cls, move: str, legal_moves: Iterable["Move"]) -> "Move":
         """
 
         Converts string representation of move to ``Move`` object.

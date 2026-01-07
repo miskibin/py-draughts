@@ -167,7 +167,7 @@ class AlphaBetaEngine(Engine):
         best_score = -INF
         
         # Iterative Deepening
-        max_depth = self.depth_limit
+        max_depth = self.depth_limit or 6
         
         for d in range(1, max_depth + 1):
             try:
@@ -242,7 +242,7 @@ class AlphaBetaEngine(Engine):
             
         legal_moves = list(board.legal_moves)
         if not legal_moves:
-            return -CHECKMATE + (self.depth_limit - depth)
+            return -CHECKMATE + ((self.depth_limit or 6) - depth)
         
         # Check for draw
         if board.is_draw:
