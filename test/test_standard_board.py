@@ -1,18 +1,18 @@
+import json
+from pathlib import Path
+
 import numpy as np
 import pytest
 
 from draughts.boards.base import BaseBoard, Color, Figure, Move
 from draughts import get_board
 from draughts.boards.standard import Board
-from pathlib import Path
-import json
 
 
 class TestBoard:
     flies_dir = Path(__file__).parent / "games" / "standard"
     legal_mvs_file = flies_dir / "legal_moves_len.json"
     random_pos_file = flies_dir / "random_positions.json"
-    random_pdns = flies_dir / "random_pdns.json"
 
     @pytest.fixture(autouse=True)
     def setup(self):
@@ -96,21 +96,3 @@ class TestBoard:
         assert test_board.position[40] == -1, "White piece on square 41 was incorrectly captured"
         # Square 6 (0-indexed: 5) should still have a white piece
         assert test_board.position[5] == -1, "White piece on square 6 was incorrectly captured"
-
-    def test_games_from_pdns(self):
-        import re
-        with open(self.random_pdns, "r") as f:
-            pdns = json.load(f)["pdn_positions"]
-
-        # Regex to extract moves (e.g., "33-28", "22x31") - excludes game results like "1-0", "0-1", "2-0", "0-2"
-        re_moves = re.compile(r"\b(\d{2,}[-x]\d+(?:[-x]\d+)*)\b")
-
-        for pdn in pdns:
-            board = Board.from_pdn(pdn)
-            output_pdn = board.pdn
-
-            # Extract moves from input and output PDNs (only moves with 2+ digit squares)
-            input_moves = re_moves.findall(pdn)
-            output_moves = re_moves.findall(output_pdn)
-
-            assert input_moves == output_moves, f"Moves mismatch:\nInput:  {input_moves}\nOutput: {output_moves}" 

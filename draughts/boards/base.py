@@ -20,6 +20,8 @@ class BaseBoard(ABC):
     
     Subclasses must define: ``legal_moves``, ``is_draw``, ``_init_default_position``,
     ``GAME_TYPE``, ``VARIANT_NAME``, ``SQUARES_COUNT``, ``PROMO_WHITE``, ``PROMO_BLACK``.
+    
+    Optionally define ``SQUARE_NAMES`` for algebraic notation support (e.g., ['b8', 'd8', ...]).
     """
     
     GAME_TYPE: int = -1
@@ -32,6 +34,10 @@ class BaseBoard(ABC):
     ROW_IDX: dict = {}
     COL_IDX: dict = {}
     STARTING_POSITION: np.ndarray = np.array([], dtype=np.int8)
+    
+    # Algebraic square names for PDN parsing (e.g., ['b8', 'd8', ...] for 8x8)
+    # Override in subclasses that use algebraic notation
+    SQUARE_NAMES: list[str] = []
     
     __slots__ = ('white_men', 'white_kings', 'black_men', 'black_kings',
                  'turn', 'halfmove_clock', '_moves_stack', 'shape')
@@ -240,18 +246,59 @@ class BaseBoard(ABC):
     
     @classmethod
     def from_pdn(cls, pdn: str) -> BaseBoard:
-        """Create board from PDN string."""
-        gt_match = re.search(r'\[GameType\s*"(\d+)"\]', pdn)
-        if not gt_match or int(gt_match.group(1)) != cls.GAME_TYPE:
-            raise ValueError(f"Invalid PDN: expected GameType {cls.GAME_TYPE}")
+        """
+        Create board from PDN string.
         
+        Supports both numeric (e.g., '33-28') and algebraic (e.g., 'c3-d4') notation.
+        Handles multi-captures split across entries (e.g., 'e5xc3' then 'c3xa1').
+        """
         board = cls()
-        results = {"2-0", "0-2", "1-1", "1-0", "0-1", "*"}
-        for match in re.findall(r"(\d+)\.\s*(\d+[-x]\d+(?:[-x]\d+)*)(?:\s+(\d+[-x]\d+(?:[-x]\d+)*))?", pdn):
-            if match[1] in results: break
-            board.push_uci(match[1])
-            if match[2] and match[2] not in results: board.push_uci(match[2])
+        alg_to_idx = {name: idx for idx, name in enumerate(cls.SQUARE_NAMES)} if cls.SQUARE_NAMES else {}
+        
+        # Extract moves - try algebraic first, fall back to numeric
+        alg_moves = re.findall(r'\b([a-h]\d[-x][a-h]\d)\b', pdn)
+        if alg_moves and alg_to_idx:
+            moves = [board._alg_to_uci(m, alg_to_idx) for m in alg_moves]
+        else:
+            results = {"2-0", "0-2", "1-1", "1-0", "0-1", "1/2-1/2"}
+            moves = [m for m in re.findall(r'\b(\d+[-x]\d+(?:[-x]\d+)*)\b', pdn) if m not in results]
+        
+        # Parse moves, handling split multi-captures
+        i, chain_start = 0, None
+        while i < len(moves):
+            move, is_cap = moves[i], 'x' in moves[i]
+            start, end = int(move.split('x' if is_cap else '-')[0]), int(move.split('x' if is_cap else '-')[-1])
+            
+            if not is_cap:
+                board.push_uci(move)
+                chain_start = None
+            else:
+                src = chain_start or start
+                cap = next((m for m in board.legal_moves if m.captured_list and m.square_list[0] == src - 1 and (end - 1) in m.square_list), None)
+                if not cap:
+                    raise ValueError(f"No legal capture for {move}")
+                
+                # Check if next move continues this capture chain
+                if i + 1 < len(moves) and 'x' in moves[i + 1]:
+                    nxt = moves[i + 1]
+                    nxt_start = int(nxt.split('x')[0])
+                    if nxt_start == end and (end - 1) in cap.square_list[1:-1]:
+                        chain_start = src
+                        i += 1
+                        continue
+                
+                board.push(cap)
+                chain_start = None
+            i += 1
+        
         return board
+    
+    @staticmethod
+    def _alg_to_uci(move: str, mapping: dict[str, int]) -> str:
+        """Convert algebraic notation (c3-d4) to UCI (22-18)."""
+        sep = 'x' if 'x' in move else '-'
+        parts = move.lower().split(sep)
+        return f"{mapping[parts[0]] + 1}{sep}{mapping[parts[1]] + 1}"
     
     @property
     def position(self) -> np.ndarray:

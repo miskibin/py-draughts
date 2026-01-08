@@ -64,6 +64,14 @@ class Board(BaseBoard):
     ROW_IDX = {v: v // 4 for v in range(32)}
     COL_IDX = {v: v % 8 for v in range(32)}
     
+    # Algebraic notation for PDN parsing (used by playstrategy.org)
+    # fmt: off
+    SQUARE_NAMES = ['b8', 'd8', 'f8', 'h8', 'a7', 'c7', 'e7', 'g7',
+                    'b6', 'd6', 'f6', 'h6', 'a5', 'c5', 'e5', 'g5',
+                    'b4', 'd4', 'f4', 'h4', 'a3', 'c3', 'e3', 'g3',
+                    'b2', 'd2', 'f2', 'h2', 'a1', 'c1', 'e1', 'g1']
+    # fmt: on
+    
     def _init_default_position(self) -> None:
         self.black_men = (1 << 12) - 1
         self.black_kings = 0
