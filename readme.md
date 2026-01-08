@@ -10,6 +10,7 @@ Supports variants `frisian`, `standard (International)`, `English (american)` an
 > [!IMPORTANT]  
 > This is best optimized draughts library utilizing C types and bitboards
 
+
 <img width="1905"  alt="image" src="https://github.com/user-attachments/assets/8c3e255e-7fbb-4ae6-a9ab-2445c486c349" />
 
 
@@ -164,9 +165,10 @@ The engine uses **alpha-beta pruning** with several optimizations:
 - **Enhanced evaluation**: Considers material, positioning, and king promotion
 
 **Performance guide:**
-- Depth 3-4: Fast, good for interactive play (~0.1s per move)
-- Depth 5-6: Strong play with reasonable speed (~1-5s per move)
-- Depth 7+: Very strong but slower, best for analysis (>10s per move)
+- Depth 3-4: Instant, good for interactive play (~10-35ms per move)
+- Depth 5-6: Strong play, very responsive (~130-350ms per move)
+- Depth 7-8: Very strong, suitable for analysis (~1-5s per move)
+- Depth 9-10: Maximum strength (~6-26s per move)
 
 ### External Engine Support (Hub Protocol)
 
@@ -271,6 +273,21 @@ logger.add(sys.stderr, level="DEBUG")
 
 from draughts import get_board  # Now shows debug logs
 ```
+
+
+### ⚡ Performance
+
+Legal moves generation in **~10-30 microseconds**. Engine search is highly optimized:
+
+| Depth | Time | Nodes |
+|-------|------|-------|
+| 5 | 130 ms | 3,525 |
+| 6 | 350 ms | 9,537 |
+| 7 | 933 ms | 25,202 |
+| 8 | 4.9 s | 122,168 |
+
+<img src="docs/source/_static/engine_benchmark.png" alt="Engine Benchmark" width="600">
+
 
 ## Bibliography
 
