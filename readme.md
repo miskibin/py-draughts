@@ -5,7 +5,10 @@
 [![Downloads](https://static.pepy.tech/badge/py-draughts)](https://pepy.tech/project/py-draughts)
 
 Efficient modern and flexible implementation of the draughts game with a beautiful web interface. 
-Supports multiple variants of the game and allows playing against AI.
+Supports variants `frisian`, `standard (International)`, `English (american)` and `russian` variants of the game and allows playing against AI.
+
+> [!IMPORTANT]  
+> This is best optimized draughts library utilizing C types and bitboards
 
 <img width="1905"  alt="image" src="https://github.com/user-attachments/assets/8c3e255e-7fbb-4ae6-a9ab-2445c486c349" />
 
@@ -49,12 +52,7 @@ pip install py-draughts
  . w . w . w . w
  w . w . w . w .
 
->>> board = get_board("frisian")  # Frisian draughts with orthogonal captures
->>> board
- . b . b . b . b . b
- b . b . b . b . b .
- ...
-```
+
 
 - Make and undo moves
 

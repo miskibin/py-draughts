@@ -164,7 +164,7 @@ class Server:
             },
         )
 
-    def set_board(self, request: Request, board_type: Literal["standard", "american", "frisian"]):
+    def set_board(self, request: Request, board_type: Literal["standard", "american", "frisian", "russian"]):
         """Switch to a different board type."""
         with self._lock:
             if board_type == "standard":
@@ -176,6 +176,9 @@ class Server:
             elif board_type == "frisian":
                 from draughts import FrisianBoard
                 self.board = FrisianBoard()
+            elif board_type == "russian":
+                from draughts import RussianBoard
+                self.board = RussianBoard()
             return RedirectResponse(url="/")
 
     # =========================================================================

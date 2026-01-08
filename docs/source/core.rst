@@ -89,10 +89,10 @@ Squares are numbered 1-50:
     41 42 43 44 45
   46 47 48 49 50
 
-American Board (8×8)
-~~~~~~~~~~~~~~~~~~~~
+American/Russian Board (8×8)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Squares are numbered 1-32:
+Both American and Russian draughts use an 8×8 board with squares numbered 1-32:
 
 .. code-block:: text
 
@@ -123,6 +123,9 @@ Example::
     # Create a Frisian board (with orthogonal captures)
     board = get_board('frisian')
     
+    # Create a Russian board (flying kings, free capture choice)
+    board = get_board('russian')
+    
     # Create a board from FEN
     board = get_board('standard', fen='W:W31,32,33:B18,19,20')
 
@@ -151,6 +154,21 @@ FrisianBoard
 ~~~~~~~~~~~~
 
 .. autoclass:: draughts.boards.frisian.Board
+    :members:
+    :inherited-members:
+    :show-inheritance:
+
+RussianBoard
+~~~~~~~~~~~~
+
+Russian draughts uses an 8×8 board like American checkers, but with key differences:
+
+- **Flying kings** that move any distance diagonally (like International)
+- **Men capture backward** (unlike American where men only capture forward)
+- **Free capture choice** - not required to take maximum captures (unlike International)
+- **Mid-capture promotion** - if a man reaches the promotion rank during a capture, it becomes a king and continues capturing as a king
+
+.. autoclass:: draughts.boards.russian.Board
     :members:
     :inherited-members:
     :show-inheritance:

@@ -35,7 +35,13 @@ from draughts.boards.base import BaseBoard
 from draughts.boards.standard import Board as StandardBoard
 from draughts.boards.frisian import Board as FrisianBoard
 from draughts.boards.american import Board as AmericanBoard
+from draughts.boards.russian import Board as RussianBoard
 from draughts.server.server import Server
+
+__all__ = [
+    'BaseBoard', 'StandardBoard', 'FrisianBoard', 'AmericanBoard', 'RussianBoard',
+    'Server', 'Color', 'Figure', 'Move', 'HubEngine', 'get_board', 'svg',
+]
 from draughts import svg
 from draughts.models import Color, Figure
 from draughts.move import Move
@@ -43,19 +49,21 @@ from draughts.engines.hub import HubEngine
 
 
 def get_board(
-    variant: Literal["standard", "american", "frisian"], fen: Optional[str] = None
+    variant: Literal["standard", "american", "frisian", "russian"], fen: Optional[str] = None
 ) -> BaseBoard:
     """
     Board factory method.
     - ``standard`` - standard draughts board
     - ``american`` - american checkers board
     - ``frisian`` - frisian draughts board
+    - ``russian`` - russian draughts board
     """
 
     BOARDS: dict[str, Type[BaseBoard]] = {
         "standard": StandardBoard,
         "frisian": FrisianBoard,  # type: ignore[type-abstract]
         "american": AmericanBoard,
+        "russian": RussianBoard,
     }
     board_cls = BOARDS[variant]
     if fen:

@@ -11,7 +11,7 @@ target_file = Path(__file__).parent / "random_pdns.json"
 # Example tournaments – replace / expand with any IDs you like
 # You can find IDs on the website, then use /api/tournament/{id}/games for PDN
 TOURNAMENT_IDS = [
-    "4tn9nmkj",  # example from docs/forum
+    "nyEd2LP6",  # example from docs/forum
 ]
 
 API_TEMPLATE = "https://lidraughts.org/api/tournament/{id}/games"
