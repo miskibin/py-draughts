@@ -288,6 +288,20 @@ Legal moves generation in **~10-30 microseconds**. Engine search is highly optim
 
 <img src="docs/source/_static/engine_benchmark.png" alt="Engine Benchmark" width="600">
 
+### Speed Comparison vs pydraughts
+
+Comparison against [pydraughts](https://pypi.org/project/pydraughts/) (v0.6.7) on Standard (International) draughts:
+
+| Operation | py-draughts | pydraughts | Speedup |
+|-----------|-------------|------------|---------|
+| Board init | 2.30 µs | 547.10 µs | **238x faster** |
+| FEN parse | 21.00 µs | 358.90 µs | **17x faster** |
+| Legal moves | 17.40 µs | 3.61 ms | **207x faster** |
+| Make move | 0.90 µs | 507.75 µs | **564x faster** |
+
+<img src="docs/source/_static/speed_comparison.png" alt="Speed Comparison Chart" width="700">
+
+> Benchmarked with 1000 iterations across 6 test positions. Run `python tools/compare_pydraughts.py` to reproduce.
 
 ## Bibliography
 
