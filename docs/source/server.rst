@@ -116,7 +116,7 @@ Web Interface Features
 The web UI provides the following controls:
 
 **Board Selection**
-    Switch between American (8x8) and Standard (10x10) board variants.
+    Switch between American (8×8), Standard (10×10), and Frisian (10×10) variants.
 
 **Engine Settings**
     - **Depth slider**: Adjust search depth (1-10) for both engines
@@ -158,7 +158,7 @@ Endpoint                Method  Description
 ``/load_fen``           POST    Load position from FEN
 ``/load_pdn``           POST    Load game from PDN
 ``/set_depth/{n}``      GET     Set engine search depth
-``/set_board/{type}``   GET     Switch board type (standard/american)
+``/set_board/{type}``   GET     Switch board type (standard/american/frisian)
 ======================= ======= ===============================================
 
 Running from Command Line

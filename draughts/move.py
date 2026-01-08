@@ -24,7 +24,7 @@ class Move:
     n - 2 - number of captured pieces
     """
 
-    __slots__ = ('square_list', 'captured_list', 'captured_entities', 'is_promotion', 'halfmove_clock', '_len')
+    __slots__ = ('square_list', 'captured_list', 'captured_entities', 'is_promotion', 'halfmove_clock', '_len', '_value', '_is_king_move')
     
     # Singleton empty list to avoid creating new empty lists for simple moves
     _EMPTY_LIST: list = []
@@ -44,6 +44,9 @@ class Move:
         self.halfmove_clock = 0
         # Cache length - use direct len for captures, 1 for simple moves
         self._len = len(captured_list) + 1 if captured_list else 1
+        # Frisian-specific: capture value and king move flag (set externally)
+        self._value = 0
+        self._is_king_move = False
 
     def __str__(self) -> str:
         separator = "x" if self.captured_list else "-"

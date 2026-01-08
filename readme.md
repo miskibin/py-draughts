@@ -49,6 +49,11 @@ pip install py-draughts
  . w . w . w . w
  w . w . w . w .
 
+>>> board = get_board("frisian")  # Frisian draughts with orthogonal captures
+>>> board
+ . b . b . b . b . b
+ b . b . b . b . b .
+ ...
 ```
 
 - Make and undo moves

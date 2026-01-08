@@ -120,6 +120,9 @@ Example::
     # Create an American board
     board = get_board('american')
     
+    # Create a Frisian board (with orthogonal captures)
+    board = get_board('frisian')
+    
     # Create a board from FEN
     board = get_board('standard', fen='W:W31,32,33:B18,19,20')
 
