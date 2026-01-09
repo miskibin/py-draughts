@@ -1,8 +1,10 @@
 """Abstract base class for draughts boards using bitboard representation."""
 from __future__ import annotations
 
+import copy
 import re
 from abc import ABC, abstractmethod
+from dataclasses import dataclass
 from typing import Generator, Literal, Optional
 
 import numpy as np
@@ -10,6 +12,35 @@ from loguru import logger
 
 from draughts.models import Color, Figure, FIGURE_REPR
 from draughts.move import Move
+
+
+@dataclass(frozen=True, slots=True)
+class BoardFeatures:
+    """
+    Extracted features from a board position for AI/ML use.
+
+    All counts and metrics are computed on-demand and returned as
+    immutable data. This does not store any references to the board.
+
+    Attributes:
+        white_men: Number of white men on the board.
+        white_kings: Number of white kings on the board.
+        black_men: Number of black men on the board.
+        black_kings: Number of black kings on the board.
+        turn: 1 if white to move, -1 if black to move.
+        mobility: Number of legal moves for the side to move.
+        material_balance: (white_men + 2*white_kings) - (black_men + 2*black_kings).
+        phase: Game phase: 'opening', 'midgame', or 'endgame'.
+    """
+
+    white_men: int
+    white_kings: int
+    black_men: int
+    black_kings: int
+    turn: int
+    mobility: int
+    material_balance: float
+    phase: str
 
 
 class BaseBoard(ABC):
@@ -512,3 +543,228 @@ class BaseBoard(ABC):
 
     def __getitem__(self, key: int) -> int:
         return self._get(key)
+
+    # =========================================================================
+    # AI / ML Support Methods
+    # =========================================================================
+
+    def copy(self) -> "BaseBoard":
+        """
+        Create a fast, cheap copy of the board.
+
+        This is optimized for tree search - it copies only the essential
+        state (bitboards, turn, halfmove clock) without deep copying the
+        move stack. The new board has an empty move stack.
+
+        Returns:
+            A new board instance with the same position.
+
+        Example:
+            >>> board = Board()
+            >>> board.push_uci("31-27")
+            >>> clone = board.copy()
+            >>> clone.push_uci("18-22")  # Doesn't affect original
+            >>> len(board._moves_stack)  # Original unchanged
+            1
+        """
+        new = object.__new__(self.__class__)
+        new.white_men = self.white_men
+        new.white_kings = self.white_kings
+        new.black_men = self.black_men
+        new.black_kings = self.black_kings
+        new.turn = self.turn
+        new.halfmove_clock = self.halfmove_clock
+        new.shape = self.shape
+        new._moves_stack = []
+        return new
+
+    def __copy__(self) -> "BaseBoard":
+        """Support for copy.copy()."""
+        return self.copy()
+
+    def __deepcopy__(self, memo: dict) -> "BaseBoard":
+        """Support for copy.deepcopy() - includes move stack."""
+        new = self.copy()
+        new._moves_stack = copy.deepcopy(self._moves_stack, memo)
+        return new
+
+    def features(self) -> BoardFeatures:
+        """
+        Extract features from the current position for AI/ML use.
+
+        Returns a lightweight, immutable dataclass containing piece counts,
+        material balance, mobility, and game phase. Computed on-demand with
+        no caching to avoid memory overhead.
+
+        Returns:
+            :class:`BoardFeatures` with extracted position information.
+
+        Example:
+            >>> board = Board()
+            >>> f = board.features()
+            >>> print(f.white_men, f.black_men)  # 20 20
+            >>> print(f.phase)  # 'opening'
+        """
+        wm = self._popcount(self.white_men)
+        wk = self._popcount(self.white_kings)
+        bm = self._popcount(self.black_men)
+        bk = self._popcount(self.black_kings)
+
+        total = wm + wk + bm + bk
+        if total >= self.SQUARES_COUNT * 0.6:
+            phase = "opening"
+        elif total <= 8:
+            phase = "endgame"
+        else:
+            phase = "midgame"
+
+        return BoardFeatures(
+            white_men=wm,
+            white_kings=wk,
+            black_men=bm,
+            black_kings=bk,
+            turn=1 if self.turn == Color.WHITE else -1,
+            mobility=len(self.legal_moves),
+            material_balance=(wm + 2 * wk) - (bm + 2 * bk),
+            phase=phase,
+        )
+
+    def to_tensor(self, perspective: Optional[Color] = None) -> np.ndarray:
+        """
+        Convert board to tensor representation for neural networks.
+
+        Returns a 4-channel representation:
+            - Channel 0: Own men (1 where present, 0 elsewhere)
+            - Channel 1: Own kings (1 where present, 0 elsewhere)
+            - Channel 2: Opponent men (1 where present, 0 elsewhere)
+            - Channel 3: Opponent kings (1 where present, 0 elsewhere)
+
+        Args:
+            perspective: The player's perspective. If None, uses current turn.
+                From this perspective, "own" pieces are in channels 0-1.
+
+        Returns:
+            numpy array of shape ``(4, SQUARES_COUNT)`` with float32 dtype.
+            For a 10x10 board, shape is ``(4, 50)``.
+
+        Example:
+            >>> board = Board()
+            >>> tensor = board.to_tensor()
+            >>> print(tensor.shape)  # (4, 50)
+            >>> # Channel 0 = white men, Channel 2 = black men (white's perspective)
+            >>> print(tensor[0].sum())  # 20.0 (20 white men)
+
+        Note:
+            This method does NOT slow down normal board operations. It creates
+            the tensor only when called.
+        """
+        if perspective is None:
+            perspective = self.turn
+
+        tensor = np.zeros((4, self.SQUARES_COUNT), dtype=np.float32)
+
+        if perspective == Color.WHITE:
+            own_men, own_kings = self.white_men, self.white_kings
+            opp_men, opp_kings = self.black_men, self.black_kings
+        else:
+            own_men, own_kings = self.black_men, self.black_kings
+            opp_men, opp_kings = self.white_men, self.white_kings
+
+        for sq in range(self.SQUARES_COUNT):
+            bit = 1 << sq
+            if own_men & bit:
+                tensor[0, sq] = 1.0
+            elif own_kings & bit:
+                tensor[1, sq] = 1.0
+            elif opp_men & bit:
+                tensor[2, sq] = 1.0
+            elif opp_kings & bit:
+                tensor[3, sq] = 1.0
+
+        return tensor
+
+    def legal_moves_mask(self) -> np.ndarray:
+        """
+        Get a boolean mask indicating which move indices are legal.
+
+        This is useful for masking neural network policy outputs. The mask
+        has True at indices corresponding to legal moves and False elsewhere.
+
+        The move index is computed as: ``from_square * SQUARES_COUNT + to_square``
+
+        Returns:
+            numpy array of shape ``(SQUARES_COUNT * SQUARES_COUNT,)`` with
+            dtype bool. For a 10x10 board, shape is ``(2500,)``.
+
+        Example:
+            >>> board = Board()
+            >>> mask = board.legal_moves_mask()
+            >>> print(mask.shape)  # (2500,) for 10x10 board
+            >>> policy = model(board.to_tensor())  # Your NN output
+            >>> policy[~mask] = float('-inf')  # Mask illegal moves
+            >>> move_idx = policy.argmax()
+            >>> move = board.index_to_move(move_idx)
+
+        Note:
+            For captures that visit multiple squares, only the start and
+            final destination are used for indexing.
+        """
+        n = self.SQUARES_COUNT
+        mask = np.zeros(n * n, dtype=bool)
+        for move in self.legal_moves:
+            idx = move.square_list[0] * n + move.square_list[-1]
+            mask[idx] = True
+        return mask
+
+    def move_to_index(self, move: Move) -> int:
+        """
+        Convert a move to a policy index.
+
+        The index encodes the move as: ``from_square * SQUARES_COUNT + to_square``
+
+        Args:
+            move: The move to convert.
+
+        Returns:
+            Integer index in range ``[0, SQUARES_COUNT^2)``.
+
+        Example:
+            >>> board = Board()
+            >>> move = board.legal_moves[0]
+            >>> idx = board.move_to_index(move)
+            >>> recovered = board.index_to_move(idx)
+            >>> move == recovered  # True
+        """
+        return move.square_list[0] * self.SQUARES_COUNT + move.square_list[-1]
+
+    def index_to_move(self, index: int) -> Move:
+        """
+        Convert a policy index back to a move.
+
+        Finds the legal move matching the encoded from/to squares.
+
+        Args:
+            index: Policy index from ``move_to_index`` or network output.
+
+        Returns:
+            The matching :class:`Move` object from legal moves.
+
+        Raises:
+            ValueError: If no legal move matches the index.
+
+        Example:
+            >>> board = Board()
+            >>> move = board.index_to_move(1530)  # sq 30 -> sq 30 % 50 = 30
+        """
+        n = self.SQUARES_COUNT
+        from_sq = index // n
+        to_sq = index % n
+
+        for move in self.legal_moves:
+            if move.square_list[0] == from_sq and move.square_list[-1] == to_sq:
+                return move
+
+        raise ValueError(
+            f"No legal move from square {from_sq + 1} to {to_sq + 1}. "
+            f"Legal moves: {list(map(str, self.legal_moves))}"
+        )

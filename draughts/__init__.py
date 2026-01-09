@@ -52,9 +52,13 @@ from draughts.move import Move
 from draughts.engines.hub import HubEngine
 from draughts.engines.alpha_beta import AlphaBetaEngine
 from draughts.engines.engine import Engine
+from draughts.engines.agent import Agent, AgentEngine, BaseAgent
 
 # Benchmarking
 from draughts.benchmark import Benchmark, BenchmarkStats, GameResult, STANDARD_OPENINGS
+
+# AI/ML Support
+from draughts.boards.base import BoardFeatures
 
 __all__ = [
     # Boards
@@ -68,6 +72,12 @@ __all__ = [
     'Engine',
     'AlphaBetaEngine',
     'HubEngine',
+    # Agents (AI interface)
+    'Agent',
+    'AgentEngine',
+    'BaseAgent',
+    # AI/ML Support
+    'BoardFeatures',
     # Benchmarking
     'Benchmark',
     'BenchmarkStats',

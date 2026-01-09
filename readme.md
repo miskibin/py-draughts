@@ -221,6 +221,34 @@ Compare engines against each other with comprehensive statistics:
   ...
 ```
 
+## [Writing Your Own AI](https://miskibin.github.io/py-draughts/ai.html)
+
+Build custom agents with neural networks, MCTS, or any algorithm:
+
+```python
+>>> from draughts import Board, BaseAgent, AgentEngine, Benchmark
+
+>>> class GreedyAgent(BaseAgent):
+...     def select_move(self, board):
+...         return max(board.legal_moves, key=lambda m: len(m.captured_list))
+
+>>> board = Board()
+>>> agent = GreedyAgent()
+>>> move = agent.select_move(board)
+
+# Use with Benchmark
+>>> stats = Benchmark(agent.as_engine(), AlphaBetaEngine(depth_limit=4), games=10).run()
+```
+
+**ML-ready features:**
+
+```python
+>>> board.to_tensor()        # (4, 50) tensor for neural networks
+>>> board.legal_moves_mask() # Boolean mask for policy outputs
+>>> board.features()         # Material, mobility, game phase
+>>> clone = board.copy()     # Fast cloning for tree search
+```
+
 ## [Server](https://miskibin.github.io/py-draughts/server.html)
 
 Interactive web interface for playing and engine testing:

@@ -56,6 +56,7 @@ API Reference
 
     core
     engine
+    ai
     svg
     server
 
