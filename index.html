@@ -1,0 +1,233 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="./">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>py-draughts &mdash; py-draughts 1.5.8 documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=03e43079" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="_static/jquery.js?v=5d32c60e"></script>
+      <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="_static/documentation_options.js?v=c334614b"></script>
+      <script src="_static/doctools.js?v=9bcbadda"></script>
+      <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Core API" href="core.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="#" class="icon icon-home">
+            py-draughts
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul>
+<li class="toctree-l1"><a class="reference internal" href="core.html">Core API</a></li>
+<li class="toctree-l1"><a class="reference internal" href="engine.html">Engine</a></li>
+<li class="toctree-l1"><a class="reference internal" href="ai.html">Writing Your Own AI</a></li>
+<li class="toctree-l1"><a class="reference internal" href="svg.html">SVG Rendering</a></li>
+<li class="toctree-l1"><a class="reference internal" href="server.html">Server</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="benchmarking.html">Benchmarking (Internal)</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="#">py-draughts</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="#" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">py-draughts</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/index.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="py-draughts">
+<h1>py-draughts<a class="headerlink" href="#py-draughts" title="Link to this heading"></a></h1>
+<p>Fast, modern draughts library with move generation, validation, PDN support, and AI engine.</p>
+<a class="reference external image-reference" href="https://badge.fury.io/py/py-draughts"><img alt="https://badge.fury.io/py/py-draughts.svg" src="https://badge.fury.io/py/py-draughts.svg" />
+</a>
+<a class="reference external image-reference" href="https://pepy.tech/project/py-draughts"><img alt="https://static.pepy.tech/badge/py-draughts" src="https://static.pepy.tech/badge/py-draughts" />
+</a>
+<section id="installation">
+<h2>Installation<a class="headerlink" href="#installation" title="Link to this heading"></a></h2>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>pip<span class="w"> </span>install<span class="w"> </span>py-draughts
+</pre></div>
+</div>
+</section>
+<section id="quick-start">
+<h2>Quick Start<a class="headerlink" href="#quick-start" title="Link to this heading"></a></h2>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">draughts</span><span class="w"> </span><span class="kn">import</span> <span class="n">Board</span><span class="p">,</span> <span class="n">AlphaBetaEngine</span>
+
+<span class="c1"># Create a board (Standard/International draughts)</span>
+<span class="n">board</span> <span class="o">=</span> <span class="n">Board</span><span class="p">()</span>
+
+<span class="c1"># Make moves</span>
+<span class="n">board</span><span class="o">.</span><span class="n">push_uci</span><span class="p">(</span><span class="s2">&quot;31-27&quot;</span><span class="p">)</span>
+<span class="n">board</span><span class="o">.</span><span class="n">push_uci</span><span class="p">(</span><span class="s2">&quot;18-22&quot;</span><span class="p">)</span>
+
+<span class="c1"># Get legal moves</span>
+<span class="nb">print</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="n">board</span><span class="o">.</span><span class="n">legal_moves</span><span class="p">))</span>
+
+<span class="c1"># Use the AI engine</span>
+<span class="n">engine</span> <span class="o">=</span> <span class="n">AlphaBetaEngine</span><span class="p">(</span><span class="n">depth_limit</span><span class="o">=</span><span class="mi">5</span><span class="p">)</span>
+<span class="n">best_move</span> <span class="o">=</span> <span class="n">engine</span><span class="o">.</span><span class="n">get_best_move</span><span class="p">(</span><span class="n">board</span><span class="p">)</span>
+<span class="n">board</span><span class="o">.</span><span class="n">push</span><span class="p">(</span><span class="n">best_move</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+<section id="variants">
+<h2>Variants<a class="headerlink" href="#variants" title="Link to this heading"></a></h2>
+<ul class="simple">
+<li><p><code class="xref py py-class docutils literal notranslate"><span class="pre">draughts.StandardBoard</span></code> - International draughts (10×10, flying kings)</p></li>
+<li><p><code class="xref py py-class docutils literal notranslate"><span class="pre">draughts.AmericanBoard</span></code> - English checkers (8×8, men capture forward only)</p></li>
+<li><p><code class="xref py py-class docutils literal notranslate"><span class="pre">draughts.FrisianBoard</span></code> - Frisian draughts (10×10, orthogonal captures)</p></li>
+<li><p><code class="xref py py-class docutils literal notranslate"><span class="pre">draughts.RussianBoard</span></code> - Russian draughts (8×8, flying kings)</p></li>
+</ul>
+<p><code class="docutils literal notranslate"><span class="pre">Board</span></code> is an alias for <code class="docutils literal notranslate"><span class="pre">StandardBoard</span></code>.</p>
+</section>
+<section id="api-reference">
+<h2>API Reference<a class="headerlink" href="#api-reference" title="Link to this heading"></a></h2>
+<div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="core.html">Core API</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="core.html#quick-start">Quick Start</a></li>
+<li class="toctree-l2"><a class="reference internal" href="core.html#board-classes">Board Classes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="core.html#making-moves">Making Moves</a></li>
+<li class="toctree-l2"><a class="reference internal" href="core.html#legal-moves">Legal Moves</a></li>
+<li class="toctree-l2"><a class="reference internal" href="core.html#game-state">Game State</a></li>
+<li class="toctree-l2"><a class="reference internal" href="core.html#fen-notation">FEN Notation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="core.html#pdn-notation">PDN Notation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="core.html#board-position">Board Position</a></li>
+<li class="toctree-l2"><a class="reference internal" href="core.html#square-numbering">Square Numbering</a></li>
+<li class="toctree-l2"><a class="reference internal" href="core.html#types-reference">Types Reference</a></li>
+<li class="toctree-l2"><a class="reference internal" href="core.html#api-reference">API Reference</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="engine.html">Engine</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="engine.html#quick-start">Quick Start</a></li>
+<li class="toctree-l2"><a class="reference internal" href="engine.html#engine-interface">Engine Interface</a></li>
+<li class="toctree-l2"><a class="reference internal" href="engine.html#alphabetaengine">AlphaBetaEngine</a></li>
+<li class="toctree-l2"><a class="reference internal" href="engine.html#hubengine">HubEngine</a></li>
+<li class="toctree-l2"><a class="reference internal" href="engine.html#custom-engine">Custom Engine</a></li>
+<li class="toctree-l2"><a class="reference internal" href="engine.html#benchmarking">Benchmarking</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="ai.html">Writing Your Own AI</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="ai.html#quick-example">Quick Example</a></li>
+<li class="toctree-l2"><a class="reference internal" href="ai.html#agent-interface">Agent Interface</a></li>
+<li class="toctree-l2"><a class="reference internal" href="ai.html#board-tensor-representation">Board Tensor Representation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="ai.html#feature-extraction">Feature Extraction</a></li>
+<li class="toctree-l2"><a class="reference internal" href="ai.html#move-indexing-for-policy-networks">Move Indexing for Policy Networks</a></li>
+<li class="toctree-l2"><a class="reference internal" href="ai.html#cheap-position-cloning">Cheap Position Cloning</a></li>
+<li class="toctree-l2"><a class="reference internal" href="ai.html#mcts-example">MCTS Example</a></li>
+<li class="toctree-l2"><a class="reference internal" href="ai.html#training-tips">Training Tips</a></li>
+<li class="toctree-l2"><a class="reference internal" href="ai.html#complete-rl-example">Complete RL Example</a></li>
+<li class="toctree-l2"><a class="reference internal" href="ai.html#api-reference">API Reference</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="svg.html">SVG Rendering</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="svg.html#basic-usage">Basic Usage</a></li>
+<li class="toctree-l2"><a class="reference internal" href="svg.html#board-variants">Board Variants</a></li>
+<li class="toctree-l2"><a class="reference internal" href="svg.html#highlighting">Highlighting</a></li>
+<li class="toctree-l2"><a class="reference internal" href="svg.html#arrows">Arrows</a></li>
+<li class="toctree-l2"><a class="reference internal" href="svg.html#board-orientation">Board Orientation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="svg.html#display-options">Display Options</a></li>
+<li class="toctree-l2"><a class="reference internal" href="svg.html#jupyter-notebook-integration">Jupyter Notebook Integration</a></li>
+<li class="toctree-l2"><a class="reference internal" href="svg.html#saving-to-file">Saving to File</a></li>
+<li class="toctree-l2"><a class="reference internal" href="svg.html#api-reference">API Reference</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="server.html">Server</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="server.html#draughts.Server"><code class="docutils literal notranslate"><span class="pre">Server</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="server.html#quick-start">Quick Start</a></li>
+<li class="toctree-l2"><a class="reference internal" href="server.html#engine-matches">Engine Matches</a></li>
+<li class="toctree-l2"><a class="reference internal" href="server.html#web-ui-controls">Web UI Controls</a></li>
+<li class="toctree-l2"><a class="reference internal" href="server.html#api-endpoints">API Endpoints</a></li>
+</ul>
+</li>
+</ul>
+</div>
+</section>
+<section id="performance">
+<h2>Performance<a class="headerlink" href="#performance" title="Link to this heading"></a></h2>
+<div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="benchmarking.html">Benchmarking (Internal)</a></li>
+</ul>
+</div>
+</section>
+<section id="indices">
+<h2>Indices<a class="headerlink" href="#indices" title="Link to this heading"></a></h2>
+<ul class="simple">
+<li><p><a class="reference internal" href="genindex.html"><span class="std std-ref">Index</span></a></p></li>
+<li><p><a class="reference internal" href="py-modindex.html"><span class="std std-ref">Module Index</span></a></p></li>
+</ul>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="core.html" class="btn btn-neutral float-right" title="Core API" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2023-2024, Michal Skibinski.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

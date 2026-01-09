@@ -1,0 +1,259 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="./">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Server &mdash; py-draughts 1.5.8 documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=03e43079" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="_static/jquery.js?v=5d32c60e"></script>
+      <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="_static/documentation_options.js?v=c334614b"></script>
+      <script src="_static/doctools.js?v=9bcbadda"></script>
+      <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Benchmarking (Internal)" href="benchmarking.html" />
+    <link rel="prev" title="SVG Rendering" href="svg.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="index.html" class="icon icon-home">
+            py-draughts
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="core.html">Core API</a></li>
+<li class="toctree-l1"><a class="reference internal" href="engine.html">Engine</a></li>
+<li class="toctree-l1"><a class="reference internal" href="ai.html">Writing Your Own AI</a></li>
+<li class="toctree-l1"><a class="reference internal" href="svg.html">SVG Rendering</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Server</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#draughts.Server"><code class="docutils literal notranslate"><span class="pre">Server</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#draughts.Server.__init__"><code class="docutils literal notranslate"><span class="pre">Server.__init__()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#draughts.Server.run"><code class="docutils literal notranslate"><span class="pre">Server.run()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#quick-start">Quick Start</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#command-line">Command Line</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#engine-matches">Engine Matches</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#web-ui-controls">Web UI Controls</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#api-endpoints">API Endpoints</a></li>
+</ul>
+</li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="benchmarking.html">Benchmarking (Internal)</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">py-draughts</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">Server</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/server.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="server">
+<h1>Server<a class="headerlink" href="#server" title="Link to this heading"></a></h1>
+<p>Web interface for playing draughts games interactively.</p>
+<dl class="py class">
+<dt class="sig sig-object py" id="draughts.Server">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">draughts.</span></span><span class="sig-name descname"><span class="pre">Server</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">board</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">BaseBoard</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">white_engine</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="engine.html#draughts.Engine" title="draughts.engines.engine.Engine"><span class="pre">Engine</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">black_engine</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="engine.html#draughts.Engine" title="draughts.engines.engine.Engine"><span class="pre">Engine</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/draughts/server/server.html#Server"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#draughts.Server" title="Link to this definition"></a></dt>
+<dd><p>Draughts game server with web UI.</p>
+<p>Supports:
+- Human play via web interface
+- Single engine for computer moves
+- Two engines playing against each other (engine vs engine mode)</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="draughts.Server.__init__">
+<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">board</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">BaseBoard</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">white_engine</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="engine.html#draughts.Engine" title="draughts.engines.engine.Engine"><span class="pre">Engine</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">black_engine</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="engine.html#draughts.Engine" title="draughts.engines.engine.Engine"><span class="pre">Engine</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/draughts/server/server.html#Server.__init__"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#draughts.Server.__init__" title="Link to this definition"></a></dt>
+<dd><p>Initialize the server.</p>
+<dl class="simple">
+<dt>Args:</dt><dd><p>board: The initial board state
+white_engine: Engine to play as white (optional)
+black_engine: Engine to play as black (optional)</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="draughts.Server.run">
+<span class="sig-name descname"><span class="pre">run</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/draughts/server/server.html#Server.run"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#draughts.Server.run" title="Link to this definition"></a></dt>
+<dd><p>Start the server.</p>
+</dd></dl>
+
+</dd></dl>
+
+<section id="quick-start">
+<h2>Quick Start<a class="headerlink" href="#quick-start" title="Link to this heading"></a></h2>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">draughts</span><span class="w"> </span><span class="kn">import</span> <span class="n">Board</span><span class="p">,</span> <span class="n">Server</span><span class="p">,</span> <span class="n">AlphaBetaEngine</span>
+
+<span class="n">board</span> <span class="o">=</span> <span class="n">Board</span><span class="p">()</span>
+<span class="n">server</span> <span class="o">=</span> <span class="n">Server</span><span class="p">(</span>
+    <span class="n">board</span><span class="o">=</span><span class="n">board</span><span class="p">,</span>
+    <span class="n">white_engine</span><span class="o">=</span><span class="n">AlphaBetaEngine</span><span class="p">(</span><span class="n">depth_limit</span><span class="o">=</span><span class="mi">6</span><span class="p">),</span>
+    <span class="n">black_engine</span><span class="o">=</span><span class="n">AlphaBetaEngine</span><span class="p">(</span><span class="n">depth_limit</span><span class="o">=</span><span class="mi">4</span><span class="p">)</span>
+<span class="p">)</span>
+<span class="n">server</span><span class="o">.</span><span class="n">run</span><span class="p">()</span>  <span class="c1"># Open http://localhost:8000</span>
+</pre></div>
+</div>
+<section id="command-line">
+<h3>Command Line<a class="headerlink" href="#command-line" title="Link to this heading"></a></h3>
+<p>Start directly from terminal:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">python</span> <span class="o">-</span><span class="n">m</span> <span class="n">draughts</span><span class="o">.</span><span class="n">server</span><span class="o">.</span><span class="n">server</span>
+</pre></div>
+</div>
+</section>
+</section>
+<section id="engine-matches">
+<h2>Engine Matches<a class="headerlink" href="#engine-matches" title="Link to this heading"></a></h2>
+<p>Pit engines against each other:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">draughts</span><span class="w"> </span><span class="kn">import</span> <span class="n">Board</span><span class="p">,</span> <span class="n">Server</span><span class="p">,</span> <span class="n">AlphaBetaEngine</span><span class="p">,</span> <span class="n">Engine</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">random</span>
+
+<span class="k">class</span><span class="w"> </span><span class="nc">RandomEngine</span><span class="p">(</span><span class="n">Engine</span><span class="p">):</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_best_move</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">board</span><span class="p">,</span> <span class="n">with_evaluation</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+        <span class="n">move</span> <span class="o">=</span> <span class="n">random</span><span class="o">.</span><span class="n">choice</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="n">board</span><span class="o">.</span><span class="n">legal_moves</span><span class="p">))</span>
+        <span class="k">return</span> <span class="p">(</span><span class="n">move</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">)</span> <span class="k">if</span> <span class="n">with_evaluation</span> <span class="k">else</span> <span class="n">move</span>
+
+<span class="n">server</span> <span class="o">=</span> <span class="n">Server</span><span class="p">(</span>
+    <span class="n">board</span><span class="o">=</span><span class="n">Board</span><span class="p">(),</span>
+    <span class="n">white_engine</span><span class="o">=</span><span class="n">AlphaBetaEngine</span><span class="p">(</span><span class="n">depth_limit</span><span class="o">=</span><span class="mi">6</span><span class="p">),</span>
+    <span class="n">black_engine</span><span class="o">=</span><span class="n">RandomEngine</span><span class="p">()</span>
+<span class="p">)</span>
+<span class="n">server</span><span class="o">.</span><span class="n">run</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>Click “Auto Play” in the UI to watch the match.</p>
+</section>
+<section id="web-ui-controls">
+<h2>Web UI Controls<a class="headerlink" href="#web-ui-controls" title="Link to this heading"></a></h2>
+<ul class="simple">
+<li><p><strong>Engine Move</strong>: Play best move for current side</p></li>
+<li><p><strong>Auto Play</strong>: Start/stop automatic engine play</p></li>
+<li><p><strong>Undo</strong>: Take back the last move</p></li>
+<li><p><strong>Copy/Load FEN</strong>: Import/export positions</p></li>
+<li><p><strong>Copy/Load PDN</strong>: Import/export game notation</p></li>
+</ul>
+</section>
+<section id="api-endpoints">
+<h2>API Endpoints<a class="headerlink" href="#api-endpoints" title="Link to this heading"></a></h2>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>Endpoint</p></th>
+<th class="head"><p>Method</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">/position</span></code></p></td>
+<td><p>GET</p></td>
+<td><p>Current board position</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">/legal_moves</span></code></p></td>
+<td><p>GET</p></td>
+<td><p>Legal moves for current player</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">/fen</span></code></p></td>
+<td><p>GET</p></td>
+<td><p>FEN string</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">/pdn</span></code></p></td>
+<td><p>GET</p></td>
+<td><p>PDN string</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">/move/{src}/{tgt}</span></code></p></td>
+<td><p>POST</p></td>
+<td><p>Make a move</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">/best_move</span></code></p></td>
+<td><p>GET</p></td>
+<td><p>Play engine’s best move</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">/pop</span></code></p></td>
+<td><p>GET</p></td>
+<td><p>Undo last move</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">/load_fen</span></code></p></td>
+<td><p>POST</p></td>
+<td><p>Load position from FEN</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">/load_pdn</span></code></p></td>
+<td><p>POST</p></td>
+<td><p>Load game from PDN</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="svg.html" class="btn btn-neutral float-left" title="SVG Rendering" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="benchmarking.html" class="btn btn-neutral float-right" title="Benchmarking (Internal)" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2023-2024, Michal Skibinski.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

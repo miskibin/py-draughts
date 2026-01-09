@@ -1,0 +1,633 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>draughts.engines.alpha_beta &mdash; py-draughts 1.5.8 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=03e43079" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../_static/documentation_options.js?v=c334614b"></script>
+      <script src="../../../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../index.html" class="icon icon-home">
+            py-draughts
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../core.html">Core API</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../engine.html">Engine</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../ai.html">Writing Your Own AI</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../svg.html">SVG Rendering</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../server.html">Server</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../benchmarking.html">Benchmarking (Internal)</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">py-draughts</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">draughts.engines.alpha_beta</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for draughts.engines.alpha_beta</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;Alpha-Beta search engine with advanced optimizations.&quot;&quot;&quot;</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">time</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">random</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">List</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">loguru</span><span class="w"> </span><span class="kn">import</span> <span class="n">logger</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">draughts.boards.base</span><span class="w"> </span><span class="kn">import</span> <span class="n">BaseBoard</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">draughts.boards.standard</span><span class="w"> </span><span class="kn">import</span> <span class="n">Move</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">draughts.engines.engine</span><span class="w"> </span><span class="kn">import</span> <span class="n">Engine</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">draughts.models</span><span class="w"> </span><span class="kn">import</span> <span class="n">Color</span>
+
+
+<span class="c1"># Constants</span>
+<span class="n">INF</span> <span class="o">=</span> <span class="mf">10000.0</span>
+<span class="n">CHECKMATE</span> <span class="o">=</span> <span class="mf">1000.0</span>
+<span class="n">TT_MAX_SIZE</span> <span class="o">=</span> <span class="mi">500000</span>  <span class="c1"># Maximum transposition table entries</span>
+<span class="n">IID_DEPTH</span> <span class="o">=</span> <span class="mi">3</span>  <span class="c1"># Internal Iterative Deepening threshold</span>
+<span class="n">QS_MAX_DEPTH</span> <span class="o">=</span> <span class="mi">8</span>  <span class="c1"># Quiescence search depth limit</span>
+
+<span class="c1"># Piece values</span>
+<span class="n">MAN_VALUE</span> <span class="o">=</span> <span class="mf">1.0</span>
+<span class="n">KING_VALUE</span> <span class="o">=</span> <span class="mf">2.5</span>  <span class="c1"># Kings are very powerful in draughts</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_create_pst_man</span><span class="p">(</span><span class="n">num_squares</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">rows</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Create piece-square table for men (rewards advancement).&quot;&quot;&quot;</span>
+    <span class="n">squares_per_row</span> <span class="o">=</span> <span class="n">num_squares</span> <span class="o">//</span> <span class="n">rows</span>
+    <span class="n">pst</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">num_squares</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">num_squares</span><span class="p">):</span>
+        <span class="n">row</span> <span class="o">=</span> <span class="n">i</span> <span class="o">//</span> <span class="n">squares_per_row</span>
+        <span class="c1"># Higher value for squares closer to promotion (row 0)</span>
+        <span class="n">advancement_bonus</span> <span class="o">=</span> <span class="p">(</span><span class="n">rows</span> <span class="o">-</span> <span class="mi">1</span> <span class="o">-</span> <span class="n">row</span><span class="p">)</span> <span class="o">/</span> <span class="p">(</span><span class="n">rows</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span> <span class="o">*</span> <span class="mf">0.3</span>
+        <span class="c1"># Small center bonus</span>
+        <span class="n">col</span> <span class="o">=</span> <span class="n">i</span> <span class="o">%</span> <span class="n">squares_per_row</span>
+        <span class="n">center_bonus</span> <span class="o">=</span> <span class="p">(</span><span class="mi">1</span> <span class="o">-</span> <span class="nb">abs</span><span class="p">(</span><span class="n">col</span> <span class="o">-</span> <span class="n">squares_per_row</span> <span class="o">/</span> <span class="mi">2</span><span class="p">)</span> <span class="o">/</span> <span class="p">(</span><span class="n">squares_per_row</span> <span class="o">/</span> <span class="mi">2</span><span class="p">))</span> <span class="o">*</span> <span class="mf">0.05</span>
+        <span class="n">pst</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">advancement_bonus</span> <span class="o">+</span> <span class="n">center_bonus</span>
+    <span class="k">return</span> <span class="n">pst</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_create_pst_king</span><span class="p">(</span><span class="n">num_squares</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">rows</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Create piece-square table for kings (prefers center).&quot;&quot;&quot;</span>
+    <span class="n">squares_per_row</span> <span class="o">=</span> <span class="n">num_squares</span> <span class="o">//</span> <span class="n">rows</span>
+    <span class="n">pst</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">num_squares</span><span class="p">)</span>
+    <span class="n">center_row</span> <span class="o">=</span> <span class="n">rows</span> <span class="o">/</span> <span class="mi">2</span>
+    <span class="n">center_col</span> <span class="o">=</span> <span class="n">squares_per_row</span> <span class="o">/</span> <span class="mi">2</span>
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">num_squares</span><span class="p">):</span>
+        <span class="n">row</span> <span class="o">=</span> <span class="n">i</span> <span class="o">//</span> <span class="n">squares_per_row</span>
+        <span class="n">col</span> <span class="o">=</span> <span class="n">i</span> <span class="o">%</span> <span class="n">squares_per_row</span>
+        <span class="c1"># Distance from center (normalized)</span>
+        <span class="n">row_dist</span> <span class="o">=</span> <span class="nb">abs</span><span class="p">(</span><span class="n">row</span> <span class="o">-</span> <span class="n">center_row</span><span class="p">)</span> <span class="o">/</span> <span class="n">center_row</span>
+        <span class="n">col_dist</span> <span class="o">=</span> <span class="nb">abs</span><span class="p">(</span><span class="n">col</span> <span class="o">-</span> <span class="n">center_col</span><span class="p">)</span> <span class="o">/</span> <span class="n">center_col</span>
+        <span class="c1"># Higher value for center squares</span>
+        <span class="n">pst</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="mi">1</span> <span class="o">-</span> <span class="p">(</span><span class="n">row_dist</span> <span class="o">+</span> <span class="n">col_dist</span><span class="p">)</span> <span class="o">/</span> <span class="mi">2</span><span class="p">)</span> <span class="o">*</span> <span class="mf">0.25</span>
+    <span class="k">return</span> <span class="n">pst</span>
+
+
+<div class="viewcode-block" id="AlphaBetaEngine">
+<a class="viewcode-back" href="../../../engine.html#draughts.AlphaBetaEngine">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">AlphaBetaEngine</span><span class="p">(</span><span class="n">Engine</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    AI engine using Negamax search with alpha-beta pruning.</span>
+
+<span class="sd">    This engine implements a strong draughts AI with several optimizations</span>
+<span class="sd">    for efficient tree search. Works with any board variant (Standard, American, etc.).</span>
+
+<span class="sd">    **Algorithm:**</span>
+
+<span class="sd">    - **Negamax**: Simplified minimax using ``max(a,b) = -min(-a,-b)``</span>
+<span class="sd">    - **Iterative Deepening**: Progressively deeper searches for time control</span>
+<span class="sd">    - **Transposition Table**: Zobrist hashing to cache evaluated positions</span>
+<span class="sd">    - **Quiescence Search**: Extends captures to avoid horizon effects</span>
+<span class="sd">    - **Move Ordering**: PV moves, captures, killers, history heuristic</span>
+<span class="sd">    - **PVS/LMR**: Principal Variation Search with Late Move Reductions</span>
+
+<span class="sd">    **Evaluation:**</span>
+
+<span class="sd">    - Material balance (men=1.0, kings=2.5)</span>
+<span class="sd">    - Piece-Square Tables rewarding advancement and center control</span>
+
+<span class="sd">    Attributes:</span>
+<span class="sd">        depth_limit: Maximum search depth.</span>
+<span class="sd">        time_limit: Optional time limit in seconds.</span>
+<span class="sd">        nodes: Number of nodes searched in last call.</span>
+
+<span class="sd">    Example:</span>
+<span class="sd">        &gt;&gt;&gt; from draughts import Board, AlphaBetaEngine</span>
+<span class="sd">        &gt;&gt;&gt; board = Board()</span>
+<span class="sd">        &gt;&gt;&gt; engine = AlphaBetaEngine(depth_limit=5)</span>
+<span class="sd">        &gt;&gt;&gt; move = engine.get_best_move(board)</span>
+<span class="sd">        &gt;&gt;&gt; board.push(move)</span>
+
+<span class="sd">    Example with American Draughts:</span>
+<span class="sd">        &gt;&gt;&gt; from draughts.boards.american import Board</span>
+<span class="sd">        &gt;&gt;&gt; board = Board()</span>
+<span class="sd">        &gt;&gt;&gt; engine = AlphaBetaEngine(depth_limit=6)</span>
+<span class="sd">        &gt;&gt;&gt; move = engine.get_best_move(board)</span>
+
+<span class="sd">    Example with evaluation:</span>
+<span class="sd">        &gt;&gt;&gt; move, score = engine.get_best_move(board, with_evaluation=True)</span>
+<span class="sd">        &gt;&gt;&gt; print(f&quot;Best: {move}, Score: {score:.2f}&quot;)</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="AlphaBetaEngine.__init__">
+<a class="viewcode-back" href="../../../engine.html#draughts.AlphaBetaEngine.__init__">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">depth_limit</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">6</span><span class="p">,</span> <span class="n">time_limit</span><span class="p">:</span> <span class="nb">float</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">name</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Initialize the engine.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            depth_limit: Maximum search depth. Higher = stronger but slower.</span>
+<span class="sd">                Recommended: 5-6 for play, 7-8 for analysis.</span>
+<span class="sd">            time_limit: Optional time limit in seconds. If set, search uses</span>
+<span class="sd">                iterative deepening and stops when time expires.</span>
+<span class="sd">            name: Custom engine name. Defaults to class name.</span>
+
+<span class="sd">        Example:</span>
+<span class="sd">            &gt;&gt;&gt; engine = AlphaBetaEngine(depth_limit=6)</span>
+<span class="sd">            &gt;&gt;&gt; engine = AlphaBetaEngine(depth_limit=20, time_limit=1.0)</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">depth_limit</span> <span class="o">=</span> <span class="n">depth_limit</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">time_limit</span> <span class="o">=</span> <span class="n">time_limit</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="n">name</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="vm">__class__</span><span class="o">.</span><span class="vm">__name__</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">nodes</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">tt</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">,</span> <span class="nb">float</span><span class="p">,</span> <span class="n">Move</span> <span class="o">|</span> <span class="kc">None</span><span class="p">]]</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">history</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">],</span> <span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">killers</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">list</span><span class="p">[</span><span class="n">Move</span><span class="p">]]</span> <span class="o">=</span> <span class="p">{}</span>
+
+        <span class="c1"># Zobrist Hashing - initialized lazily per board size</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_zobrist_rng</span> <span class="o">=</span> <span class="n">random</span><span class="o">.</span><span class="n">Random</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_zobrist_tables</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">list</span><span class="p">[</span><span class="nb">list</span><span class="p">[</span><span class="nb">int</span><span class="p">]]]</span> <span class="o">=</span> <span class="p">{}</span>  <span class="c1"># num_squares -&gt; table</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_zobrist_turn</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_zobrist_rng</span><span class="o">.</span><span class="n">getrandbits</span><span class="p">(</span><span class="mi">64</span><span class="p">)</span>
+        
+        <span class="c1"># PST tables - cached per board configuration</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_pst_cache</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">],</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]]</span> <span class="o">=</span> <span class="p">{}</span>
+        
+        <span class="c1"># Current search state (set at start of search, used during eval)</span>
+        <span class="c1"># Initialize with standard 50-square defaults so evaluate() works standalone</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_current_zobrist</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">list</span><span class="p">[</span><span class="nb">int</span><span class="p">]]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_zobrist_table</span><span class="p">(</span><span class="mi">50</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_current_pst</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_pst_tables</span><span class="p">(</span><span class="mi">50</span><span class="p">,</span> <span class="mi">10</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">start_time</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.0</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">stop_search</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span></div>
+
+
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">inspected_nodes</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Number of nodes searched in the last ``get_best_move`` call.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">nodes</span>
+
+    <span class="nd">@inspected_nodes</span><span class="o">.</span><span class="n">setter</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">inspected_nodes</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">value</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">nodes</span> <span class="o">=</span> <span class="n">value</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_get_zobrist_table</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">num_squares</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="nb">list</span><span class="p">[</span><span class="nb">int</span><span class="p">]]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Get or create Zobrist table for given board size.&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">num_squares</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_zobrist_tables</span><span class="p">:</span>
+            <span class="c1"># Create new table with deterministic RNG</span>
+            <span class="n">rng</span> <span class="o">=</span> <span class="n">random</span><span class="o">.</span><span class="n">Random</span><span class="p">(</span><span class="n">num_squares</span><span class="p">)</span>  <span class="c1"># Seed based on size for consistency</span>
+            <span class="n">table</span> <span class="o">=</span> <span class="p">[[</span><span class="n">rng</span><span class="o">.</span><span class="n">getrandbits</span><span class="p">(</span><span class="mi">64</span><span class="p">)</span> <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">5</span><span class="p">)]</span> <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">num_squares</span><span class="p">)]</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_zobrist_tables</span><span class="p">[</span><span class="n">num_squares</span><span class="p">]</span> <span class="o">=</span> <span class="n">table</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_zobrist_tables</span><span class="p">[</span><span class="n">num_squares</span><span class="p">]</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_get_pst_tables</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">num_squares</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">rows</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Get or create PST tables for given board configuration.&quot;&quot;&quot;</span>
+        <span class="n">key</span> <span class="o">=</span> <span class="p">(</span><span class="n">num_squares</span><span class="p">,</span> <span class="n">rows</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">key</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_pst_cache</span><span class="p">:</span>
+            <span class="n">pst_man_black</span> <span class="o">=</span> <span class="n">_create_pst_man</span><span class="p">(</span><span class="n">num_squares</span><span class="p">,</span> <span class="n">rows</span><span class="p">)</span>
+            <span class="n">pst_man_white</span> <span class="o">=</span> <span class="n">pst_man_black</span><span class="p">[::</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+            <span class="n">pst_king_black</span> <span class="o">=</span> <span class="n">_create_pst_king</span><span class="p">(</span><span class="n">num_squares</span><span class="p">,</span> <span class="n">rows</span><span class="p">)</span>
+            <span class="n">pst_king_white</span> <span class="o">=</span> <span class="n">pst_king_black</span><span class="p">[::</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_pst_cache</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">pst_man_black</span><span class="p">,</span> <span class="n">pst_man_white</span><span class="p">,</span> <span class="n">pst_king_black</span><span class="p">,</span> <span class="n">pst_king_white</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_pst_cache</span><span class="p">[</span><span class="n">key</span><span class="p">]</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_get_piece_index</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">piece</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">piece</span> <span class="o">+</span> <span class="mi">2</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_compute_hash_fast</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">board</span><span class="p">:</span> <span class="n">BaseBoard</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Compute hash using cached zobrist table.&quot;&quot;&quot;</span>
+        <span class="n">h</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">piece</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">board</span><span class="o">.</span><span class="n">_pos</span><span class="p">):</span>
+            <span class="k">if</span> <span class="n">piece</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="n">h</span> <span class="o">^=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_current_zobrist</span><span class="p">[</span><span class="n">i</span><span class="p">][</span><span class="bp">self</span><span class="o">.</span><span class="n">_get_piece_index</span><span class="p">(</span><span class="n">piece</span><span class="p">)]</span>
+        <span class="k">if</span> <span class="n">board</span><span class="o">.</span><span class="n">turn</span> <span class="o">==</span> <span class="n">Color</span><span class="o">.</span><span class="n">BLACK</span><span class="p">:</span>
+            <span class="n">h</span> <span class="o">^=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_zobrist_turn</span>
+        <span class="k">return</span> <span class="n">h</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">compute_hash</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">board</span><span class="p">:</span> <span class="n">BaseBoard</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Compute Zobrist hash for a board position (standalone, slower).&quot;&quot;&quot;</span>
+        <span class="n">num_squares</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">board</span><span class="o">.</span><span class="n">_pos</span><span class="p">)</span>
+        <span class="n">zobrist_table</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_zobrist_table</span><span class="p">(</span><span class="n">num_squares</span><span class="p">)</span>
+        
+        <span class="n">h</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">piece</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">board</span><span class="o">.</span><span class="n">_pos</span><span class="p">):</span>
+            <span class="k">if</span> <span class="n">piece</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="n">h</span> <span class="o">^=</span> <span class="n">zobrist_table</span><span class="p">[</span><span class="n">i</span><span class="p">][</span><span class="bp">self</span><span class="o">.</span><span class="n">_get_piece_index</span><span class="p">(</span><span class="n">piece</span><span class="p">)]</span>
+        <span class="k">if</span> <span class="n">board</span><span class="o">.</span><span class="n">turn</span> <span class="o">==</span> <span class="n">Color</span><span class="o">.</span><span class="n">BLACK</span><span class="p">:</span>
+            <span class="n">h</span> <span class="o">^=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_zobrist_turn</span>
+        <span class="k">return</span> <span class="n">h</span>
+
+<div class="viewcode-block" id="AlphaBetaEngine.evaluate">
+<a class="viewcode-back" href="../../../engine.html#draughts.AlphaBetaEngine.evaluate">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">evaluate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">board</span><span class="p">:</span> <span class="n">BaseBoard</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Evaluate the board position.</span>
+
+<span class="sd">        Uses material count and piece-square tables.</span>
+<span class="sd">        Works with any board variant.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            board: The board to evaluate.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Score from the perspective of the side to move.</span>
+<span class="sd">            Positive = good for current player.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">pos</span> <span class="o">=</span> <span class="n">board</span><span class="o">.</span><span class="n">_pos</span>
+        <span class="n">pst</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_current_pst</span>  <span class="c1"># Cached at init or start of search</span>
+
+        <span class="c1"># Piece masks</span>
+        <span class="n">white_men</span> <span class="o">=</span> <span class="p">(</span><span class="n">pos</span> <span class="o">==</span> <span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+        <span class="n">white_kings</span> <span class="o">=</span> <span class="p">(</span><span class="n">pos</span> <span class="o">==</span> <span class="o">-</span><span class="mi">2</span><span class="p">)</span>
+        <span class="n">black_men</span> <span class="o">=</span> <span class="p">(</span><span class="n">pos</span> <span class="o">==</span> <span class="mi">1</span><span class="p">)</span>
+        <span class="n">black_kings</span> <span class="o">=</span> <span class="p">(</span><span class="n">pos</span> <span class="o">==</span> <span class="mi">2</span><span class="p">)</span>
+
+        <span class="c1"># Material</span>
+        <span class="n">n_white_men</span> <span class="o">=</span> <span class="n">white_men</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span>
+        <span class="n">n_white_kings</span> <span class="o">=</span> <span class="n">white_kings</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span>
+        <span class="n">n_black_men</span> <span class="o">=</span> <span class="n">black_men</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span>
+        <span class="n">n_black_kings</span> <span class="o">=</span> <span class="n">black_kings</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span>
+
+        <span class="n">score</span> <span class="o">=</span> <span class="p">(</span><span class="n">n_black_men</span> <span class="o">-</span> <span class="n">n_white_men</span><span class="p">)</span> <span class="o">*</span> <span class="n">MAN_VALUE</span>
+        <span class="n">score</span> <span class="o">+=</span> <span class="p">(</span><span class="n">n_black_kings</span> <span class="o">-</span> <span class="n">n_white_kings</span><span class="p">)</span> <span class="o">*</span> <span class="n">KING_VALUE</span>
+
+        <span class="c1"># PST - Piece Square Tables</span>
+        <span class="n">score</span> <span class="o">+=</span> <span class="n">pst</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="n">black_men</span><span class="p">]</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span>   <span class="c1"># pst_man_black</span>
+        <span class="n">score</span> <span class="o">-=</span> <span class="n">pst</span><span class="p">[</span><span class="mi">1</span><span class="p">][</span><span class="n">white_men</span><span class="p">]</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span>   <span class="c1"># pst_man_white</span>
+        <span class="n">score</span> <span class="o">+=</span> <span class="n">pst</span><span class="p">[</span><span class="mi">2</span><span class="p">][</span><span class="n">black_kings</span><span class="p">]</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span> <span class="c1"># pst_king_black</span>
+        <span class="n">score</span> <span class="o">-=</span> <span class="n">pst</span><span class="p">[</span><span class="mi">3</span><span class="p">][</span><span class="n">white_kings</span><span class="p">]</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span> <span class="c1"># pst_king_white</span>
+
+        <span class="c1"># Return score relative to side to move</span>
+        <span class="k">return</span> <span class="o">-</span><span class="n">score</span> <span class="k">if</span> <span class="n">board</span><span class="o">.</span><span class="n">turn</span> <span class="o">==</span> <span class="n">Color</span><span class="o">.</span><span class="n">WHITE</span> <span class="k">else</span> <span class="n">score</span></div>
+
+
+<div class="viewcode-block" id="AlphaBetaEngine.get_best_move">
+<a class="viewcode-back" href="../../../engine.html#draughts.AlphaBetaEngine.get_best_move">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_best_move</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">board</span><span class="p">:</span> <span class="n">BaseBoard</span><span class="p">,</span> <span class="n">with_evaluation</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Move</span> <span class="o">|</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">Move</span><span class="p">,</span> <span class="nb">float</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Find the best move for the current position.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            board: The board to analyze.</span>
+<span class="sd">            with_evaluation: If True, return ``(move, score)`` tuple.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Best :class:`Move`, or ``(Move, float)`` if ``with_evaluation=True``.</span>
+
+<span class="sd">        Raises:</span>
+<span class="sd">            ValueError: If no legal moves are available.</span>
+
+<span class="sd">        Example:</span>
+<span class="sd">            &gt;&gt;&gt; move = engine.get_best_move(board)</span>
+<span class="sd">            &gt;&gt;&gt; move, score = engine.get_best_move(board, with_evaluation=True)</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">start_time</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">nodes</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">stop_search</span> <span class="o">=</span> <span class="kc">False</span>
+
+        <span class="c1"># Cache board-specific data for this search (avoids repeated lookups)</span>
+        <span class="n">num_squares</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">board</span><span class="o">.</span><span class="n">_pos</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_current_zobrist</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_zobrist_table</span><span class="p">(</span><span class="n">num_squares</span><span class="p">)</span>
+        <span class="n">rows</span> <span class="o">=</span> <span class="mi">10</span> <span class="k">if</span> <span class="n">num_squares</span> <span class="o">==</span> <span class="mi">50</span> <span class="k">else</span> <span class="p">(</span><span class="mi">8</span> <span class="k">if</span> <span class="n">num_squares</span> <span class="o">==</span> <span class="mi">32</span> <span class="k">else</span> <span class="nb">int</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">num_squares</span> <span class="o">*</span> <span class="mi">2</span><span class="p">)))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_current_pst</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_pst_tables</span><span class="p">(</span><span class="n">num_squares</span><span class="p">,</span> <span class="n">rows</span><span class="p">)</span>
+
+        <span class="c1"># Age history table (decay old values)</span>
+        <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">history</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">history</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">//=</span> <span class="mi">2</span>
+
+        <span class="c1"># Initial Hash</span>
+        <span class="n">current_hash</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_compute_hash_fast</span><span class="p">(</span><span class="n">board</span><span class="p">)</span>
+
+        <span class="n">best_move</span><span class="p">:</span> <span class="n">Move</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="n">best_score</span> <span class="o">=</span> <span class="o">-</span><span class="n">INF</span>
+
+        <span class="c1"># Iterative Deepening</span>
+        <span class="n">max_depth</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">depth_limit</span> <span class="ow">or</span> <span class="mi">6</span>
+
+        <span class="k">for</span> <span class="n">d</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">max_depth</span> <span class="o">+</span> <span class="mi">1</span><span class="p">):</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">score</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">negamax</span><span class="p">(</span><span class="n">board</span><span class="p">,</span> <span class="n">d</span><span class="p">,</span> <span class="o">-</span><span class="n">INF</span><span class="p">,</span> <span class="n">INF</span><span class="p">,</span> <span class="n">current_hash</span><span class="p">)</span>
+
+                <span class="c1"># Retrieve PV from TT</span>
+                <span class="n">entry</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">tt</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">current_hash</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">entry</span><span class="p">:</span>
+                    <span class="n">best_move</span> <span class="o">=</span> <span class="n">entry</span><span class="p">[</span><span class="mi">3</span><span class="p">]</span>
+                    <span class="n">best_score</span> <span class="o">=</span> <span class="n">score</span>
+
+                <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Depth </span><span class="si">{</span><span class="n">d</span><span class="si">}</span><span class="s2">: Score </span><span class="si">{</span><span class="n">score</span><span class="si">:</span><span class="s2">.3f</span><span class="si">}</span><span class="s2">, Move </span><span class="si">{</span><span class="n">best_move</span><span class="si">}</span><span class="s2">, Nodes </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">nodes</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+                <span class="c1"># Time check</span>
+                <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">time_limit</span> <span class="ow">and</span> <span class="p">(</span><span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">start_time</span> <span class="o">&gt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">time_limit</span><span class="p">):</span>
+                    <span class="k">break</span>
+
+            <span class="k">except</span> <span class="ne">TimeoutError</span><span class="p">:</span>
+                <span class="k">break</span>
+
+        <span class="c1"># Limit TT size</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">tt</span><span class="p">)</span> <span class="o">&gt;</span> <span class="n">TT_MAX_SIZE</span><span class="p">:</span>
+            <span class="n">keys_to_remove</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">tt</span><span class="o">.</span><span class="n">keys</span><span class="p">())[:</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">tt</span><span class="p">)</span> <span class="o">-</span> <span class="n">TT_MAX_SIZE</span> <span class="o">//</span> <span class="mi">2</span><span class="p">]</span>
+            <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="n">keys_to_remove</span><span class="p">:</span>
+                <span class="k">del</span> <span class="bp">self</span><span class="o">.</span><span class="n">tt</span><span class="p">[</span><span class="n">k</span><span class="p">]</span>
+
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Best move: </span><span class="si">{</span><span class="n">best_move</span><span class="si">}</span><span class="s2">, Score: </span><span class="si">{</span><span class="n">best_score</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2">, Nodes: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">nodes</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+        <span class="n">legal_moves</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">board</span><span class="o">.</span><span class="n">legal_moves</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">legal_moves</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;No legal moves available&quot;</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">best_move</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">best_move</span> <span class="o">=</span> <span class="n">legal_moves</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+            <span class="n">best_score</span> <span class="o">=</span> <span class="o">-</span><span class="n">INF</span>
+
+        <span class="k">if</span> <span class="n">with_evaluation</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">best_move</span><span class="p">,</span> <span class="nb">float</span><span class="p">(</span><span class="n">best_score</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">best_move</span></div>
+
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">negamax</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">board</span><span class="p">:</span> <span class="n">BaseBoard</span><span class="p">,</span> <span class="n">depth</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">alpha</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">beta</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">h</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Negamax search with alpha-beta pruning.&quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">nodes</span> <span class="o">+=</span> <span class="mi">1</span>
+
+        <span class="c1"># Check time</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">nodes</span> <span class="o">%</span> <span class="mi">2048</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">time_limit</span> <span class="ow">and</span> <span class="p">(</span><span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">start_time</span> <span class="o">&gt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">time_limit</span><span class="p">):</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">stop_search</span> <span class="o">=</span> <span class="kc">True</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">stop_search</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">alpha</span>
+
+        <span class="c1"># Transposition Table Lookup</span>
+        <span class="n">tt_entry</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">tt</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">h</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">tt_entry</span><span class="p">:</span>
+            <span class="n">tt_depth</span><span class="p">,</span> <span class="n">tt_flag</span><span class="p">,</span> <span class="n">tt_score</span><span class="p">,</span> <span class="n">tt_move</span> <span class="o">=</span> <span class="n">tt_entry</span>
+            <span class="k">if</span> <span class="n">tt_depth</span> <span class="o">&gt;=</span> <span class="n">depth</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">tt_flag</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>  <span class="c1"># Exact</span>
+                    <span class="k">return</span> <span class="n">tt_score</span>
+                <span class="k">elif</span> <span class="n">tt_flag</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>  <span class="c1"># Lowerbound (Alpha)</span>
+                    <span class="n">alpha</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="n">alpha</span><span class="p">,</span> <span class="n">tt_score</span><span class="p">)</span>
+                <span class="k">elif</span> <span class="n">tt_flag</span> <span class="o">==</span> <span class="mi">2</span><span class="p">:</span>  <span class="c1"># Upperbound (Beta)</span>
+                    <span class="n">beta</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="n">beta</span><span class="p">,</span> <span class="n">tt_score</span><span class="p">)</span>
+
+                <span class="k">if</span> <span class="n">alpha</span> <span class="o">&gt;=</span> <span class="n">beta</span><span class="p">:</span>
+                    <span class="k">return</span> <span class="n">tt_score</span>
+
+        <span class="c1"># Base case: Leaf or Game Over</span>
+        <span class="k">if</span> <span class="n">depth</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">quiescence_search</span><span class="p">(</span><span class="n">board</span><span class="p">,</span> <span class="n">alpha</span><span class="p">,</span> <span class="n">beta</span><span class="p">,</span> <span class="n">h</span><span class="p">)</span>
+
+        <span class="n">legal_moves</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">board</span><span class="o">.</span><span class="n">legal_moves</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">legal_moves</span><span class="p">:</span>
+            <span class="k">return</span> <span class="o">-</span><span class="n">CHECKMATE</span> <span class="o">+</span> <span class="p">((</span><span class="bp">self</span><span class="o">.</span><span class="n">depth_limit</span> <span class="ow">or</span> <span class="mi">6</span><span class="p">)</span> <span class="o">-</span> <span class="n">depth</span><span class="p">)</span>
+
+        <span class="c1"># Check for draw</span>
+        <span class="k">if</span> <span class="n">board</span><span class="o">.</span><span class="n">is_draw</span><span class="p">:</span>
+            <span class="k">return</span> <span class="mf">0.0</span>
+
+        <span class="c1"># Internal Iterative Deepening</span>
+        <span class="n">tt_entry</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">tt</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">h</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">depth</span> <span class="o">&gt;=</span> <span class="n">IID_DEPTH</span> <span class="ow">and</span> <span class="p">(</span><span class="ow">not</span> <span class="n">tt_entry</span> <span class="ow">or</span> <span class="n">tt_entry</span><span class="p">[</span><span class="mi">3</span><span class="p">]</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">negamax</span><span class="p">(</span><span class="n">board</span><span class="p">,</span> <span class="n">depth</span> <span class="o">-</span> <span class="mi">2</span><span class="p">,</span> <span class="n">alpha</span><span class="p">,</span> <span class="n">beta</span><span class="p">,</span> <span class="n">h</span><span class="p">)</span>
+
+        <span class="c1"># Move Ordering</span>
+        <span class="n">legal_moves</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_order_moves</span><span class="p">(</span><span class="n">legal_moves</span><span class="p">,</span> <span class="n">board</span><span class="p">,</span> <span class="n">h</span><span class="p">,</span> <span class="n">depth</span><span class="p">)</span>
+
+        <span class="n">best_value</span> <span class="o">=</span> <span class="o">-</span><span class="n">INF</span>
+        <span class="n">best_move</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="n">tt_flag</span> <span class="o">=</span> <span class="mi">1</span>  <span class="c1"># Alpha (Lowerbound)</span>
+
+        <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">move</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">legal_moves</span><span class="p">):</span>
+            <span class="c1"># Incremental Hash Update</span>
+            <span class="n">new_hash</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_update_hash</span><span class="p">(</span><span class="n">h</span><span class="p">,</span> <span class="n">board</span><span class="p">,</span> <span class="n">move</span><span class="p">)</span>
+
+            <span class="n">board</span><span class="o">.</span><span class="n">push</span><span class="p">(</span><span class="n">move</span><span class="p">)</span>
+
+            <span class="c1"># PVS (Principal Variation Search)</span>
+            <span class="k">if</span> <span class="n">i</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="n">val</span> <span class="o">=</span> <span class="o">-</span><span class="bp">self</span><span class="o">.</span><span class="n">negamax</span><span class="p">(</span><span class="n">board</span><span class="p">,</span> <span class="n">depth</span> <span class="o">-</span> <span class="mi">1</span><span class="p">,</span> <span class="o">-</span><span class="n">beta</span><span class="p">,</span> <span class="o">-</span><span class="n">alpha</span><span class="p">,</span> <span class="n">new_hash</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="c1"># LMR (Late Move Reductions)</span>
+                <span class="n">reduction</span> <span class="o">=</span> <span class="mi">0</span>
+                <span class="k">if</span> <span class="n">depth</span> <span class="o">&gt;=</span> <span class="mi">3</span> <span class="ow">and</span> <span class="n">i</span> <span class="o">&gt;=</span> <span class="mi">3</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">move</span><span class="o">.</span><span class="n">captured_list</span><span class="p">:</span>
+                    <span class="n">reduction</span> <span class="o">=</span> <span class="mi">1</span>
+
+                <span class="c1"># Null Window Search with possible reduction</span>
+                <span class="n">val</span> <span class="o">=</span> <span class="o">-</span><span class="bp">self</span><span class="o">.</span><span class="n">negamax</span><span class="p">(</span><span class="n">board</span><span class="p">,</span> <span class="n">depth</span> <span class="o">-</span> <span class="mi">1</span> <span class="o">-</span> <span class="n">reduction</span><span class="p">,</span> <span class="o">-</span><span class="n">alpha</span> <span class="o">-</span> <span class="mi">1</span><span class="p">,</span> <span class="o">-</span><span class="n">alpha</span><span class="p">,</span> <span class="n">new_hash</span><span class="p">)</span>
+
+                <span class="c1"># Re-search if needed</span>
+                <span class="k">if</span> <span class="n">val</span> <span class="o">&gt;</span> <span class="n">alpha</span> <span class="ow">and</span> <span class="p">(</span><span class="n">reduction</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="ow">or</span> <span class="n">val</span> <span class="o">&lt;</span> <span class="n">beta</span><span class="p">):</span>
+                    <span class="n">val</span> <span class="o">=</span> <span class="o">-</span><span class="bp">self</span><span class="o">.</span><span class="n">negamax</span><span class="p">(</span><span class="n">board</span><span class="p">,</span> <span class="n">depth</span> <span class="o">-</span> <span class="mi">1</span><span class="p">,</span> <span class="o">-</span><span class="n">beta</span><span class="p">,</span> <span class="o">-</span><span class="n">alpha</span><span class="p">,</span> <span class="n">new_hash</span><span class="p">)</span>
+
+            <span class="n">board</span><span class="o">.</span><span class="n">pop</span><span class="p">()</span>
+
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">stop_search</span><span class="p">:</span>
+                <span class="k">return</span> <span class="n">alpha</span>
+
+            <span class="k">if</span> <span class="n">val</span> <span class="o">&gt;</span> <span class="n">best_value</span><span class="p">:</span>
+                <span class="n">best_value</span> <span class="o">=</span> <span class="n">val</span>
+                <span class="n">best_move</span> <span class="o">=</span> <span class="n">move</span>
+
+            <span class="n">alpha</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="n">alpha</span><span class="p">,</span> <span class="n">val</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">alpha</span> <span class="o">&gt;=</span> <span class="n">beta</span><span class="p">:</span>
+                <span class="n">tt_flag</span> <span class="o">=</span> <span class="mi">2</span>  <span class="c1"># Beta (Upperbound)</span>
+                <span class="k">if</span> <span class="ow">not</span> <span class="n">move</span><span class="o">.</span><span class="n">captured_list</span><span class="p">:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">_update_killers</span><span class="p">(</span><span class="n">move</span><span class="p">,</span> <span class="n">depth</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_update_history</span><span class="p">(</span><span class="n">move</span><span class="p">,</span> <span class="n">depth</span><span class="p">)</span>
+                <span class="k">break</span>
+
+        <span class="c1"># Store in TT</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">tt</span><span class="p">[</span><span class="n">h</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">depth</span><span class="p">,</span> <span class="n">tt_flag</span><span class="p">,</span> <span class="n">best_value</span><span class="p">,</span> <span class="n">best_move</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">best_value</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">quiescence_search</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">board</span><span class="p">:</span> <span class="n">BaseBoard</span><span class="p">,</span> <span class="n">alpha</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">beta</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">h</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">qs_depth</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Search captures until position is quiet.&quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">nodes</span> <span class="o">+=</span> <span class="mi">1</span>
+
+        <span class="c1"># Stand-pat (static evaluation)</span>
+        <span class="n">stand_pat</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">evaluate</span><span class="p">(</span><span class="n">board</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">stand_pat</span> <span class="o">&gt;=</span> <span class="n">beta</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">beta</span>
+
+        <span class="k">if</span> <span class="n">alpha</span> <span class="o">&lt;</span> <span class="n">stand_pat</span><span class="p">:</span>
+            <span class="n">alpha</span> <span class="o">=</span> <span class="n">stand_pat</span>
+
+        <span class="c1"># Depth limit to prevent explosion</span>
+        <span class="k">if</span> <span class="n">qs_depth</span> <span class="o">&gt;=</span> <span class="n">QS_MAX_DEPTH</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">stand_pat</span>
+
+        <span class="c1"># Generate only captures</span>
+        <span class="n">legal_moves</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">board</span><span class="o">.</span><span class="n">legal_moves</span><span class="p">)</span>
+        <span class="n">captures</span> <span class="o">=</span> <span class="p">[</span><span class="n">m</span> <span class="k">for</span> <span class="n">m</span> <span class="ow">in</span> <span class="n">legal_moves</span> <span class="k">if</span> <span class="n">m</span><span class="o">.</span><span class="n">captured_list</span><span class="p">]</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">captures</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">stand_pat</span>
+
+        <span class="c1"># Order captures (MVV-LVA)</span>
+        <span class="n">captures</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_order_captures</span><span class="p">(</span><span class="n">captures</span><span class="p">,</span> <span class="n">board</span><span class="p">)</span>
+
+        <span class="k">for</span> <span class="n">move</span> <span class="ow">in</span> <span class="n">captures</span><span class="p">:</span>
+            <span class="n">new_hash</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_update_hash</span><span class="p">(</span><span class="n">h</span><span class="p">,</span> <span class="n">board</span><span class="p">,</span> <span class="n">move</span><span class="p">)</span>
+            <span class="n">board</span><span class="o">.</span><span class="n">push</span><span class="p">(</span><span class="n">move</span><span class="p">)</span>
+            <span class="n">score</span> <span class="o">=</span> <span class="o">-</span><span class="bp">self</span><span class="o">.</span><span class="n">quiescence_search</span><span class="p">(</span><span class="n">board</span><span class="p">,</span> <span class="o">-</span><span class="n">beta</span><span class="p">,</span> <span class="o">-</span><span class="n">alpha</span><span class="p">,</span> <span class="n">new_hash</span><span class="p">,</span> <span class="n">qs_depth</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span>
+            <span class="n">board</span><span class="o">.</span><span class="n">pop</span><span class="p">()</span>
+
+            <span class="k">if</span> <span class="n">score</span> <span class="o">&gt;=</span> <span class="n">beta</span><span class="p">:</span>
+                <span class="k">return</span> <span class="n">beta</span>
+            <span class="k">if</span> <span class="n">score</span> <span class="o">&gt;</span> <span class="n">alpha</span><span class="p">:</span>
+                <span class="n">alpha</span> <span class="o">=</span> <span class="n">score</span>
+
+        <span class="k">return</span> <span class="n">alpha</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_update_hash</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">current_hash</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">board</span><span class="p">:</span> <span class="n">BaseBoard</span><span class="p">,</span> <span class="n">move</span><span class="p">:</span> <span class="n">Move</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+        <span class="n">zt</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_current_zobrist</span>  <span class="c1"># Cached zobrist table</span>
+        
+        <span class="c1"># XOR out source</span>
+        <span class="n">start_sq</span> <span class="o">=</span> <span class="n">move</span><span class="o">.</span><span class="n">square_list</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">piece</span> <span class="o">=</span> <span class="n">board</span><span class="o">.</span><span class="n">_pos</span><span class="p">[</span><span class="n">start_sq</span><span class="p">]</span>
+        <span class="n">current_hash</span> <span class="o">^=</span> <span class="n">zt</span><span class="p">[</span><span class="n">start_sq</span><span class="p">][</span><span class="n">piece</span> <span class="o">+</span> <span class="mi">2</span><span class="p">]</span>
+
+        <span class="c1"># XOR in dest</span>
+        <span class="n">end_sq</span> <span class="o">=</span> <span class="n">move</span><span class="o">.</span><span class="n">square_list</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+        <span class="n">new_piece</span> <span class="o">=</span> <span class="n">piece</span>
+        <span class="k">if</span> <span class="n">move</span><span class="o">.</span><span class="n">is_promotion</span><span class="p">:</span>
+            <span class="n">new_piece</span> <span class="o">=</span> <span class="mi">2</span> <span class="k">if</span> <span class="n">piece</span> <span class="o">==</span> <span class="mi">1</span> <span class="k">else</span> <span class="o">-</span><span class="mi">2</span>
+
+        <span class="n">current_hash</span> <span class="o">^=</span> <span class="n">zt</span><span class="p">[</span><span class="n">end_sq</span><span class="p">][</span><span class="n">new_piece</span> <span class="o">+</span> <span class="mi">2</span><span class="p">]</span>
+
+        <span class="c1"># XOR out captures</span>
+        <span class="k">for</span> <span class="n">cap_sq</span> <span class="ow">in</span> <span class="n">move</span><span class="o">.</span><span class="n">captured_list</span><span class="p">:</span>
+            <span class="n">cap_piece</span> <span class="o">=</span> <span class="n">board</span><span class="o">.</span><span class="n">_pos</span><span class="p">[</span><span class="n">cap_sq</span><span class="p">]</span>
+            <span class="n">current_hash</span> <span class="o">^=</span> <span class="n">zt</span><span class="p">[</span><span class="n">cap_sq</span><span class="p">][</span><span class="n">cap_piece</span> <span class="o">+</span> <span class="mi">2</span><span class="p">]</span>
+
+        <span class="c1"># Switch turn</span>
+        <span class="n">current_hash</span> <span class="o">^=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_zobrist_turn</span>
+
+        <span class="k">return</span> <span class="n">current_hash</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_order_moves</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">moves</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Move</span><span class="p">],</span> <span class="n">board</span><span class="p">:</span> <span class="n">BaseBoard</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">h</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span> <span class="n">depth</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="n">Move</span><span class="p">]:</span>
+        <span class="n">tt_entry</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">tt</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">h</span><span class="p">)</span>
+        <span class="n">pv_move</span> <span class="o">=</span> <span class="n">tt_entry</span><span class="p">[</span><span class="mi">3</span><span class="p">]</span> <span class="k">if</span> <span class="n">tt_entry</span> <span class="k">else</span> <span class="kc">None</span>
+
+        <span class="k">def</span><span class="w"> </span><span class="nf">score_move</span><span class="p">(</span><span class="n">move</span><span class="p">):</span>
+            <span class="k">if</span> <span class="n">move</span> <span class="o">==</span> <span class="n">pv_move</span><span class="p">:</span>
+                <span class="k">return</span> <span class="mi">1000000</span>
+
+            <span class="k">if</span> <span class="n">move</span><span class="o">.</span><span class="n">captured_list</span><span class="p">:</span>
+                <span class="k">return</span> <span class="mi">100000</span> <span class="o">+</span> <span class="nb">len</span><span class="p">(</span><span class="n">move</span><span class="o">.</span><span class="n">captured_list</span><span class="p">)</span> <span class="o">*</span> <span class="mi">1000</span>
+
+            <span class="n">killers</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">killers</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">depth</span><span class="p">,</span> <span class="p">[])</span>
+            <span class="k">if</span> <span class="n">move</span> <span class="ow">in</span> <span class="n">killers</span><span class="p">:</span>
+                <span class="k">return</span> <span class="mi">90000</span>
+
+            <span class="n">start</span> <span class="o">=</span> <span class="n">move</span><span class="o">.</span><span class="n">square_list</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+            <span class="n">end</span> <span class="o">=</span> <span class="n">move</span><span class="o">.</span><span class="n">square_list</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">history</span><span class="o">.</span><span class="n">get</span><span class="p">((</span><span class="n">start</span><span class="p">,</span> <span class="n">end</span><span class="p">),</span> <span class="mi">0</span><span class="p">)</span>
+
+        <span class="n">moves</span><span class="o">.</span><span class="n">sort</span><span class="p">(</span><span class="n">key</span><span class="o">=</span><span class="n">score_move</span><span class="p">,</span> <span class="n">reverse</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">moves</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_order_captures</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">moves</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Move</span><span class="p">],</span> <span class="n">board</span><span class="p">:</span> <span class="n">BaseBoard</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="n">Move</span><span class="p">]:</span>
+        <span class="n">moves</span><span class="o">.</span><span class="n">sort</span><span class="p">(</span><span class="n">key</span><span class="o">=</span><span class="k">lambda</span> <span class="n">m</span><span class="p">:</span> <span class="nb">len</span><span class="p">(</span><span class="n">m</span><span class="o">.</span><span class="n">captured_list</span><span class="p">),</span> <span class="n">reverse</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">moves</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_update_killers</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">move</span><span class="p">:</span> <span class="n">Move</span><span class="p">,</span> <span class="n">depth</span><span class="p">:</span> <span class="nb">int</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">depth</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">killers</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">killers</span><span class="p">[</span><span class="n">depth</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">if</span> <span class="n">move</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">killers</span><span class="p">[</span><span class="n">depth</span><span class="p">]:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">killers</span><span class="p">[</span><span class="n">depth</span><span class="p">]</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">move</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">killers</span><span class="p">[</span><span class="n">depth</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">killers</span><span class="p">[</span><span class="n">depth</span><span class="p">][:</span><span class="mi">2</span><span class="p">]</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_update_history</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">move</span><span class="p">:</span> <span class="n">Move</span><span class="p">,</span> <span class="n">depth</span><span class="p">:</span> <span class="nb">int</span><span class="p">):</span>
+        <span class="n">start</span> <span class="o">=</span> <span class="n">move</span><span class="o">.</span><span class="n">square_list</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">end</span> <span class="o">=</span> <span class="n">move</span><span class="o">.</span><span class="n">square_list</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">history</span><span class="p">[(</span><span class="n">start</span><span class="p">,</span> <span class="n">end</span><span class="p">)]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">history</span><span class="o">.</span><span class="n">get</span><span class="p">((</span><span class="n">start</span><span class="p">,</span> <span class="n">end</span><span class="p">),</span> <span class="mi">0</span><span class="p">)</span> <span class="o">+</span> <span class="n">depth</span> <span class="o">*</span> <span class="n">depth</span></div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2023-2024, Michal Skibinski.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

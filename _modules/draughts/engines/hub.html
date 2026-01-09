@@ -1,0 +1,828 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>draughts.engines.hub &mdash; py-draughts 1.5.8 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=03e43079" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../_static/documentation_options.js?v=c334614b"></script>
+      <script src="../../../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../index.html" class="icon icon-home">
+            py-draughts
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../core.html">Core API</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../engine.html">Engine</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../ai.html">Writing Your Own AI</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../svg.html">SVG Rendering</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../server.html">Server</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../benchmarking.html">Benchmarking (Internal)</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">py-draughts</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">draughts.engines.hub</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for draughts.engines.hub</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Hub protocol implementation for external draughts engines (e.g., Scan).</span>
+
+<span class="sd">The Hub protocol is a text-based protocol similar to UCI (from chess),</span>
+<span class="sd">used by engines like Scan 3.1. See protocol.txt for full specification.</span>
+
+<span class="sd">Example usage:</span>
+<span class="sd">    &gt;&gt;&gt; from draughts import StandardBoard</span>
+<span class="sd">    &gt;&gt;&gt; from draughts.hub import HubEngine</span>
+<span class="sd">    &gt;&gt;&gt; </span>
+<span class="sd">    &gt;&gt;&gt; engine = HubEngine(&quot;path/to/scan.exe&quot;)</span>
+<span class="sd">    &gt;&gt;&gt; engine.start()</span>
+<span class="sd">    &gt;&gt;&gt; </span>
+<span class="sd">    &gt;&gt;&gt; board = StandardBoard()</span>
+<span class="sd">    &gt;&gt;&gt; move = engine.get_best_move(board)</span>
+<span class="sd">    &gt;&gt;&gt; board.push(move)</span>
+<span class="sd">    &gt;&gt;&gt; </span>
+<span class="sd">    &gt;&gt;&gt; engine.quit()</span>
+
+<span class="sd">Or using context manager:</span>
+<span class="sd">    &gt;&gt;&gt; with HubEngine(&quot;path/to/scan.exe&quot;) as engine:</span>
+<span class="sd">    ...     move = engine.get_best_move(board)</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">re</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">subprocess</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">time</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">dataclasses</span><span class="w"> </span><span class="kn">import</span> <span class="n">dataclass</span><span class="p">,</span> <span class="n">field</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">Generator</span><span class="p">,</span> <span class="n">Iterable</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">loguru</span><span class="w"> </span><span class="kn">import</span> <span class="n">logger</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">draughts.boards.base</span><span class="w"> </span><span class="kn">import</span> <span class="n">BaseBoard</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">draughts.engines.engine</span><span class="w"> </span><span class="kn">import</span> <span class="n">Engine</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">draughts.models</span><span class="w"> </span><span class="kn">import</span> <span class="n">Color</span><span class="p">,</span> <span class="n">Figure</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">draughts.move</span><span class="w"> </span><span class="kn">import</span> <span class="n">Move</span>
+
+
+<span class="c1"># Hub protocol variant names mapping from py-draughts board classes</span>
+<span class="n">VARIANT_MAP</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s2">&quot;Standard (international) checkers&quot;</span><span class="p">:</span> <span class="s2">&quot;normal&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;Frisian draughts&quot;</span><span class="p">:</span> <span class="s2">&quot;frisian&quot;</span><span class="p">,</span>
+    <span class="c1"># American checkers is 8x8, not supported by Scan (which is 10x10 only)</span>
+<span class="p">}</span>
+
+
+<span class="nd">@dataclass</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">EngineInfo</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Engine identification info from Hub protocol.&quot;&quot;&quot;</span>
+    <span class="n">name</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span>
+    <span class="n">version</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span>
+    <span class="n">author</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span>
+    <span class="n">country</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span>
+
+
+<span class="nd">@dataclass</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">EngineParam</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Engine parameter declaration from Hub protocol.&quot;&quot;&quot;</span>
+    <span class="n">name</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">value</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">param_type</span><span class="p">:</span> <span class="nb">str</span>  <span class="c1"># &quot;bool&quot;, &quot;int&quot;, &quot;real&quot;, &quot;string&quot;, &quot;enum&quot;</span>
+    <span class="n">min_val</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">max_val</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">values</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span>  <span class="c1"># For enum type</span>
+
+
+<span class="nd">@dataclass</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">SearchInfo</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Search information from &#39;info&#39; lines during search.&quot;&quot;&quot;</span>
+    <span class="n">depth</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">mean_depth</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">score</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">nodes</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">time</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">nps</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">pv</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+
+
+<span class="nd">@dataclass</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">SearchResult</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Result from engine search (&#39;done&#39; line).&quot;&quot;&quot;</span>
+    <span class="n">move</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">ponder</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">info</span><span class="p">:</span> <span class="n">SearchInfo</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="n">SearchInfo</span><span class="p">)</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">board_to_hub_position</span><span class="p">(</span><span class="n">board</span><span class="p">:</span> <span class="n">BaseBoard</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Convert a py-draughts board to Hub protocol position string.</span>
+<span class="sd">    </span>
+<span class="sd">    Hub format: 51 characters total</span>
+<span class="sd">    - 1 char for side to move: &#39;W&#39; or &#39;B&#39;</span>
+<span class="sd">    - 50 chars for squares in standard order: &#39;w&#39;, &#39;b&#39;, &#39;W&#39;, &#39;B&#39;, &#39;e&#39;</span>
+<span class="sd">    </span>
+<span class="sd">    Args:</span>
+<span class="sd">        board: The board to convert (must be 10x10 = 50 squares)</span>
+<span class="sd">    </span>
+<span class="sd">    Returns:</span>
+<span class="sd">        Hub position string like &quot;Wbbbbbbbbbbbbbbbbbbbbeeeeeeeeeewwwwwwwwwwwwwwwwwwww&quot;</span>
+<span class="sd">    </span>
+<span class="sd">    Raises:</span>
+<span class="sd">        ValueError: If board is not 50 squares (10x10)</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">board</span><span class="o">.</span><span class="n">position</span><span class="p">)</span> <span class="o">!=</span> <span class="mi">50</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;Hub protocol only supports 10x10 boards (50 squares), &quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;got </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">board</span><span class="o">.</span><span class="n">position</span><span class="p">)</span><span class="si">}</span><span class="s2"> squares&quot;</span>
+        <span class="p">)</span>
+    
+    <span class="c1"># Side to move</span>
+    <span class="n">side</span> <span class="o">=</span> <span class="s2">&quot;W&quot;</span> <span class="k">if</span> <span class="n">board</span><span class="o">.</span><span class="n">turn</span> <span class="o">==</span> <span class="n">Color</span><span class="o">.</span><span class="n">WHITE</span> <span class="k">else</span> <span class="s2">&quot;B&quot;</span>
+    
+    <span class="c1"># Square mapping: py-draughts Figure values -&gt; Hub chars</span>
+    <span class="c1"># py-draughts: -1=white man, -2=white king, 1=black man, 2=black king, 0=empty</span>
+    <span class="n">piece_map</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="n">Figure</span><span class="o">.</span><span class="n">WHITE_MAN</span><span class="o">.</span><span class="n">value</span><span class="p">:</span> <span class="s2">&quot;w&quot;</span><span class="p">,</span>   <span class="c1"># -1</span>
+        <span class="n">Figure</span><span class="o">.</span><span class="n">WHITE_KING</span><span class="o">.</span><span class="n">value</span><span class="p">:</span> <span class="s2">&quot;W&quot;</span><span class="p">,</span>  <span class="c1"># -2</span>
+        <span class="n">Figure</span><span class="o">.</span><span class="n">BLACK_MAN</span><span class="o">.</span><span class="n">value</span><span class="p">:</span> <span class="s2">&quot;b&quot;</span><span class="p">,</span>   <span class="c1"># 1</span>
+        <span class="n">Figure</span><span class="o">.</span><span class="n">BLACK_KING</span><span class="o">.</span><span class="n">value</span><span class="p">:</span> <span class="s2">&quot;B&quot;</span><span class="p">,</span>  <span class="c1"># 2</span>
+        <span class="n">Figure</span><span class="o">.</span><span class="n">EMPTY</span><span class="o">.</span><span class="n">value</span><span class="p">:</span> <span class="s2">&quot;e&quot;</span><span class="p">,</span>       <span class="c1"># 0</span>
+    <span class="p">}</span>
+    
+    <span class="n">squares</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">piece_map</span><span class="p">[</span><span class="nb">int</span><span class="p">(</span><span class="n">sq</span><span class="p">)]</span> <span class="k">for</span> <span class="n">sq</span> <span class="ow">in</span> <span class="n">board</span><span class="o">.</span><span class="n">position</span><span class="p">)</span>
+    
+    <span class="k">return</span> <span class="n">side</span> <span class="o">+</span> <span class="n">squares</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">hub_position_to_board</span><span class="p">(</span>
+    <span class="n">position</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">board_class</span><span class="p">:</span> <span class="nb">type</span><span class="p">[</span><span class="n">BaseBoard</span><span class="p">]</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">BaseBoard</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Parse a Hub protocol position string into a py-draughts board.</span>
+<span class="sd">    </span>
+<span class="sd">    Args:</span>
+<span class="sd">        position: Hub position string (51 chars)</span>
+<span class="sd">        board_class: The Board class to instantiate</span>
+<span class="sd">    </span>
+<span class="sd">    Returns:</span>
+<span class="sd">        Board instance with the parsed position</span>
+<span class="sd">    </span>
+<span class="sd">    Raises:</span>
+<span class="sd">        ValueError: If position string is invalid</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+    
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">position</span><span class="p">)</span> <span class="o">!=</span> <span class="mi">51</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Hub position must be 51 chars, got </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">position</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    
+    <span class="n">side_char</span> <span class="o">=</span> <span class="n">position</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">upper</span><span class="p">()</span>
+    <span class="k">if</span> <span class="n">side_char</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">&quot;W&quot;</span><span class="p">,</span> <span class="s2">&quot;B&quot;</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Invalid side to move: </span><span class="si">{</span><span class="n">side_char</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    
+    <span class="n">turn</span> <span class="o">=</span> <span class="n">Color</span><span class="o">.</span><span class="n">WHITE</span> <span class="k">if</span> <span class="n">side_char</span> <span class="o">==</span> <span class="s2">&quot;W&quot;</span> <span class="k">else</span> <span class="n">Color</span><span class="o">.</span><span class="n">BLACK</span>
+    
+    <span class="c1"># Parse squares</span>
+    <span class="n">piece_map</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="s2">&quot;w&quot;</span><span class="p">:</span> <span class="n">Figure</span><span class="o">.</span><span class="n">WHITE_MAN</span><span class="o">.</span><span class="n">value</span><span class="p">,</span>
+        <span class="s2">&quot;W&quot;</span><span class="p">:</span> <span class="n">Figure</span><span class="o">.</span><span class="n">WHITE_KING</span><span class="o">.</span><span class="n">value</span><span class="p">,</span>
+        <span class="s2">&quot;b&quot;</span><span class="p">:</span> <span class="n">Figure</span><span class="o">.</span><span class="n">BLACK_MAN</span><span class="o">.</span><span class="n">value</span><span class="p">,</span>
+        <span class="s2">&quot;B&quot;</span><span class="p">:</span> <span class="n">Figure</span><span class="o">.</span><span class="n">BLACK_KING</span><span class="o">.</span><span class="n">value</span><span class="p">,</span>
+        <span class="s2">&quot;e&quot;</span><span class="p">:</span> <span class="n">Figure</span><span class="o">.</span><span class="n">EMPTY</span><span class="o">.</span><span class="n">value</span><span class="p">,</span>
+    <span class="p">}</span>
+    
+    <span class="n">squares</span> <span class="o">=</span> <span class="n">position</span><span class="p">[</span><span class="mi">1</span><span class="p">:]</span>
+    <span class="n">pos_array</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">piece_map</span><span class="p">[</span><span class="n">c</span><span class="p">]</span> <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">squares</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">int8</span><span class="p">)</span>
+    
+    <span class="k">return</span> <span class="n">board_class</span><span class="p">(</span><span class="n">starting_position</span><span class="o">=</span><span class="n">pos_array</span><span class="p">,</span> <span class="n">turn</span><span class="o">=</span><span class="n">turn</span><span class="p">)</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">move_to_hub_notation</span><span class="p">(</span><span class="n">move</span><span class="p">:</span> <span class="n">Move</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Convert a py-draughts Move to Hub protocol notation.</span>
+<span class="sd">    </span>
+<span class="sd">    Hub format:</span>
+<span class="sd">    - Quiet moves: &quot;32-28&quot;</span>
+<span class="sd">    - Captures: &quot;28x19x23&quot; (from x to x captured x captured...)</span>
+<span class="sd">    </span>
+<span class="sd">    Note: Hub uses 1-indexed squares.</span>
+<span class="sd">    </span>
+<span class="sd">    Args:</span>
+<span class="sd">        move: The Move object to convert</span>
+<span class="sd">    </span>
+<span class="sd">    Returns:</span>
+<span class="sd">        Hub move string</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">move</span><span class="o">.</span><span class="n">captured_list</span><span class="p">:</span>
+        <span class="c1"># Simple move: from-to</span>
+        <span class="k">return</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">move</span><span class="o">.</span><span class="n">square_list</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="mi">1</span><span class="si">}</span><span class="s2">-</span><span class="si">{</span><span class="n">move</span><span class="o">.</span><span class="n">square_list</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="mi">1</span><span class="si">}</span><span class="s2">&quot;</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="c1"># Capture: from x to x captured1 x captured2 ...</span>
+        <span class="c1"># Format: start x end x cap1 x cap2 ...</span>
+        <span class="n">parts</span> <span class="o">=</span> <span class="p">[</span><span class="nb">str</span><span class="p">(</span><span class="n">move</span><span class="o">.</span><span class="n">square_list</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">+</span> <span class="mi">1</span><span class="p">),</span> <span class="nb">str</span><span class="p">(</span><span class="n">move</span><span class="o">.</span><span class="n">square_list</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)]</span>
+        <span class="n">parts</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">sq</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span> <span class="k">for</span> <span class="n">sq</span> <span class="ow">in</span> <span class="n">move</span><span class="o">.</span><span class="n">captured_list</span><span class="p">)</span>
+        <span class="k">return</span> <span class="s2">&quot;x&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">parts</span><span class="p">)</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">parse_hub_move</span><span class="p">(</span>
+    <span class="n">move_str</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+    <span class="n">legal_moves</span><span class="p">:</span> <span class="n">Iterable</span><span class="p">[</span><span class="n">Move</span><span class="p">],</span>
+    <span class="n">board</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">BaseBoard</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Move</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Parse a Hub protocol move string and match against legal moves.</span>
+<span class="sd">    </span>
+<span class="sd">    Args:</span>
+<span class="sd">        move_str: Hub move string like &quot;32-28&quot; or &quot;28x19x23&quot;</span>
+<span class="sd">        legal_moves: Generator of legal moves to match against</span>
+<span class="sd">        board: Optional board for diagnostic info on error</span>
+<span class="sd">    </span>
+<span class="sd">    Returns:</span>
+<span class="sd">        Matching Move object from legal_moves</span>
+<span class="sd">    </span>
+<span class="sd">    Raises:</span>
+<span class="sd">        ValueError: If move doesn&#39;t match any legal move</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1"># Parse the move string</span>
+    <span class="k">if</span> <span class="s2">&quot;-&quot;</span> <span class="ow">in</span> <span class="n">move_str</span><span class="p">:</span>
+        <span class="n">parts</span> <span class="o">=</span> <span class="n">move_str</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;-&quot;</span><span class="p">)</span>
+        <span class="n">is_capture</span> <span class="o">=</span> <span class="kc">False</span>
+    <span class="k">elif</span> <span class="s2">&quot;x&quot;</span> <span class="ow">in</span> <span class="n">move_str</span><span class="p">:</span>
+        <span class="n">parts</span> <span class="o">=</span> <span class="n">move_str</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;x&quot;</span><span class="p">)</span>
+        <span class="n">is_capture</span> <span class="o">=</span> <span class="kc">True</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Invalid Hub move format: </span><span class="si">{</span><span class="n">move_str</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    
+    <span class="c1"># Convert to 0-indexed</span>
+    <span class="n">squares</span> <span class="o">=</span> <span class="p">[</span><span class="nb">int</span><span class="p">(</span><span class="n">p</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span> <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">parts</span><span class="p">]</span>
+    <span class="n">start_sq</span> <span class="o">=</span> <span class="n">squares</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="n">end_sq</span> <span class="o">=</span> <span class="n">squares</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>  <span class="c1"># Second element is always destination in Hub format</span>
+    <span class="n">captured_squares</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">squares</span><span class="p">[</span><span class="mi">2</span><span class="p">:])</span> <span class="k">if</span> <span class="n">is_capture</span> <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="n">squares</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">2</span> <span class="k">else</span> <span class="kc">None</span>
+    
+    <span class="c1"># Collect legal moves for potential error reporting</span>
+    <span class="n">legal_moves_list</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">legal_moves</span><span class="p">)</span>
+    
+    <span class="c1"># Find matching legal move</span>
+    <span class="k">for</span> <span class="n">legal_move</span> <span class="ow">in</span> <span class="n">legal_moves_list</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">legal_move</span><span class="o">.</span><span class="n">square_list</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">!=</span> <span class="n">start_sq</span><span class="p">:</span>
+            <span class="k">continue</span>
+        <span class="k">if</span> <span class="n">legal_move</span><span class="o">.</span><span class="n">square_list</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">!=</span> <span class="n">end_sq</span><span class="p">:</span>
+            <span class="k">continue</span>
+        
+        <span class="c1"># For captures, also verify captured squares match</span>
+        <span class="k">if</span> <span class="n">is_capture</span><span class="p">:</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">legal_move</span><span class="o">.</span><span class="n">captured_list</span><span class="p">:</span>
+                <span class="k">continue</span>
+            <span class="k">if</span> <span class="n">captured_squares</span> <span class="ow">and</span> <span class="nb">set</span><span class="p">(</span><span class="n">legal_move</span><span class="o">.</span><span class="n">captured_list</span><span class="p">)</span> <span class="o">!=</span> <span class="n">captured_squares</span><span class="p">:</span>
+                <span class="k">continue</span>
+        
+        <span class="k">return</span> <span class="n">legal_move</span>
+    
+    <span class="c1"># Build detailed error message</span>
+    <span class="n">legal_moves_str</span> <span class="o">=</span> <span class="s2">&quot;, &quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">m</span><span class="p">)</span> <span class="k">for</span> <span class="n">m</span> <span class="ow">in</span> <span class="n">legal_moves_list</span><span class="p">[:</span><span class="mi">20</span><span class="p">])</span>
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">legal_moves_list</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">20</span><span class="p">:</span>
+        <span class="n">legal_moves_str</span> <span class="o">+=</span> <span class="sa">f</span><span class="s2">&quot;... (</span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">legal_moves_list</span><span class="p">)</span><span class="si">}</span><span class="s2"> total)&quot;</span>
+    
+    <span class="n">error_msg</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;No legal move matches Hub move: </span><span class="si">{</span><span class="n">move_str</span><span class="si">}</span><span class="se">\n</span><span class="s2">&quot;</span>
+    <span class="n">error_msg</span> <span class="o">+=</span> <span class="sa">f</span><span class="s2">&quot;  Parsed as: start=</span><span class="si">{</span><span class="n">start_sq</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="mi">1</span><span class="si">}</span><span class="s2">, end=</span><span class="si">{</span><span class="n">end_sq</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="mi">1</span><span class="si">}</span><span class="s2">&quot;</span>
+    <span class="k">if</span> <span class="n">captured_squares</span><span class="p">:</span>
+        <span class="n">error_msg</span> <span class="o">+=</span> <span class="sa">f</span><span class="s2">&quot;, captures=</span><span class="si">{</span><span class="p">[</span><span class="n">s</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="mi">1</span><span class="w"> </span><span class="k">for</span><span class="w"> </span><span class="n">s</span><span class="w"> </span><span class="ow">in</span><span class="w"> </span><span class="n">captured_squares</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span>
+    <span class="n">error_msg</span> <span class="o">+=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">  Legal moves: [</span><span class="si">{</span><span class="n">legal_moves_str</span><span class="si">}</span><span class="s2">]&quot;</span>
+    
+    <span class="k">if</span> <span class="n">board</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">error_msg</span> <span class="o">+=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">  Position FEN: </span><span class="si">{</span><span class="n">board</span><span class="o">.</span><span class="n">fen</span><span class="si">}</span><span class="s2">&quot;</span>
+        <span class="n">error_msg</span> <span class="o">+=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">  Hub position: </span><span class="si">{</span><span class="n">board_to_hub_position</span><span class="p">(</span><span class="n">board</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span>
+        <span class="n">error_msg</span> <span class="o">+=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">  Turn: </span><span class="si">{</span><span class="s1">&#39;White&#39;</span><span class="w"> </span><span class="k">if</span><span class="w"> </span><span class="n">board</span><span class="o">.</span><span class="n">turn</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="n">Color</span><span class="o">.</span><span class="n">WHITE</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="s1">&#39;Black&#39;</span><span class="si">}</span><span class="s2">&quot;</span>
+    
+    <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="n">error_msg</span><span class="p">)</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">parse_hub_line</span><span class="p">(</span><span class="n">line</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Parse a Hub protocol line into command and arguments.</span>
+<span class="sd">    </span>
+<span class="sd">    Hub syntax: &lt;command&gt; &lt;arg&gt;=&lt;val&gt; &lt;arg&gt;=&lt;val&gt; ...</span>
+<span class="sd">    Values can be quoted with double quotes.</span>
+<span class="sd">    </span>
+<span class="sd">    Args:</span>
+<span class="sd">        line: Raw line from engine</span>
+<span class="sd">    </span>
+<span class="sd">    Returns:</span>
+<span class="sd">        Tuple of (command, {arg: value, ...})</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">line</span> <span class="o">=</span> <span class="n">line</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">line</span><span class="p">:</span>
+        <span class="k">return</span> <span class="s2">&quot;&quot;</span><span class="p">,</span> <span class="p">{}</span>
+    
+    <span class="c1"># Split into tokens, respecting quoted values</span>
+    <span class="n">tokens</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">current</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span>
+    <span class="n">in_quotes</span> <span class="o">=</span> <span class="kc">False</span>
+    
+    <span class="k">for</span> <span class="n">char</span> <span class="ow">in</span> <span class="n">line</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">char</span> <span class="o">==</span> <span class="s1">&#39;&quot;&#39;</span><span class="p">:</span>
+            <span class="n">in_quotes</span> <span class="o">=</span> <span class="ow">not</span> <span class="n">in_quotes</span>
+        <span class="k">elif</span> <span class="n">char</span> <span class="o">==</span> <span class="s2">&quot; &quot;</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">in_quotes</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">current</span><span class="p">:</span>
+                <span class="n">tokens</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">current</span><span class="p">)</span>
+                <span class="n">current</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">current</span> <span class="o">+=</span> <span class="n">char</span>
+    
+    <span class="k">if</span> <span class="n">current</span><span class="p">:</span>
+        <span class="n">tokens</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">current</span><span class="p">)</span>
+    
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">tokens</span><span class="p">:</span>
+        <span class="k">return</span> <span class="s2">&quot;&quot;</span><span class="p">,</span> <span class="p">{}</span>
+    
+    <span class="n">command</span> <span class="o">=</span> <span class="n">tokens</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="n">args</span> <span class="o">=</span> <span class="p">{}</span>
+    
+    <span class="k">for</span> <span class="n">token</span> <span class="ow">in</span> <span class="n">tokens</span><span class="p">[</span><span class="mi">1</span><span class="p">:]:</span>
+        <span class="k">if</span> <span class="s2">&quot;=&quot;</span> <span class="ow">in</span> <span class="n">token</span><span class="p">:</span>
+            <span class="n">key</span><span class="p">,</span> <span class="n">_</span><span class="p">,</span> <span class="n">value</span> <span class="o">=</span> <span class="n">token</span><span class="o">.</span><span class="n">partition</span><span class="p">(</span><span class="s2">&quot;=&quot;</span><span class="p">)</span>
+            <span class="n">args</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">value</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="c1"># Flag argument (no value)</span>
+            <span class="n">args</span><span class="p">[</span><span class="n">token</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span>
+    
+    <span class="k">return</span> <span class="n">command</span><span class="p">,</span> <span class="n">args</span>
+
+
+<div class="viewcode-block" id="HubEngine">
+<a class="viewcode-back" href="../../../engine.html#draughts.HubEngine">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">HubEngine</span><span class="p">(</span><span class="n">Engine</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Engine wrapper for Hub protocol (used by Scan and similar engines).</span>
+<span class="sd">    </span>
+<span class="sd">    This class manages subprocess communication with an external draughts</span>
+<span class="sd">    engine using the Hub protocol (version 2).</span>
+<span class="sd">    </span>
+<span class="sd">    Attributes:</span>
+<span class="sd">        path: Path to the engine executable</span>
+<span class="sd">        time_limit: Default time per move in seconds</span>
+<span class="sd">        depth_limit: Maximum search depth (None for no limit)</span>
+<span class="sd">        </span>
+<span class="sd">    Example:</span>
+<span class="sd">        &gt;&gt;&gt; engine = HubEngine(&quot;scan.exe&quot;, time_limit=1.0)</span>
+<span class="sd">        &gt;&gt;&gt; engine.start()</span>
+<span class="sd">        &gt;&gt;&gt; move = engine.get_best_move(board)</span>
+<span class="sd">        &gt;&gt;&gt; engine.quit()</span>
+<span class="sd">        </span>
+<span class="sd">        # Or with context manager:</span>
+<span class="sd">        &gt;&gt;&gt; with HubEngine(&quot;scan.exe&quot;) as engine:</span>
+<span class="sd">        ...     move = engine.get_best_move(board)</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    
+<div class="viewcode-block" id="HubEngine.__init__">
+<a class="viewcode-back" href="../../../engine.html#draughts.HubEngine.__init__">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">path</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="n">Path</span><span class="p">,</span>
+        <span class="n">time_limit</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">,</span>
+        <span class="n">depth_limit</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">init_timeout</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">10.0</span><span class="p">,</span>
+    <span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Initialize Hub engine wrapper.</span>
+<span class="sd">        </span>
+<span class="sd">        Args:</span>
+<span class="sd">            path: Path to the engine executable</span>
+<span class="sd">            time_limit: Time limit per move in seconds (default 1.0)</span>
+<span class="sd">            depth_limit: Maximum search depth (None for no limit)</span>
+<span class="sd">            init_timeout: Timeout for engine initialization in seconds</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">path</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">time_limit</span> <span class="o">=</span> <span class="n">time_limit</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">depth_limit</span> <span class="o">=</span> <span class="n">depth_limit</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">init_timeout</span> <span class="o">=</span> <span class="n">init_timeout</span>
+        
+        <span class="bp">self</span><span class="o">.</span><span class="n">process</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">subprocess</span><span class="o">.</span><span class="n">Popen</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">info</span><span class="p">:</span> <span class="n">EngineInfo</span> <span class="o">=</span> <span class="n">EngineInfo</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">params</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">EngineParam</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_variant</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_started</span> <span class="o">=</span> <span class="kc">False</span></div>
+
+    
+    <span class="k">def</span><span class="w"> </span><span class="fm">__enter__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="s2">&quot;HubEngine&quot;</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Context manager entry - starts the engine.&quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">start</span><span class="p">()</span>
+        <span class="k">return</span> <span class="bp">self</span>
+    
+    <span class="k">def</span><span class="w"> </span><span class="fm">__exit__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">exc_type</span><span class="p">,</span> <span class="n">exc_val</span><span class="p">,</span> <span class="n">exc_tb</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Context manager exit - quits the engine.&quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">quit</span><span class="p">()</span>
+    
+<div class="viewcode-block" id="HubEngine.start">
+<a class="viewcode-back" href="../../../engine.html#draughts.HubEngine.start">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">start</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Start the engine subprocess and complete initialization handshake.</span>
+<span class="sd">        </span>
+<span class="sd">        The Hub protocol initialization:</span>
+<span class="sd">        1. GUI sends &quot;hub&quot;</span>
+<span class="sd">        2. Engine responds with id, param declarations, then &quot;wait&quot;</span>
+<span class="sd">        3. GUI optionally sends set-param commands</span>
+<span class="sd">        4. GUI sends &quot;init&quot;</span>
+<span class="sd">        5. Engine responds with &quot;ready&quot;</span>
+<span class="sd">        </span>
+<span class="sd">        Raises:</span>
+<span class="sd">            FileNotFoundError: If engine executable not found</span>
+<span class="sd">            TimeoutError: If engine doesn&#39;t respond in time</span>
+<span class="sd">            RuntimeError: If initialization fails</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_started</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s2">&quot;Engine already started&quot;</span><span class="p">)</span>
+            <span class="k">return</span>
+        
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span>
+            <span class="k">raise</span> <span class="ne">FileNotFoundError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Engine not found: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">path</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Starting Hub engine: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">path</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        
+        <span class="c1"># Run from the engine&#39;s directory so it can find its data files</span>
+        <span class="n">engine_dir</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">parent</span><span class="o">.</span><span class="n">resolve</span><span class="p">()</span>
+        
+        <span class="bp">self</span><span class="o">.</span><span class="n">process</span> <span class="o">=</span> <span class="n">subprocess</span><span class="o">.</span><span class="n">Popen</span><span class="p">(</span>
+            <span class="p">[</span><span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">resolve</span><span class="p">()),</span> <span class="s2">&quot;hub&quot;</span><span class="p">],</span>
+            <span class="n">stdin</span><span class="o">=</span><span class="n">subprocess</span><span class="o">.</span><span class="n">PIPE</span><span class="p">,</span>
+            <span class="n">stdout</span><span class="o">=</span><span class="n">subprocess</span><span class="o">.</span><span class="n">PIPE</span><span class="p">,</span>
+            <span class="n">stderr</span><span class="o">=</span><span class="n">subprocess</span><span class="o">.</span><span class="n">PIPE</span><span class="p">,</span>
+            <span class="n">text</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+            <span class="n">bufsize</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>  <span class="c1"># Line buffered</span>
+            <span class="n">cwd</span><span class="o">=</span><span class="nb">str</span><span class="p">(</span><span class="n">engine_dir</span><span class="p">),</span>  <span class="c1"># Run from engine&#39;s directory</span>
+        <span class="p">)</span>
+        
+        <span class="c1"># Send hub command to start initialization</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_send</span><span class="p">(</span><span class="s2">&quot;hub&quot;</span><span class="p">)</span>
+        
+        <span class="c1"># Read engine responses until &quot;wait&quot;</span>
+        <span class="n">start_time</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+        <span class="k">while</span> <span class="kc">True</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span> <span class="o">-</span> <span class="n">start_time</span> <span class="o">&gt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">init_timeout</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">quit</span><span class="p">()</span>
+                <span class="k">raise</span> <span class="ne">TimeoutError</span><span class="p">(</span><span class="s2">&quot;Engine initialization timed out&quot;</span><span class="p">)</span>
+            
+            <span class="n">line</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_read_line</span><span class="p">(</span><span class="n">timeout</span><span class="o">=</span><span class="mf">1.0</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">line</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="k">continue</span>
+            
+            <span class="n">cmd</span><span class="p">,</span> <span class="n">args</span> <span class="o">=</span> <span class="n">parse_hub_line</span><span class="p">(</span><span class="n">line</span><span class="p">)</span>
+            
+            <span class="k">if</span> <span class="n">cmd</span> <span class="o">==</span> <span class="s2">&quot;id&quot;</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">info</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="n">args</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;name&quot;</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">info</span><span class="o">.</span><span class="n">version</span> <span class="o">=</span> <span class="n">args</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;version&quot;</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">info</span><span class="o">.</span><span class="n">author</span> <span class="o">=</span> <span class="n">args</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;author&quot;</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">info</span><span class="o">.</span><span class="n">country</span> <span class="o">=</span> <span class="n">args</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;country&quot;</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">)</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Engine: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">info</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">info</span><span class="o">.</span><span class="n">version</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            
+            <span class="k">elif</span> <span class="n">cmd</span> <span class="o">==</span> <span class="s2">&quot;param&quot;</span><span class="p">:</span>
+                <span class="n">param</span> <span class="o">=</span> <span class="n">EngineParam</span><span class="p">(</span>
+                    <span class="n">name</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;name&quot;</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">),</span>
+                    <span class="n">value</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;value&quot;</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">),</span>
+                    <span class="n">param_type</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;type&quot;</span><span class="p">,</span> <span class="s2">&quot;string&quot;</span><span class="p">),</span>
+                    <span class="n">min_val</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;min&quot;</span><span class="p">),</span>
+                    <span class="n">max_val</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;max&quot;</span><span class="p">),</span>
+                <span class="p">)</span>
+                <span class="k">if</span> <span class="s2">&quot;values&quot;</span> <span class="ow">in</span> <span class="n">args</span><span class="p">:</span>
+                    <span class="n">param</span><span class="o">.</span><span class="n">values</span> <span class="o">=</span> <span class="n">args</span><span class="p">[</span><span class="s2">&quot;values&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">split</span><span class="p">()</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">params</span><span class="p">[</span><span class="n">param</span><span class="o">.</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="n">param</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Engine param: </span><span class="si">{</span><span class="n">param</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">=</span><span class="si">{</span><span class="n">param</span><span class="o">.</span><span class="n">value</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            
+            <span class="k">elif</span> <span class="n">cmd</span> <span class="o">==</span> <span class="s2">&quot;wait&quot;</span><span class="p">:</span>
+                <span class="k">break</span>
+        
+        <span class="c1"># Send init command</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_send</span><span class="p">(</span><span class="s2">&quot;init&quot;</span><span class="p">)</span>
+        
+        <span class="c1"># Wait for ready</span>
+        <span class="k">while</span> <span class="kc">True</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span> <span class="o">-</span> <span class="n">start_time</span> <span class="o">&gt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">init_timeout</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">quit</span><span class="p">()</span>
+                <span class="k">raise</span> <span class="ne">TimeoutError</span><span class="p">(</span><span class="s2">&quot;Engine initialization timed out waiting for ready&quot;</span><span class="p">)</span>
+            
+            <span class="n">line</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_read_line</span><span class="p">(</span><span class="n">timeout</span><span class="o">=</span><span class="mf">1.0</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">line</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="k">continue</span>
+            
+            <span class="n">cmd</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">parse_hub_line</span><span class="p">(</span><span class="n">line</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">cmd</span> <span class="o">==</span> <span class="s2">&quot;ready&quot;</span><span class="p">:</span>
+                <span class="k">break</span>
+        
+        <span class="bp">self</span><span class="o">.</span><span class="n">_started</span> <span class="o">=</span> <span class="kc">True</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Engine ready&quot;</span><span class="p">)</span></div>
+
+    
+<div class="viewcode-block" id="HubEngine.quit">
+<a class="viewcode-back" href="../../../engine.html#draughts.HubEngine.quit">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">quit</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Send quit command and terminate the engine subprocess.&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">process</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span>
+        
+        <span class="k">try</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_send</span><span class="p">(</span><span class="s2">&quot;quit&quot;</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">process</span><span class="o">.</span><span class="n">wait</span><span class="p">(</span><span class="n">timeout</span><span class="o">=</span><span class="mf">2.0</span><span class="p">)</span>
+        <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">process</span><span class="o">.</span><span class="n">kill</span><span class="p">()</span>
+        <span class="k">finally</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">process</span> <span class="o">=</span> <span class="kc">None</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_started</span> <span class="o">=</span> <span class="kc">False</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Engine terminated&quot;</span><span class="p">)</span></div>
+
+    
+    <span class="k">def</span><span class="w"> </span><span class="nf">set_variant</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">variant</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Set the engine variant.</span>
+<span class="sd">        </span>
+<span class="sd">        Args:</span>
+<span class="sd">            variant: Hub variant name (&quot;normal&quot;, &quot;frisian&quot;, &quot;killer&quot;, &quot;bt&quot;, &quot;losing&quot;)</span>
+<span class="sd">        </span>
+<span class="sd">        Note: Must be called before start() to take effect.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_variant</span> <span class="o">=</span> <span class="n">variant</span>
+    
+    <span class="k">def</span><span class="w"> </span><span class="nf">new_game</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Signal the start of a new game (clears transposition table).</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_send</span><span class="p">(</span><span class="s2">&quot;new-game&quot;</span><span class="p">)</span>
+    
+<div class="viewcode-block" id="HubEngine.get_best_move">
+<a class="viewcode-back" href="../../../engine.html#draughts.HubEngine.get_best_move">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_best_move</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">board</span><span class="p">:</span> <span class="n">BaseBoard</span><span class="p">,</span> <span class="n">with_evaluation</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Move</span> <span class="o">|</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">Move</span><span class="p">,</span> <span class="nb">float</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Get the best move for the given board position.</span>
+<span class="sd">        </span>
+<span class="sd">        Implements the Engine interface. Sends the position to the engine,</span>
+<span class="sd">        starts a search, and returns the best move.</span>
+<span class="sd">        </span>
+<span class="sd">        Args:</span>
+<span class="sd">            board: The current board state</span>
+<span class="sd">            with_evaluation: If True, return (move, score) tuple</span>
+<span class="sd">        </span>
+<span class="sd">        Returns:</span>
+<span class="sd">            Move object, or (Move, score) if with_evaluation=True</span>
+<span class="sd">        </span>
+<span class="sd">        Raises:</span>
+<span class="sd">            RuntimeError: If engine not started or search fails</span>
+<span class="sd">            ValueError: If board variant not supported</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_started</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">process</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span><span class="s2">&quot;Engine not started. Call start() first.&quot;</span><span class="p">)</span>
+        
+        <span class="c1"># Verify board is 10x10</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">board</span><span class="o">.</span><span class="n">position</span><span class="p">)</span> <span class="o">!=</span> <span class="mi">50</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;Hub protocol only supports 10x10 boards, got </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">board</span><span class="o">.</span><span class="n">position</span><span class="p">)</span><span class="si">}</span><span class="s2"> squares&quot;</span>
+            <span class="p">)</span>
+        
+        <span class="c1"># Convert position to Hub format</span>
+        <span class="n">hub_pos</span> <span class="o">=</span> <span class="n">board_to_hub_position</span><span class="p">(</span><span class="n">board</span><span class="p">)</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Sending position: </span><span class="si">{</span><span class="n">hub_pos</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Board FEN: </span><span class="si">{</span><span class="n">board</span><span class="o">.</span><span class="n">fen</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Turn: </span><span class="si">{</span><span class="s1">&#39;White&#39;</span><span class="w"> </span><span class="k">if</span><span class="w"> </span><span class="n">board</span><span class="o">.</span><span class="n">turn</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="n">Color</span><span class="o">.</span><span class="n">WHITE</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="s1">&#39;Black&#39;</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        
+        <span class="c1"># Build position command</span>
+        <span class="c1"># Note: We currently don&#39;t send move history for repetition detection</span>
+        <span class="c1"># because it requires sending moves that lead FROM a starting position</span>
+        <span class="c1"># TO the current position, not the other way around.</span>
+        <span class="c1"># TODO: Implement proper move history for repetition detection</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_send</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;pos pos=</span><span class="si">{</span><span class="n">hub_pos</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        
+        <span class="c1"># Set search limits</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">depth_limit</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_send</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;level depth=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">depth_limit</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_send</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;level move-time=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">time_limit</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        
+        <span class="c1"># Start search</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_send</span><span class="p">(</span><span class="s2">&quot;go think&quot;</span><span class="p">)</span>
+        
+        <span class="c1"># Read search output until done</span>
+        <span class="n">result</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_read_search_result</span><span class="p">()</span>
+        
+        <span class="c1"># Parse the move and match against legal moves</span>
+        <span class="n">move</span> <span class="o">=</span> <span class="n">parse_hub_move</span><span class="p">(</span><span class="n">result</span><span class="o">.</span><span class="n">move</span><span class="p">,</span> <span class="n">board</span><span class="o">.</span><span class="n">legal_moves</span><span class="p">,</span> <span class="n">board</span><span class="o">=</span><span class="n">board</span><span class="p">)</span>
+        
+        <span class="k">if</span> <span class="n">with_evaluation</span><span class="p">:</span>
+            <span class="n">score</span> <span class="o">=</span> <span class="n">result</span><span class="o">.</span><span class="n">info</span><span class="o">.</span><span class="n">score</span> <span class="k">if</span> <span class="n">result</span><span class="o">.</span><span class="n">info</span><span class="o">.</span><span class="n">score</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="mf">0.0</span>
+            <span class="k">return</span> <span class="n">move</span><span class="p">,</span> <span class="n">score</span>
+        
+        <span class="k">return</span> <span class="n">move</span></div>
+
+    
+    <span class="k">def</span><span class="w"> </span><span class="nf">ping</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Send ping and wait for pong response.</span>
+<span class="sd">        </span>
+<span class="sd">        Returns:</span>
+<span class="sd">            True if engine responded, False on timeout</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_send</span><span class="p">(</span><span class="s2">&quot;ping&quot;</span><span class="p">)</span>
+        <span class="n">line</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_read_line</span><span class="p">(</span><span class="n">timeout</span><span class="o">=</span><span class="mf">5.0</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">line</span><span class="p">:</span>
+            <span class="n">cmd</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">parse_hub_line</span><span class="p">(</span><span class="n">line</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">cmd</span> <span class="o">==</span> <span class="s2">&quot;pong&quot;</span>
+        <span class="k">return</span> <span class="kc">False</span>
+    
+    <span class="k">def</span><span class="w"> </span><span class="nf">_send</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">command</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Send a command to the engine.&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">process</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">process</span><span class="o">.</span><span class="n">stdin</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span><span class="s2">&quot;Engine process not running&quot;</span><span class="p">)</span>
+        
+        <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;&gt;&gt; </span><span class="si">{</span><span class="n">command</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">process</span><span class="o">.</span><span class="n">stdin</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">command</span> <span class="o">+</span> <span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">process</span><span class="o">.</span><span class="n">stdin</span><span class="o">.</span><span class="n">flush</span><span class="p">()</span>
+    
+    <span class="k">def</span><span class="w"> </span><span class="nf">_read_line</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">timeout</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Read a line from engine stdout with timeout.</span>
+<span class="sd">        </span>
+<span class="sd">        Returns:</span>
+<span class="sd">            Line string (stripped) or None on timeout</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">process</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">process</span><span class="o">.</span><span class="n">stdout</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">None</span>
+        
+        <span class="c1"># Simple blocking read (for now, no async)</span>
+        <span class="c1"># In production, consider using select() or threading for proper timeout</span>
+        <span class="kn">import</span><span class="w"> </span><span class="nn">select</span>
+        <span class="kn">import</span><span class="w"> </span><span class="nn">sys</span>
+        
+        <span class="k">if</span> <span class="n">sys</span><span class="o">.</span><span class="n">platform</span> <span class="o">==</span> <span class="s2">&quot;win32&quot;</span><span class="p">:</span>
+            <span class="c1"># Windows doesn&#39;t support select on pipes, use blocking read</span>
+            <span class="c1"># The engine should respond quickly enough</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">line</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">process</span><span class="o">.</span><span class="n">stdout</span><span class="o">.</span><span class="n">readline</span><span class="p">()</span>
+                <span class="k">if</span> <span class="n">line</span><span class="p">:</span>
+                    <span class="n">line</span> <span class="o">=</span> <span class="n">line</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+                    <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;&lt;&lt; </span><span class="si">{</span><span class="n">line</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+                    <span class="k">return</span> <span class="n">line</span>
+            <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
+                <span class="k">pass</span>
+            <span class="k">return</span> <span class="kc">None</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="c1"># Unix: use select for timeout</span>
+            <span class="n">ready</span><span class="p">,</span> <span class="n">_</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">select</span><span class="o">.</span><span class="n">select</span><span class="p">([</span><span class="bp">self</span><span class="o">.</span><span class="n">process</span><span class="o">.</span><span class="n">stdout</span><span class="p">],</span> <span class="p">[],</span> <span class="p">[],</span> <span class="n">timeout</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">ready</span><span class="p">:</span>
+                <span class="n">line</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">process</span><span class="o">.</span><span class="n">stdout</span><span class="o">.</span><span class="n">readline</span><span class="p">()</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;&lt;&lt; </span><span class="si">{</span><span class="n">line</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+                <span class="k">return</span> <span class="n">line</span>
+            <span class="k">return</span> <span class="kc">None</span>
+    
+    <span class="k">def</span><span class="w"> </span><span class="nf">_read_search_result</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">SearchResult</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Read search output until &#39;done&#39; line is received.</span>
+<span class="sd">        </span>
+<span class="sd">        Returns:</span>
+<span class="sd">            SearchResult with move and search info</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">result</span> <span class="o">=</span> <span class="n">SearchResult</span><span class="p">(</span><span class="n">move</span><span class="o">=</span><span class="s2">&quot;&quot;</span><span class="p">,</span> <span class="n">info</span><span class="o">=</span><span class="n">SearchInfo</span><span class="p">())</span>
+        
+        <span class="k">while</span> <span class="kc">True</span><span class="p">:</span>
+            <span class="n">timeout_val</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">time_limit</span> <span class="o">*</span> <span class="mi">2</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">time_limit</span> <span class="k">else</span> <span class="mf">30.0</span>
+            <span class="n">line</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_read_line</span><span class="p">(</span><span class="n">timeout</span><span class="o">=</span><span class="nb">max</span><span class="p">(</span><span class="n">timeout_val</span><span class="p">,</span> <span class="mf">30.0</span><span class="p">))</span>
+            <span class="k">if</span> <span class="n">line</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="k">continue</span>
+            
+            <span class="n">cmd</span><span class="p">,</span> <span class="n">args</span> <span class="o">=</span> <span class="n">parse_hub_line</span><span class="p">(</span><span class="n">line</span><span class="p">)</span>
+            
+            <span class="k">if</span> <span class="n">cmd</span> <span class="o">==</span> <span class="s2">&quot;info&quot;</span><span class="p">:</span>
+                <span class="c1"># Update search info</span>
+                <span class="k">if</span> <span class="s2">&quot;depth&quot;</span> <span class="ow">in</span> <span class="n">args</span><span class="p">:</span>
+                    <span class="n">result</span><span class="o">.</span><span class="n">info</span><span class="o">.</span><span class="n">depth</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">args</span><span class="p">[</span><span class="s2">&quot;depth&quot;</span><span class="p">])</span>
+                <span class="k">if</span> <span class="s2">&quot;mean-depth&quot;</span> <span class="ow">in</span> <span class="n">args</span><span class="p">:</span>
+                    <span class="n">result</span><span class="o">.</span><span class="n">info</span><span class="o">.</span><span class="n">mean_depth</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">args</span><span class="p">[</span><span class="s2">&quot;mean-depth&quot;</span><span class="p">])</span>
+                <span class="k">if</span> <span class="s2">&quot;score&quot;</span> <span class="ow">in</span> <span class="n">args</span><span class="p">:</span>
+                    <span class="n">result</span><span class="o">.</span><span class="n">info</span><span class="o">.</span><span class="n">score</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">args</span><span class="p">[</span><span class="s2">&quot;score&quot;</span><span class="p">])</span>
+                <span class="k">if</span> <span class="s2">&quot;nodes&quot;</span> <span class="ow">in</span> <span class="n">args</span><span class="p">:</span>
+                    <span class="n">result</span><span class="o">.</span><span class="n">info</span><span class="o">.</span><span class="n">nodes</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">args</span><span class="p">[</span><span class="s2">&quot;nodes&quot;</span><span class="p">])</span>
+                <span class="k">if</span> <span class="s2">&quot;time&quot;</span> <span class="ow">in</span> <span class="n">args</span><span class="p">:</span>
+                    <span class="n">result</span><span class="o">.</span><span class="n">info</span><span class="o">.</span><span class="n">time</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">args</span><span class="p">[</span><span class="s2">&quot;time&quot;</span><span class="p">])</span>
+                <span class="k">if</span> <span class="s2">&quot;nps&quot;</span> <span class="ow">in</span> <span class="n">args</span><span class="p">:</span>
+                    <span class="n">result</span><span class="o">.</span><span class="n">info</span><span class="o">.</span><span class="n">nps</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">args</span><span class="p">[</span><span class="s2">&quot;nps&quot;</span><span class="p">])</span>
+                <span class="k">if</span> <span class="s2">&quot;pv&quot;</span> <span class="ow">in</span> <span class="n">args</span><span class="p">:</span>
+                    <span class="n">result</span><span class="o">.</span><span class="n">info</span><span class="o">.</span><span class="n">pv</span> <span class="o">=</span> <span class="n">args</span><span class="p">[</span><span class="s2">&quot;pv&quot;</span><span class="p">]</span>
+            
+            <span class="k">elif</span> <span class="n">cmd</span> <span class="o">==</span> <span class="s2">&quot;done&quot;</span><span class="p">:</span>
+                <span class="n">result</span><span class="o">.</span><span class="n">move</span> <span class="o">=</span> <span class="n">args</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;move&quot;</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">)</span>
+                <span class="n">result</span><span class="o">.</span><span class="n">ponder</span> <span class="o">=</span> <span class="n">args</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;ponder&quot;</span><span class="p">)</span>
+                <span class="k">if</span> <span class="ow">not</span> <span class="n">result</span><span class="o">.</span><span class="n">move</span><span class="p">:</span>
+                    <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span><span class="s2">&quot;Engine returned &#39;done&#39; without move&quot;</span><span class="p">)</span>
+                <span class="k">break</span>
+            
+            <span class="k">elif</span> <span class="n">cmd</span> <span class="o">==</span> <span class="s2">&quot;error&quot;</span><span class="p">:</span>
+                <span class="n">msg</span> <span class="o">=</span> <span class="n">args</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;message&quot;</span><span class="p">,</span> <span class="s2">&quot;Unknown error&quot;</span><span class="p">)</span>
+                <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Engine error: </span><span class="si">{</span><span class="n">msg</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        
+        <span class="k">return</span> <span class="n">result</span>
+    
+    <span class="k">def</span><span class="w"> </span><span class="nf">_get_king_move_history</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">board</span><span class="p">:</span> <span class="n">BaseBoard</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="n">Move</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Get king moves from move history for repetition detection.</span>
+<span class="sd">        </span>
+<span class="sd">        Hub protocol only needs king moves (reversible moves) for</span>
+<span class="sd">        detecting draw by repetition.</span>
+<span class="sd">        </span>
+<span class="sd">        Returns:</span>
+<span class="sd">            List of king moves from the move stack</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">king_moves</span> <span class="o">=</span> <span class="p">[]</span>
+        
+        <span class="k">for</span> <span class="n">move</span> <span class="ow">in</span> <span class="n">board</span><span class="o">.</span><span class="n">_moves_stack</span><span class="p">:</span>
+            <span class="c1"># A move is a king move if:</span>
+            <span class="c1"># - No captures (non-reversible)</span>
+            <span class="c1"># - The piece at destination is a king (was a king before moving)</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">move</span><span class="o">.</span><span class="n">captured_list</span><span class="p">:</span>
+                <span class="c1"># Check if it was a king move by looking at current position</span>
+                <span class="c1"># (the king is now at the last square of the move)</span>
+                <span class="n">end_sq</span> <span class="o">=</span> <span class="n">move</span><span class="o">.</span><span class="n">square_list</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+                <span class="n">piece</span> <span class="o">=</span> <span class="n">board</span><span class="o">.</span><span class="n">position</span><span class="p">[</span><span class="n">end_sq</span><span class="p">]</span>
+                <span class="k">if</span> <span class="nb">abs</span><span class="p">(</span><span class="n">piece</span><span class="p">)</span> <span class="o">==</span> <span class="n">Figure</span><span class="o">.</span><span class="n">KING</span><span class="o">.</span><span class="n">value</span><span class="p">:</span>
+                    <span class="n">king_moves</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">move</span><span class="p">)</span>
+        
+        <span class="k">return</span> <span class="n">king_moves</span></div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2023-2024, Michal Skibinski.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

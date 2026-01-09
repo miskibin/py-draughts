@@ -1,0 +1,368 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="./">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Benchmarking (Internal) &mdash; py-draughts 1.5.8 documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=03e43079" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="_static/jquery.js?v=5d32c60e"></script>
+      <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="_static/documentation_options.js?v=c334614b"></script>
+      <script src="_static/doctools.js?v=9bcbadda"></script>
+      <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="prev" title="Server" href="server.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="index.html" class="icon icon-home">
+            py-draughts
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul>
+<li class="toctree-l1"><a class="reference internal" href="core.html">Core API</a></li>
+<li class="toctree-l1"><a class="reference internal" href="engine.html">Engine</a></li>
+<li class="toctree-l1"><a class="reference internal" href="ai.html">Writing Your Own AI</a></li>
+<li class="toctree-l1"><a class="reference internal" href="svg.html">SVG Rendering</a></li>
+<li class="toctree-l1"><a class="reference internal" href="server.html">Server</a></li>
+</ul>
+<ul class="current">
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Benchmarking (Internal)</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#performance-results">Performance Results</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#legal-moves-generation">Legal Moves Generation</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#engine-depth-performance">Engine Depth Performance</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#overview">Overview</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#workflow">Workflow</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#configuration">Configuration</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#results">Results</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#optimization-workflow">Optimization Workflow</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#profiling">Profiling</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#generating-benchmark-charts">Generating Benchmark Charts</a></li>
+</ul>
+</li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">py-draughts</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">Benchmarking (Internal)</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/benchmarking.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="benchmarking-internal">
+<h1>Benchmarking (Internal)<a class="headerlink" href="#benchmarking-internal" title="Link to this heading"></a></h1>
+<p>This page documents the internal benchmarking tools used for performance testing py-draughts.</p>
+<section id="performance-results">
+<h2>Performance Results<a class="headerlink" href="#performance-results" title="Link to this heading"></a></h2>
+<p>The following benchmarks were run on January 7, 2026.</p>
+<section id="legal-moves-generation">
+<h3>Legal Moves Generation<a class="headerlink" href="#legal-moves-generation" title="Link to this heading"></a></h3>
+<p>Performance of the legal moves generator across different board positions:</p>
+<a class="reference internal image-reference" href="_images/legal_moves_benchmark.png"><img alt="Legal Moves Generation Benchmark" class="align-center" src="_images/legal_moves_benchmark.png" style="width: 80%;" />
+</a>
+<table class="docutils align-default" id="id1">
+<caption><span class="caption-text">Legal Moves Generation Performance</span><a class="headerlink" href="#id1" title="Link to this table"></a></caption>
+<colgroup>
+<col style="width: 42.9%" />
+<col style="width: 28.6%" />
+<col style="width: 28.6%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Position Type</p></th>
+<th class="head"><p>Time (µs)</p></th>
+<th class="head"><p>Move Count</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>Opening</p></td>
+<td><p>11.93</p></td>
+<td><p>9</p></td>
+</tr>
+<tr class="row-odd"><td><p>King Captures</p></td>
+<td><p>28.10</p></td>
+<td><p>2</p></td>
+</tr>
+<tr class="row-even"><td><p>Midgame</p></td>
+<td><p>9.36</p></td>
+<td><p>9</p></td>
+</tr>
+<tr class="row-odd"><td><p>Complex</p></td>
+<td><p>12.64</p></td>
+<td><p>7</p></td>
+</tr>
+<tr class="row-even"><td><p>Start Position</p></td>
+<td><p>24.90</p></td>
+<td><p>9</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="engine-depth-performance">
+<h3>Engine Depth Performance<a class="headerlink" href="#engine-depth-performance" title="Link to this heading"></a></h3>
+<p>AlphaBeta engine search performance at different depths:</p>
+<a class="reference internal image-reference" href="_images/engine_benchmark.png"><img alt="Engine Depth Benchmark" class="align-center" src="_images/engine_benchmark.png" style="width: 80%;" />
+</a>
+<table class="docutils align-default" id="id2">
+<caption><span class="caption-text">Engine Depth Performance</span><a class="headerlink" href="#id2" title="Link to this table"></a></caption>
+<colgroup>
+<col style="width: 21.4%" />
+<col style="width: 35.7%" />
+<col style="width: 42.9%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Depth</p></th>
+<th class="head"><p>Avg Time</p></th>
+<th class="head"><p>Avg Nodes</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>1</p></td>
+<td><p>1.03 ms</p></td>
+<td><p>27</p></td>
+</tr>
+<tr class="row-odd"><td><p>2</p></td>
+<td><p>8.37 ms</p></td>
+<td><p>117</p></td>
+</tr>
+<tr class="row-even"><td><p>3</p></td>
+<td><p>12.64 ms</p></td>
+<td><p>312</p></td>
+</tr>
+<tr class="row-odd"><td><p>4</p></td>
+<td><p>35.92 ms</p></td>
+<td><p>971</p></td>
+</tr>
+<tr class="row-even"><td><p>5</p></td>
+<td><p>130.32 ms</p></td>
+<td><p>3,525</p></td>
+</tr>
+<tr class="row-odd"><td><p>6</p></td>
+<td><p>349.03 ms</p></td>
+<td><p>9,537</p></td>
+</tr>
+<tr class="row-even"><td><p>7</p></td>
+<td><p>932.85 ms</p></td>
+<td><p>25,202</p></td>
+</tr>
+<tr class="row-odd"><td><p>8</p></td>
+<td><p>4.90 s</p></td>
+<td><p>122,168</p></td>
+</tr>
+<tr class="row-even"><td><p>9</p></td>
+<td><p>5.93 s</p></td>
+<td><p>153,152</p></td>
+</tr>
+<tr class="row-odd"><td><p>10</p></td>
+<td><p>25.90 s</p></td>
+<td><p>641,085</p></td>
+</tr>
+</tbody>
+</table>
+<a class="reference internal image-reference" href="_images/engine_depth_time.png"><img alt="Engine Search Time by Depth" class="align-center" src="_images/engine_depth_time.png" style="width: 80%;" />
+</a>
+<a class="reference internal image-reference" href="_images/engine_depth_nodes.png"><img alt="Engine Nodes Searched by Depth" class="align-center" src="_images/engine_depth_nodes.png" style="width: 80%;" />
+</a>
+</section>
+</section>
+<section id="overview">
+<h2>Overview<a class="headerlink" href="#overview" title="Link to this heading"></a></h2>
+<p>The benchmarking system compares performance between different versions of py-draughts by:</p>
+<ol class="arabic simple">
+<li><p>Creating snapshots (wheel files) of the current version</p></li>
+<li><p>Running benchmarks comparing a snapshot against the current source code</p></li>
+</ol>
+</section>
+<section id="workflow">
+<h2>Workflow<a class="headerlink" href="#workflow" title="Link to this heading"></a></h2>
+<ol class="arabic">
+<li><p><strong>Create a Snapshot</strong></p>
+<p>First, create a snapshot of the version you want to use as baseline:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python<span class="w"> </span>tools/create_snapshot.py
+</pre></div>
+</div>
+<p>This will:</p>
+<ul class="simple">
+<li><p>Build a wheel file from the current source</p></li>
+<li><p>Save it to <code class="docutils literal notranslate"><span class="pre">snapshots/snapshot_YYYYMMDD_HHMMSS/</span></code></p></li>
+<li><p>Store metadata (git commit, timestamp) in <code class="docutils literal notranslate"><span class="pre">metadata.json</span></code></p></li>
+</ul>
+</li>
+<li><p><strong>Compare Versions</strong></p>
+<p>Then compare the snapshot against your current (modified) source:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># Compare latest snapshot vs current source</span>
+python<span class="w"> </span>tools/compare_versions.py
+
+<span class="c1"># Compare specific snapshot vs current source</span>
+python<span class="w"> </span>tools/compare_versions.py<span class="w"> </span>snapshots/snapshot_20251231_125057
+</pre></div>
+</div>
+<p>The comparison runs:</p>
+<ul class="simple">
+<li><p><strong>Legal moves benchmark</strong>: Measures time to generate legal moves from various positions</p></li>
+<li><p><strong>Engine match</strong>: Plays games between engines to compare move quality and speed</p></li>
+</ul>
+</li>
+</ol>
+</section>
+<section id="configuration">
+<h2>Configuration<a class="headerlink" href="#configuration" title="Link to this heading"></a></h2>
+<p>The benchmark configuration is defined at the top of <code class="docutils literal notranslate"><span class="pre">tools/compare_versions.py</span></code>:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">WARMUP_ROUNDS</span> <span class="o">=</span> <span class="mi">5</span>
+<span class="n">BENCHMARK_ROUNDS</span> <span class="o">=</span> <span class="mi">10</span>
+<span class="n">BENCHMARK_ITERATIONS</span> <span class="o">=</span> <span class="mi">10</span>
+<span class="n">ENGINE_DEPTH</span> <span class="o">=</span> <span class="mi">2</span>
+<span class="n">NUM_GAMES</span> <span class="o">=</span> <span class="mi">20</span>
+</pre></div>
+</div>
+</section>
+<section id="results">
+<h2>Results<a class="headerlink" href="#results" title="Link to this heading"></a></h2>
+<p>Benchmark results are automatically appended to <code class="docutils literal notranslate"><span class="pre">benchmark_results.csv</span></code> in the project root.</p>
+</section>
+<section id="optimization-workflow">
+<h2>Optimization Workflow<a class="headerlink" href="#optimization-workflow" title="Link to this heading"></a></h2>
+<p>Recommended workflow for improving engine performance:</p>
+<ol class="arabic">
+<li><p><strong>Profile</strong></p>
+<p>Run profiling to identify bottlenecks:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># For general engine profiling</span>
+python<span class="w"> </span>tools/profile_engine_detailed.py
+
+<span class="c1"># For legal moves generation specifically</span>
+python<span class="w"> </span>tools/profile_legal_moves.py
+</pre></div>
+</div>
+</li>
+<li><p><strong>Improve</strong></p>
+<p>Make code changes to address identified bottlenecks.</p>
+</li>
+<li><p><strong>Verify Profile</strong></p>
+<p>Run the profiling script again to verify local improvements.</p>
+</li>
+<li><p><strong>Test</strong></p>
+<p>Ensure no regressions in functionality:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>pytest<span class="w"> </span>.
+</pre></div>
+</div>
+</li>
+<li><p><strong>Benchmark</strong></p>
+<p>Compare against the baseline snapshot to verify performance gains:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python<span class="w"> </span>tools/compare_versions.py
+</pre></div>
+</div>
+</li>
+<li><p><strong>Snapshot</strong></p>
+<p>If satisfied with the results, create a new snapshot to serve as the next baseline:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python<span class="w"> </span>tools/create_snapshot.py
+</pre></div>
+</div>
+</li>
+</ol>
+</section>
+<section id="profiling">
+<h2>Profiling<a class="headerlink" href="#profiling" title="Link to this heading"></a></h2>
+<p>For detailed profiling of specific functions, use:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python<span class="w"> </span>tools/profile_engine.py
+</pre></div>
+</div>
+<p>Or for more detailed analysis:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python<span class="w"> </span>tools/profile_engine_detailed.py<span class="w"> </span><span class="m">5</span><span class="w">  </span><span class="c1"># depth 5</span>
+</pre></div>
+</div>
+<p>This uses Python’s <code class="docutils literal notranslate"><span class="pre">cProfile</span></code> to identify bottlenecks in the engine.</p>
+</section>
+<section id="generating-benchmark-charts">
+<h2>Generating Benchmark Charts<a class="headerlink" href="#generating-benchmark-charts" title="Link to this heading"></a></h2>
+<p>To regenerate the benchmark charts and tables for documentation:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python<span class="w"> </span>tools/generate_benchmark_charts.py
+</pre></div>
+</div>
+<p>This will:</p>
+<ul class="simple">
+<li><p>Run legal moves generation benchmarks across various position types</p></li>
+<li><p>Run engine depth benchmarks from depth 1 to 10</p></li>
+<li><p>Generate PNG charts in <code class="docutils literal notranslate"><span class="pre">docs/source/_static/</span></code></p></li>
+<li><p>Output RST table content for copying into documentation</p></li>
+</ul>
+<p>The generated charts include:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">legal_moves_benchmark.png</span></code> - Bar chart of legal moves generation time by position type</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">engine_benchmark.png</span></code> - Combined time and nodes chart for engine depths</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">engine_depth_time.png</span></code> - Logarithmic time chart by depth</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">engine_depth_nodes.png</span></code> - Logarithmic nodes searched chart by depth</p></li>
+</ul>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="server.html" class="btn btn-neutral float-left" title="Server" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2023-2024, Michal Skibinski.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>
