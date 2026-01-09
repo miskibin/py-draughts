@@ -213,6 +213,9 @@ server = Server(
 server.run() # Open http://localhost:8000
 ```
 
+<img width="1914" height="1022" alt="image" src="https://github.com/user-attachments/assets/20fefe48-c0d8-470d-b7d8-b9fd4e9d72e0" />
+
+
 ## [Performance](https://miskibin.github.io/py-draughts/benchmarking.html)
 
 Legal moves generation in **~10-30 microseconds**:
