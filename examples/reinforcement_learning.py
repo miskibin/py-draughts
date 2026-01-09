@@ -1,9 +1,8 @@
 """
-Reinforcement Learning Example for py-draughts.
-A2C with improvements: bigger network, LR schedule, reward shaping.
+Reinforcement Learning Example - Eval-Based Training.
+Uses AlphaBetaEngine.get_eval() for dense reward signal.
 """
 import random
-from dataclasses import dataclass
 import numpy as np
 
 try:
@@ -15,206 +14,215 @@ except ImportError:
     print("pip install torch")
     exit(1)
 
-from draughts import Color, BaseAgent
+from draughts import Color, AlphaBetaEngine
 from draughts.boards.american import Board
+from draughts.benchmark import Benchmark
 
 
-class ActorCritic(nn.Module):
-    def __init__(self, num_sq=32, hidden=256):  # Bigger network
+class PolicyNet(nn.Module):
+    """Larger network: 4 hidden layers, 512 units each."""
+    def __init__(self, sq=32, h=512):
         super().__init__()
         self.net = nn.Sequential(
-            nn.Flatten(), 
-            nn.Linear(4*num_sq, hidden), nn.ReLU(),
-            nn.Linear(hidden, hidden), nn.ReLU(),
-            nn.Linear(hidden, hidden // 2), nn.ReLU(),  # Extra layer
+            nn.Flatten(),
+            nn.Linear(4*sq, h), nn.ReLU(), nn.Dropout(0.1),
+            nn.Linear(h, h), nn.ReLU(), nn.Dropout(0.1),
+            nn.Linear(h, h), nn.ReLU(),
+            nn.Linear(h, h), nn.ReLU(),
         )
-        self.policy = nn.Linear(hidden // 2, num_sq * num_sq)
-        self.value = nn.Linear(hidden // 2, 1)
+        self.pi = nn.Linear(h, sq*sq)
     
     def forward(self, x):
-        f = self.net(x)
-        return self.policy(f), self.value(f).squeeze(-1)
+        return self.pi(self.net(x))
 
 
-@dataclass
-class Step:
-    state: np.ndarray
-    action: int
-    reward: float = 0.0
-
-
-def count_pieces(board):
-    """Count pieces for each side."""
-    tensor = board.to_tensor()
-    white = tensor[0].sum() + tensor[1].sum() * 2  # men + kings*2
-    black = tensor[2].sum() + tensor[3].sum() * 2
-    return white, black
-
-
-@torch.no_grad()
-def play_game(net, temp=1.0):
-    """Play game with reward shaping for captures."""
-    board = Board()
-    white, black = [], []
-    prev_w_pieces, prev_b_pieces = count_pieces(board)
+class NNEngine:
+    """Wrap neural net as Engine for benchmarking."""
+    name = "NeuralNet"
+    depth_limit = time_limit = None
     
-    while not board.game_over:
-        state = board.to_tensor()
-        x = torch.from_numpy(state).unsqueeze(0)
-        logits, _ = net(x)
-        logits = logits.squeeze(0)
-        
-        mask = torch.from_numpy(board.legal_moves_mask())
-        logits[~mask] = -1e9
-        
-        probs = F.softmax(logits / temp, dim=0)
-        action = torch.multinomial(probs, 1).item()
-        
-        current_turn = board.turn
-        step = Step(state, action)
-        (white if current_turn == Color.WHITE else black).append(step)
-        
-        board.push(board.index_to_move(action))
-        
-        # Reward shaping: small reward for capturing pieces
-        w_pieces, b_pieces = count_pieces(board)
-        if current_turn == Color.WHITE:
-            capture_reward = (prev_b_pieces - b_pieces) * 0.1  # Reward for capturing
-            if white: white[-1].reward += capture_reward
-        else:
-            capture_reward = (prev_w_pieces - w_pieces) * 0.1
-            if black: black[-1].reward += capture_reward
-        prev_w_pieces, prev_b_pieces = w_pieces, b_pieces
+    def __init__(self, net): self.net = net
     
-    # Final rewards
-    if board.result == "1-0":
-        if white: white[-1].reward += 1.0
-        if black: black[-1].reward -= 1.0
-    elif board.result == "0-1":
-        if white: white[-1].reward -= 1.0
-        if black: black[-1].reward += 1.0
+    def get_best_move(self, board):
+        with torch.no_grad():
+            logits = self.net(torch.from_numpy(board.to_tensor()).unsqueeze(0))
+            logits[0][~torch.from_numpy(board.legal_moves_mask())] = -1e9
+            return board.index_to_move(logits[0].argmax().item())
+
+
+def collect_eval_data(engine: AlphaBetaEngine, n_games=200):
+    """Collect (state, action, eval) from engine self-play."""
+    data = []
+    for _ in range(n_games):
+        board = Board()
+        while not board.game_over:
+            state = board.to_tensor()
+            move, eval = engine.get_best_move(board, with_evaluation=True)
+            if isinstance(move, tuple): move = move[0]
+            action = board.move_to_index(move)
+            # Get engine eval for this position (from current player's perspective)
+            data.append((state, action, -eval))
+            board.push(move)
+    return data
+
+
+def train_epoch(net, opt, data, batch_size=128):
+    """Train with cross-entropy + eval-weighted loss."""
+    random.shuffle(data)
+    total_loss, correct, total = 0, 0, 0
     
-    return white + black, board.result
+    for i in range(0, len(data), batch_size):
+        batch = data[i:i+batch_size]
+        states = torch.from_numpy(np.stack([d[0] for d in batch]))
+        actions = torch.tensor([d[1] for d in batch])
+        evals = torch.tensor([d[2] for d in batch], dtype=torch.float32)
+        
+        # Weight by absolute eval - focus on important positions
+        weights = (evals.abs() / 100).clamp(0.5, 2.0)
+        
+        logits = net(states)
+        loss = (F.cross_entropy(logits, actions, reduction='none') * weights).mean()
+        
+        opt.zero_grad(); loss.backward(); opt.step()
+        
+        total_loss += loss.item() * len(batch)
+        correct += (logits.argmax(1) == actions).sum().item()
+        total += len(batch)
+    
+    return total_loss / total, correct / total * 100
 
 
-def compute_returns(steps, gamma=0.99):
-    returns = []
-    G = 0.0
-    for s in reversed(steps):
-        G = s.reward + gamma * G
-        returns.insert(0, G)
-    return torch.tensor(returns, dtype=torch.float32)
-
-
-def train_batch(net, opt, steps, ent_coef=0.02):  # Higher entropy
-    if not steps:
+def rl_train_step(net, opt, engine, n_games=20, temp=0.5):
+    """RL training using engine eval as reward."""
+    all_data = []
+    
+    for _ in range(n_games):
+        board = Board()
+        game_steps = []
+        while not board.game_over:
+            state = board.to_tensor()
+            logits = net(torch.from_numpy(state).unsqueeze(0))[0]
+            mask = torch.from_numpy(board.legal_moves_mask())
+            logits[~mask] = -1e9
+            probs = F.softmax(logits / temp, dim=0)
+            action = torch.multinomial(probs, 1).item()
+            
+            # Get eval BEFORE making move (from current player's view)
+            ev_before = engine.evaluate(board)
+            board.push(board.index_to_move(action))
+            # Get eval AFTER making move (flip sign for opponent's view)
+            ev_after = -engine.evaluate(board) if not board.game_over else 0
+            
+            # Reward = improvement in position
+            reward = (ev_after - ev_before) / 100.0  # Normalize
+            game_steps.append((state, action, reward))
+        
+        all_data.extend(game_steps)
+    
+    if not all_data:
         return 0.0
     
-    states = torch.from_numpy(np.stack([s.state for s in steps]))
-    actions = torch.tensor([s.action for s in steps])
-    returns = compute_returns(steps)
+    states = torch.from_numpy(np.stack([d[0] for d in all_data]))
+    actions = torch.tensor([d[1] for d in all_data])
+    rewards = torch.tensor([d[2] for d in all_data])
+    rewards = (rewards - rewards.mean()) / (rewards.std() + 1e-8)
     
-    logits, values = net(states)
+    logits = net(states)
+    log_p = F.log_softmax(logits, dim=1).gather(1, actions.unsqueeze(1)).squeeze(1)
+    entropy = -(F.softmax(logits, dim=1) * F.log_softmax(logits, dim=1)).sum(1).mean()
+    loss = -(log_p * rewards).mean() - 0.01 * entropy
     
-    log_probs = F.log_softmax(logits, dim=1)
-    action_log_probs = log_probs.gather(1, actions.unsqueeze(1)).squeeze(1)
-    
-    probs = F.softmax(logits, dim=1)
-    entropy = -(probs * log_probs).sum(dim=1).mean()
-    
-    adv = returns - values.detach()
-    adv = (adv - adv.mean()) / (adv.std() + 1e-8)
-    
-    policy_loss = -(action_log_probs * adv).mean()
-    value_loss = F.mse_loss(values, returns)
-    loss = policy_loss + 0.5 * value_loss - ent_coef * entropy
-    
-    opt.zero_grad()
-    loss.backward()
-    torch.nn.utils.clip_grad_norm_(net.parameters(), 0.5)
-    opt.step()
-    
+    opt.zero_grad(); loss.backward()
+    torch.nn.utils.clip_grad_norm_(net.parameters(), 1.0); opt.step()
     return loss.item()
 
 
 @torch.no_grad()
-def evaluate(net, n=30):
-    wins = 0
+def eval_vs(net, opponent, n=100):
+    """Evaluate net vs opponent."""
+    w, l, d = 0, 0, 0
     for i in range(n):
         board = Board()
-        is_white = i % 2 == 0
+        as_white = i % 2 == 0
         while not board.game_over:
-            if (board.turn == Color.WHITE) == is_white:
-                x = torch.from_numpy(board.to_tensor()).unsqueeze(0)
-                logits, _ = net(x)
-                mask = torch.from_numpy(board.legal_moves_mask())
-                logits[0][~mask] = -1e9
-                move = board.index_to_move(logits[0].argmax().item())
+            if (board.turn == Color.WHITE) == as_white:
+                logits = net(torch.from_numpy(board.to_tensor()).unsqueeze(0))[0]
+                logits[~torch.from_numpy(board.legal_moves_mask())] = -1e9
+                board.push(board.index_to_move(logits.argmax().item()))
             else:
-                move = random.choice(board.legal_moves)
-            board.push(move)
-        if (board.result == "1-0" and is_white) or (board.result == "0-1" and not is_white):
-            wins += 1
-    return wins / n * 100
+                move = opponent.get_best_move(board)
+                if isinstance(move, tuple): move = move[0]
+                board.push(move)
+        won = (board.result == "1-0") == as_white
+        lost = (board.result == "0-1") == as_white
+        if won: w += 1
+        elif lost: l += 1
+        else: d += 1
+    return w, l, d
 
 
-def train(episodes=300, games=20, lr_start=3e-3, lr_end=1e-4):
-    print("A2C Training (improved)")
-    print("-" * 40)
+def train():
+    engine = AlphaBetaEngine(depth_limit=4)
+    net = PolicyNet()
+    best_wr, best_state = 0, None
     
-    net = ActorCritic()
-    opt = optim.Adam(net.parameters(), lr=lr_start)
-    scheduler = optim.lr_scheduler.CosineAnnealingLR(opt, episodes, eta_min=lr_end)
+    # Phase 1: Supervised Learning from engine moves + evals
+    print("Phase 1: Learning from AlphaBeta(depth=4) moves + evals")
+    print("=" * 65)
+    print("Collecting training data with evaluations...")
+    data = collect_eval_data(engine, n_games=300)
+    print(f"Collected {len(data)} (state, action, eval) tuples")
     
-    w, l, d = 0, 0, 0
-    best = 0
+    opt = optim.Adam(net.parameters(), lr=1e-3, weight_decay=1e-5)
+    sched = optim.lr_scheduler.StepLR(opt, 20, 0.5)
     
-    for ep in range(1, episodes + 1):
-        temp = max(0.3, 1.0 - 0.8 * (ep / episodes))  # 1.0 -> 0.3
-        
-        all_steps = []
-        for _ in range(games):
-            steps, result = play_game(net, temp)
-            all_steps.extend(steps)
-            if result == "1-0": w += 1
-            elif result == "0-1": l += 1
-            else: d += 1
-        
-        loss = train_batch(net, opt, all_steps)
-        scheduler.step()
-        
-        lr = scheduler.get_last_lr()[0]
-        print(f"Ep {ep:3d} | L: {loss:+.3f} | T: {temp:.2f} | LR: {lr:.1e} | {w}/{l}/{d}", flush=True)
-        
-        if ep % 30 == 0:
-            wr = evaluate(net)
-            if wr > best:
-                best = wr
-                print(f"      ** Eval: {wr:.0f}% (best!)", flush=True)
-            else:
-                print(f"      Eval: {wr:.0f}%", flush=True)
+    print(f"\n{'Ep':>4} | {'Loss':>8} | {'Acc':>6} | {'Eval W/L/D':>12} | {'WR%':>5}")
+    print("-" * 55)
     
-    print(f"\nBest: {best:.0f}%")
+    for ep in range(1, 61):
+        loss, acc = train_epoch(net, opt, data)
+        sched.step()
+        if ep % 5 == 0:
+            ew, el, ed = eval_vs(net, engine, n=100)
+            wr = ew
+            if wr > best_wr:
+                best_wr = wr
+                best_state = {k: v.clone() for k, v in net.state_dict().items()}
+            marker = " *" if wr == best_wr else ""
+            print(f"{ep:4d} | {loss:8.4f} | {acc:5.1f}% | {ew:3d}/{el:3d}/{ed:3d} | {wr:4d}%{marker}")
+    
+    # Phase 2: RL Fine-tuning with eval-based rewards
+    print("\nPhase 2: RL Fine-tuning (eval-based rewards)")
+    print("=" * 65)
+    opt = optim.Adam(net.parameters(), lr=3e-5, weight_decay=1e-5)
+    print(f"{'Ep':>4} | {'Loss':>8} | {'Eval W/L/D':>12} | {'WR%':>5}")
+    print("-" * 45)
+    
+    for ep in range(1, 81):
+        temp = max(0.3, 0.8 - ep / 100)
+        loss = rl_train_step(net, opt, engine, n_games=30, temp=temp)
+        if ep % 10 == 0:
+            ew, el, ed = eval_vs(net, engine, n=100)
+            wr = ew
+            if wr > best_wr:
+                best_wr = wr
+                best_state = {k: v.clone() for k, v in net.state_dict().items()}
+            marker = " *" if wr == best_wr else ""
+            print(f"{ep:4d} | {loss:+8.4f} | {ew:3d}/{el:3d}/{ed:3d} | {wr:4d}%{marker}")
+    
+    print(f"\nBest win rate vs engine: {best_wr}%")
+    
+    if best_state:
+        net.load_state_dict(best_state)
+        torch.save(best_state, "best_draughts_model.pt")
+        print("Saved best model to best_draughts_model.pt")
+    
     return net
 
 
 if __name__ == "__main__":
-    net = train(episodes=150, games=15)
+    net = train()
     
-    print("\nDemo game:")
-    board = Board()
-    n = 0
-    while not board.game_over and n < 100:
-        n += 1
-        if board.turn == Color.WHITE:
-            with torch.no_grad():
-                x = torch.from_numpy(board.to_tensor()).unsqueeze(0)
-                logits, _ = net(x)
-                mask = torch.from_numpy(board.legal_moves_mask())
-                logits[0][~mask] = -1e9
-                move = board.index_to_move(logits[0].argmax().item())
-        else:
-            move = random.choice(board.legal_moves)
-        print(f"{n}. {move}")
-        board.push(move)
-    print(f"Result: {board.result}")
+    print("\n" + "=" * 60)
+    print("Final Benchmark: NeuralNet vs AlphaBeta(depth=2)")
+    print(Benchmark(NNEngine(net), AlphaBetaEngine(depth_limit=2), board_class=Board, games=20).run())

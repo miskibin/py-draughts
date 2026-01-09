@@ -191,4 +191,13 @@ class Board(BaseBoard):
     
     @property
     def is_draw(self) -> bool:
+        """
+        Check if the game is a draw.
+        
+        Draw conditions:
+        - Threefold repetition
+        - 40-move rule: 40 consecutive moves without a capture or promotion
+        """
+        if self.halfmove_clock >= 40:
+            return True
         return self.is_threefold_repetition

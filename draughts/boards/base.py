@@ -299,6 +299,7 @@ class BaseBoard(ABC):
                 return True
         return False
 
+
     @property
     def game_over(self) -> bool:
         """
