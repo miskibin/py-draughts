@@ -298,6 +298,21 @@ Engine search at various depths:
 
 <img src="docs/source/_static/engine_benchmark.png" alt="Engine Benchmark" width="600">
 
+## Testing
+
+Comprehensive test suite with 260+ tests covering all variants and edge cases:
+
+```bash
+pytest test/ -v
+```
+
+Tests include:
+- **Move generation** - Push/pop roundtrips, legal move validation
+- **Real game replays** - PDN games from Lidraughts for all variants
+- **Edge cases** - Complex king captures, promotion mid-capture, draw rules
+- **Engine correctness** - Hash stability, transposition tables, board immutability
+- **All 4 variants** - Standard, American, Frisian, Russian
+
 ## Contributing
 
 Contributions welcome! Please open an issue or submit a pull request.
