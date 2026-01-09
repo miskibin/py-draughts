@@ -3,8 +3,25 @@ from __future__ import annotations
 import random
 from typing import Iterable
 
-from draughts import get_board
-from draughts.boards.standard import Board as StandardBoard
+from draughts import StandardBoard, AmericanBoard, FrisianBoard, RussianBoard
+from draughts.boards.base import BaseBoard
+
+
+# Local variant lookup for test compatibility
+BOARDS = {
+    "standard": StandardBoard,
+    "american": AmericanBoard,
+    "frisian": FrisianBoard,
+    "russian": RussianBoard,
+}
+
+
+def get_board(variant: str, fen: str | None = None) -> BaseBoard:
+    """Create a board by variant name (test helper)."""
+    board_cls = BOARDS[variant]
+    if fen:
+        return board_cls.from_fen(fen)
+    return board_cls()
 
 
 def seeded_range(n: int) -> Iterable[int]:

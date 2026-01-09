@@ -341,14 +341,14 @@ if __name__ == "__main__":
     logger.add(sys.stderr, level="DEBUG")
     
     from draughts.engines import AlphaBetaEngine
-    from draughts import get_board , HubEngine
+    from draughts import StandardBoard , HubEngine
 
     # Example: Two engines playing against each other
     white_engine = AlphaBetaEngine(depth_limit=9)
     black_engine = AlphaBetaEngine(depth_limit=9)
     # black_engine = HubEngine('./scan_engine/scan.exe', depth_limit=6)
     
-    board = get_board("standard")
+    board = StandardBoard()
     server = Server(
         board=board,
         white_engine=white_engine,

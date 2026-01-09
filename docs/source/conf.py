@@ -5,14 +5,14 @@ import sys
 sys.path.insert(0, os.path.abspath("../.."))
 import draughts
 
-# Do not resolve these.
-# autodoc_type_aliases = {
-#     "Square": "chess.Square",
-#     "Color": "chess.Color",
-#     "PieceType": "chess.PieceType",
-#     "Bitboard": "chess.Bitboard",
-#     "IntoSquareSet": "chess.IntoSquareSet",
-# }
+# Type aliases for Sphinx autodoc - show public names, not internal module paths
+autodoc_type_aliases = {
+    "StandardBoard": "draughts.StandardBoard",
+    "AmericanBoard": "draughts.AmericanBoard",
+    "FrisianBoard": "draughts.FrisianBoard",
+    "RussianBoard": "draughts.RussianBoard",
+    "Board": "draughts.Board",
+}
 
 # Autodoc.
 extensions = [

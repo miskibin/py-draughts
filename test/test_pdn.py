@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pytest
 
-from draughts import get_board
+from test._test_helpers import get_board
 
 
 # Discover all variants that have random_pdns.json

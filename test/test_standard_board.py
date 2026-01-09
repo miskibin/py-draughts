@@ -5,7 +5,7 @@ import numpy as np
 import pytest
 
 from draughts.boards.base import BaseBoard, Color, Figure, Move
-from draughts import get_board
+from test._test_helpers import get_board
 from draughts.boards.standard import Board
 
 

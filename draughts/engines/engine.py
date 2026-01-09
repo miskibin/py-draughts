@@ -1,18 +1,33 @@
+"""Base class for draughts engines."""
 from abc import ABC, abstractmethod
 from typing import Optional
 
 from draughts.boards.base import BaseBoard
-from draughts.boards.standard import Board, Move, Figure
+from draughts.move import Move
 
 
 class Engine(ABC):
     """
-    Interface for engine compatible with Server class.
+    Abstract base class for draughts engines.
 
-    This abstract class defines the interface that all engines must implement
-    to be compatible with the Server class for playing games.
+    Implement this interface to create custom engines compatible with
+    the :class:`~draughts.Server` for interactive play and testing.
+
+    Attributes:
+        depth_limit: Maximum search depth (if applicable).
+        time_limit: Maximum time per move in seconds (if applicable).
+        name: Engine name (defaults to class name).
+
+    Example:
+        >>> from draughts import Engine
+        >>> import random
+        >>>
+        >>> class RandomEngine(Engine):
+        ...     def get_best_move(self, board, with_evaluation=False):
+        ...         move = random.choice(list(board.legal_moves))
+        ...         return (move, 0.0) if with_evaluation else move
     """
-    
+
     depth_limit: Optional[int]
     time_limit: Optional[float]
 
@@ -22,36 +37,33 @@ class Engine(ABC):
         time_limit: Optional[float] = None,
     ):
         """
-        Initializes the engine with optional depth and time limits.
-        Args:
-            depth_limit: Maximum search depth for the engine
-            time_limit: Maximum time (in seconds) allowed for move calculation 
-        """
+        Initialize the engine.
 
+        Args:
+            depth_limit: Maximum search depth. Interpretation depends on engine.
+            time_limit: Maximum time in seconds per move.
+        """
         self.depth_limit = depth_limit
         self.time_limit = time_limit
         self.name = self.__class__.__name__
 
     @abstractmethod
     def get_best_move(
-        self, board: BaseBoard, with_evaluation: bool
+        self, board: BaseBoard, with_evaluation: bool = False
     ) -> Move | tuple[Move, float]:
         """
-        Returns best move for given board.
+        Find the best move for the current position.
 
         Args:
-            board: The current board state
-            with_evaluation: If True, return tuple of (move, evaluation score)
+            board: The current board state.
+            with_evaluation: If True, return ``(move, score)`` tuple.
 
         Returns:
-            Either a Move object, or tuple of (Move, float) if with_evaluation=True
+            Best :class:`Move`, or ``(Move, float)`` if ``with_evaluation=True``.
+            Positive scores favor the current player.
 
         Example:
-            >>> engine = AlphaBetaEngine(depth_limit=3)
             >>> move = engine.get_best_move(board)
             >>> move, score = engine.get_best_move(board, with_evaluation=True)
-
-        Note:
-            To get list of legal moves use ``board.legal_moves``
         """
         ...

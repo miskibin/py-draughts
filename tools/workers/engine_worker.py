@@ -19,7 +19,7 @@ import sys
 import time
 
 # Import once at startup
-from draughts import get_board
+from draughts import StandardBoard
 from draughts.engines import AlphaBetaEngine
 from draughts.move import Move
 
@@ -30,7 +30,7 @@ current_board = None
 def handle_new_game(fen: str | None) -> dict:
     """Start a new game from given position."""
     global current_board
-    current_board = get_board("standard", fen) if fen else get_board("standard")
+    current_board = StandardBoard.from_fen(fen) if fen else StandardBoard()
     return {
         "status": "ok",
         "fen": current_board.fen,

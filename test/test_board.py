@@ -3,7 +3,7 @@ import pytest
 
 import draughts.boards.american as SQUARES
 from draughts.boards.base import BaseBoard, Color, Figure, Move
-from draughts import get_board
+from test._test_helpers import get_board
 from draughts.boards.american import Board
 
 

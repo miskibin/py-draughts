@@ -6,7 +6,7 @@ import pytest
 
 import draughts.boards.russian as russian
 from draughts.boards.russian import Board
-from draughts import get_board
+from test._test_helpers import get_board
 from draughts.models import Color, Figure
 from draughts.move import Move
 

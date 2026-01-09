@@ -1,5 +1,5 @@
 import pytest
-from draughts import get_board
+from test._test_helpers import get_board
 from draughts.engines import AlphaBetaEngine
 from draughts.boards.standard import Board as StandardBoard
 

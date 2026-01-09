@@ -15,10 +15,10 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 """
-A draughts library with advanced (customizable) WEB UI move generation and validation,
-PDN parsing and writing. Supports multiple variants of game.
+py-draughts: A fast draughts library with move generation, validation, and AI.
+
+Supports Standard (International), American, Frisian, and Russian variants.
 """
-from typing import Literal, Optional, Type
 import sys
 from loguru import logger
 
@@ -30,42 +30,45 @@ try:
 except ValueError:
     pass  # Already removed
 
-# create board type
+# Board classes
 from draughts.boards.base import BaseBoard
 from draughts.boards.standard import Board as StandardBoard
 from draughts.boards.frisian import Board as FrisianBoard
 from draughts.boards.american import Board as AmericanBoard
 from draughts.boards.russian import Board as RussianBoard
+
+# Convenience alias - Board = StandardBoard (most common variant)
+Board = StandardBoard
+
+# Server
 from draughts.server.server import Server
 
-__all__ = [
-    'BaseBoard', 'StandardBoard', 'FrisianBoard', 'AmericanBoard', 'RussianBoard',
-    'Server', 'Color', 'Figure', 'Move', 'HubEngine', 'get_board', 'svg',
-]
+# Core types
 from draughts import svg
 from draughts.models import Color, Figure
 from draughts.move import Move
+
+# Engines
 from draughts.engines.hub import HubEngine
+from draughts.engines.alpha_beta import AlphaBetaEngine
+from draughts.engines.engine import Engine
 
-
-def get_board(
-    variant: Literal["standard", "american", "frisian", "russian"], fen: Optional[str] = None
-) -> BaseBoard:
-    """
-    Board factory method.
-    - ``standard`` - standard draughts board
-    - ``american`` - american checkers board
-    - ``frisian`` - frisian draughts board
-    - ``russian`` - russian draughts board
-    """
-
-    BOARDS: dict[str, Type[BaseBoard]] = {
-        "standard": StandardBoard,
-        "frisian": FrisianBoard,  # type: ignore[type-abstract]
-        "american": AmericanBoard,
-        "russian": RussianBoard,
-    }
-    board_cls = BOARDS[variant]
-    if fen:
-        return board_cls.from_fen(fen)
-    return board_cls()
+__all__ = [
+    # Boards
+    'BaseBoard',
+    'Board',
+    'StandardBoard',
+    'FrisianBoard',
+    'AmericanBoard',
+    'RussianBoard',
+    # Engines
+    'Engine',
+    'AlphaBetaEngine',
+    'HubEngine',
+    # Core
+    'Color',
+    'Figure',
+    'Move',
+    'Server',
+    'svg',
+]

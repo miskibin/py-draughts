@@ -10,10 +10,10 @@ def main():
     fen = sys.argv[1] if len(sys.argv) > 1 and sys.argv[1] else None
     depth = int(sys.argv[2]) if len(sys.argv) > 2 else 3
     
-    from draughts import get_board
+    from draughts import StandardBoard
     from draughts.engines import AlphaBetaEngine
     
-    board = get_board("standard", fen) if fen else get_board("standard")
+    board = StandardBoard.from_fen(fen) if fen else StandardBoard()
     
     if board.game_over:
         result = {

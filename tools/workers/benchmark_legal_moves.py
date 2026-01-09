@@ -63,7 +63,7 @@ def main():
     
     positions = json.loads(positions_file.read_text())["positions"]
     
-    from draughts import get_board
+    from draughts import StandardBoard
     
     # Pre-clean FENs once
     clean_positions = []
@@ -75,7 +75,7 @@ def main():
     # Warm up - let CPU frequency stabilize
     for _ in range(warmup):
         for fen in clean_positions:
-            board = get_board("standard", fen)
+            board = StandardBoard.from_fen(fen)
             list(board.legal_moves)
     
     # Disable GC during measurement
@@ -86,7 +86,7 @@ def main():
     for _ in range(rounds):
         start = time.perf_counter()
         for fen in clean_positions:
-            board = get_board("standard", fen)
+            board = StandardBoard.from_fen(fen)
             list(board.legal_moves)
         elapsed = time.perf_counter() - start
         times.append(elapsed)

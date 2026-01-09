@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 from fastapi.testclient import TestClient
 
-from draughts import get_board
+from test._test_helpers import get_board
 from draughts.engines import AlphaBetaEngine, Engine
 from draughts.server.server import Server
 from draughts.move import Move
