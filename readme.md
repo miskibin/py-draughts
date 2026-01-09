@@ -12,8 +12,6 @@ Fast, modern draughts library with move generation, validation, PDN support, and
 
 **Features:** multiple variants • Built-in AI engine • (HUB protocol) External engine support ([Scan](https://hjetten.home.xs4all.nl/scan/scan.html), [Kingsrow](http://www.edgilbert.org/Checkers/KingsRow.htm)) • RL/ML ready • Web UI
 
-<img width="1905" alt="Web UI" src="https://github.com/user-attachments/assets/8c3e255e-7fbb-4ae6-a9ab-2445c486c349" />
-
 ## [Installation](https://miskibin.github.io/py-draughts/)
 
 ```bash
