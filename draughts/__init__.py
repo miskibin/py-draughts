@@ -53,6 +53,9 @@ from draughts.engines.hub import HubEngine
 from draughts.engines.alpha_beta import AlphaBetaEngine
 from draughts.engines.engine import Engine
 
+# Benchmarking
+from draughts.benchmark import Benchmark, BenchmarkStats, GameResult, STANDARD_OPENINGS
+
 __all__ = [
     # Boards
     'BaseBoard',
@@ -65,6 +68,11 @@ __all__ = [
     'Engine',
     'AlphaBetaEngine',
     'HubEngine',
+    # Benchmarking
+    'Benchmark',
+    'BenchmarkStats',
+    'GameResult',
+    'STANDARD_OPENINGS',
     # Core
     'Color',
     'Figure',

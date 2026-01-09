@@ -35,6 +35,7 @@ class Engine(ABC):
         self,
         depth_limit: Optional[int] = 6,
         time_limit: Optional[float] = None,
+        name: Optional[str] = None,
     ):
         """
         Initialize the engine.
@@ -42,10 +43,11 @@ class Engine(ABC):
         Args:
             depth_limit: Maximum search depth. Interpretation depends on engine.
             time_limit: Maximum time in seconds per move.
+            name: Custom engine name. Defaults to class name.
         """
         self.depth_limit = depth_limit
         self.time_limit = time_limit
-        self.name = self.__class__.__name__
+        self.name = name or self.__class__.__name__
 
     @abstractmethod
     def get_best_move(

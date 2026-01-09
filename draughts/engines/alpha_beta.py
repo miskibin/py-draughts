@@ -93,7 +93,7 @@ class AlphaBetaEngine(Engine):
         >>> print(f"Best: {move}, Score: {score:.2f}")
     """
 
-    def __init__(self, depth_limit: int = 6, time_limit: float | None = None):
+    def __init__(self, depth_limit: int = 6, time_limit: float | None = None, name: str | None = None):
         """
         Initialize the engine.
 
@@ -102,6 +102,7 @@ class AlphaBetaEngine(Engine):
                 Recommended: 5-6 for play, 7-8 for analysis.
             time_limit: Optional time limit in seconds. If set, search uses
                 iterative deepening and stops when time expires.
+            name: Custom engine name. Defaults to class name.
 
         Example:
             >>> engine = AlphaBetaEngine(depth_limit=6)
@@ -109,6 +110,7 @@ class AlphaBetaEngine(Engine):
         """
         self.depth_limit = depth_limit
         self.time_limit = time_limit
+        self.name = name or self.__class__.__name__
         self.nodes: int = 0
         self.tt: dict[int, tuple[int, int, float, Move | None]] = {}
         self.history: dict[tuple[int, int], int] = {}

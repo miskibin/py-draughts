@@ -198,6 +198,29 @@ Use external engines like [Scan](https://hjetten.home.xs4all.nl/scan/scan.html) 
 Best: 32-28, Score: 0.15
 ```
 
+## [Engine Benchmarking](https://miskibin.github.io/py-draughts/engine.html#benchmarking)
+
+Compare engines against each other with comprehensive statistics:
+
+```python
+>>> from draughts import Benchmark, AlphaBetaEngine
+
+>>> stats = Benchmark(
+...     AlphaBetaEngine(depth_limit=4),
+...     AlphaBetaEngine(depth_limit=6),
+...     games=20
+... ).run()
+
+>>> print(stats)
+============================================================
+  BENCHMARK: AlphaBetaEngine (d=4) vs AlphaBetaEngine (d=6)
+============================================================
+  RESULTS: 2-12-6 (W-L-D)
+  AlphaBetaEngine (d=4) win rate: 25.0%
+  Elo difference: -191
+  ...
+```
+
 ## [Server](https://miskibin.github.io/py-draughts/server.html)
 
 Interactive web interface for playing and engine testing:
