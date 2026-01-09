@@ -146,3 +146,45 @@ def test_engine_populates_transposition_table_for_root(seed):
     assert entry is not None
     _depth, _flag, _score, best_move = entry
     assert best_move in list(board.legal_moves)
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Engine vs Random: depth-1 engine should reliably beat random moves
+# ─────────────────────────────────────────────────────────────────────────────
+
+import random as stdlib_random
+
+
+def _play_engine_vs_random(board, engine, engine_is_white: bool, seed: int) -> str:
+    """Play a game: engine vs random. Returns the result string."""
+    rng = stdlib_random.Random(seed)
+    from draughts.models import Color
+    
+    while not board.game_over:
+        is_engine_turn = (board.turn == Color.WHITE) == engine_is_white
+        if is_engine_turn:
+            move = engine.get_best_move(board)
+        else:
+            legal = list(board.legal_moves)
+            move = rng.choice(legal)
+        board.push(move)
+    
+    return board.result
+
+
+@pytest.mark.parametrize("variant", ["standard", "american", "russian", "frisian"])
+@pytest.mark.parametrize("game_idx", range(5))
+def test_engine_depth1_beats_random(variant, game_idx):
+    """AlphaBeta depth-1 should consistently beat random moves."""
+    board = get_board(variant)
+    engine = AlphaBetaEngine(depth_limit=1)
+    
+    # Alternate colors
+    engine_is_white = game_idx % 2 == 0
+    result = _play_engine_vs_random(board, engine, engine_is_white, seed=game_idx * 100 + hash(variant))
+    
+    # Engine should win or draw (never lose to random)
+    if engine_is_white:
+        assert result in ("1-0"), f"{variant} game {game_idx}: engine (white) got {result}"
+    else:
+        assert result in ("0-1"), f"{variant} game {game_idx}: engine (black) got {result}"

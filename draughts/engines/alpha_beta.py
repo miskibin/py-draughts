@@ -22,37 +22,37 @@ QS_MAX_DEPTH = 8  # Quiescence search depth limit
 MAN_VALUE = 1.0
 KING_VALUE = 2.5  # Kings are very powerful in draughts
 
-# PST Tables for men - rewards advancement (simple linear)
-PST_MAN_BLACK = np.array([
-    0.25, 0.30, 0.30, 0.30, 0.25,   # 0-4: Near promotion
-    0.20, 0.22, 0.25, 0.22, 0.20,   # 5-9
-    0.15, 0.18, 0.20, 0.18, 0.15,   # 10-14
-    0.12, 0.15, 0.18, 0.15, 0.12,   # 15-19
-    0.08, 0.12, 0.15, 0.12, 0.08,   # 20-24
-    0.06, 0.10, 0.12, 0.10, 0.06,   # 25-29
-    0.04, 0.08, 0.10, 0.08, 0.04,   # 30-34
-    0.02, 0.05, 0.08, 0.05, 0.02,   # 35-39
-    0.01, 0.02, 0.04, 0.02, 0.01,   # 40-44
-    0.00, 0.00, 0.00, 0.00, 0.00    # 45-49: Starting rank
-])
 
-PST_MAN_WHITE = PST_MAN_BLACK[::-1]
+def _create_pst_man(num_squares: int, rows: int) -> np.ndarray:
+    """Create piece-square table for men (rewards advancement)."""
+    squares_per_row = num_squares // rows
+    pst = np.zeros(num_squares)
+    for i in range(num_squares):
+        row = i // squares_per_row
+        # Higher value for squares closer to promotion (row 0)
+        advancement_bonus = (rows - 1 - row) / (rows - 1) * 0.3
+        # Small center bonus
+        col = i % squares_per_row
+        center_bonus = (1 - abs(col - squares_per_row / 2) / (squares_per_row / 2)) * 0.05
+        pst[i] = advancement_bonus + center_bonus
+    return pst
 
-# King PST - strongly prefers center, avoids edges
-PST_KING_BLACK = np.array([
-    0.00, 0.05, 0.05, 0.05, 0.00,
-    0.05, 0.10, 0.12, 0.10, 0.05,
-    0.05, 0.12, 0.15, 0.12, 0.05,
-    0.08, 0.15, 0.20, 0.15, 0.08,
-    0.10, 0.18, 0.25, 0.18, 0.10,
-    0.10, 0.18, 0.25, 0.18, 0.10,
-    0.08, 0.15, 0.20, 0.15, 0.08,
-    0.05, 0.12, 0.15, 0.12, 0.05,
-    0.05, 0.10, 0.12, 0.10, 0.05,
-    0.00, 0.05, 0.05, 0.05, 0.00
-])
 
-PST_KING_WHITE = PST_KING_BLACK[::-1]
+def _create_pst_king(num_squares: int, rows: int) -> np.ndarray:
+    """Create piece-square table for kings (prefers center)."""
+    squares_per_row = num_squares // rows
+    pst = np.zeros(num_squares)
+    center_row = rows / 2
+    center_col = squares_per_row / 2
+    for i in range(num_squares):
+        row = i // squares_per_row
+        col = i % squares_per_row
+        # Distance from center (normalized)
+        row_dist = abs(row - center_row) / center_row
+        col_dist = abs(col - center_col) / center_col
+        # Higher value for center squares
+        pst[i] = (1 - (row_dist + col_dist) / 2) * 0.25
+    return pst
 
 
 class AlphaBetaEngine(Engine):
@@ -60,7 +60,7 @@ class AlphaBetaEngine(Engine):
     AI engine using Negamax search with alpha-beta pruning.
 
     This engine implements a strong draughts AI with several optimizations
-    for efficient tree search.
+    for efficient tree search. Works with any board variant (Standard, American, etc.).
 
     **Algorithm:**
 
@@ -87,6 +87,12 @@ class AlphaBetaEngine(Engine):
         >>> engine = AlphaBetaEngine(depth_limit=5)
         >>> move = engine.get_best_move(board)
         >>> board.push(move)
+
+    Example with American Draughts:
+        >>> from draughts.boards.american import Board
+        >>> board = Board()
+        >>> engine = AlphaBetaEngine(depth_limit=6)
+        >>> move = engine.get_best_move(board)
 
     Example with evaluation:
         >>> move, score = engine.get_best_move(board, with_evaluation=True)
@@ -116,10 +122,18 @@ class AlphaBetaEngine(Engine):
         self.history: dict[tuple[int, int], int] = {}
         self.killers: dict[int, list[Move]] = {}
 
-        # Zobrist Hashing (deterministic per-engine; does not perturb global RNG)
+        # Zobrist Hashing - initialized lazily per board size
         self._zobrist_rng = random.Random(0)
-        self.zobrist_table = self._init_zobrist()
-        self.zobrist_turn = self._zobrist_rng.getrandbits(64)
+        self._zobrist_tables: dict[int, list[list[int]]] = {}  # num_squares -> table
+        self._zobrist_turn = self._zobrist_rng.getrandbits(64)
+        
+        # PST tables - cached per board configuration
+        self._pst_cache: dict[tuple[int, int], tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]] = {}
+        
+        # Current search state (set at start of search, used during eval)
+        # Initialize with standard 50-square defaults so evaluate() works standalone
+        self._current_zobrist: list[list[int]] = self._get_zobrist_table(50)
+        self._current_pst: tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray] = self._get_pst_tables(50, 10)
 
         self.start_time: float = 0.0
         self.stop_search: bool = False
@@ -133,22 +147,50 @@ class AlphaBetaEngine(Engine):
     def inspected_nodes(self, value: int) -> None:
         self.nodes = value
 
-    def _init_zobrist(self):
-        # 50 squares, 5 piece types
-        table = [[self._zobrist_rng.getrandbits(64) for _ in range(5)] for _ in range(50)]
-        return table
+    def _get_zobrist_table(self, num_squares: int) -> list[list[int]]:
+        """Get or create Zobrist table for given board size."""
+        if num_squares not in self._zobrist_tables:
+            # Create new table with deterministic RNG
+            rng = random.Random(num_squares)  # Seed based on size for consistency
+            table = [[rng.getrandbits(64) for _ in range(5)] for _ in range(num_squares)]
+            self._zobrist_tables[num_squares] = table
+        return self._zobrist_tables[num_squares]
+
+    def _get_pst_tables(self, num_squares: int, rows: int) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+        """Get or create PST tables for given board configuration."""
+        key = (num_squares, rows)
+        if key not in self._pst_cache:
+            pst_man_black = _create_pst_man(num_squares, rows)
+            pst_man_white = pst_man_black[::-1].copy()
+            pst_king_black = _create_pst_king(num_squares, rows)
+            pst_king_white = pst_king_black[::-1].copy()
+            self._pst_cache[key] = (pst_man_black, pst_man_white, pst_king_black, pst_king_white)
+        return self._pst_cache[key]
 
     def _get_piece_index(self, piece):
         return piece + 2
 
-    def compute_hash(self, board: BaseBoard) -> int:
-        """Compute Zobrist hash for a board position."""
+    def _compute_hash_fast(self, board: BaseBoard) -> int:
+        """Compute hash using cached zobrist table."""
         h = 0
         for i, piece in enumerate(board._pos):
             if piece != 0:
-                h ^= self.zobrist_table[i][self._get_piece_index(piece)]
+                h ^= self._current_zobrist[i][self._get_piece_index(piece)]
         if board.turn == Color.BLACK:
-            h ^= self.zobrist_turn
+            h ^= self._zobrist_turn
+        return h
+
+    def compute_hash(self, board: BaseBoard) -> int:
+        """Compute Zobrist hash for a board position (standalone, slower)."""
+        num_squares = len(board._pos)
+        zobrist_table = self._get_zobrist_table(num_squares)
+        
+        h = 0
+        for i, piece in enumerate(board._pos):
+            if piece != 0:
+                h ^= zobrist_table[i][self._get_piece_index(piece)]
+        if board.turn == Color.BLACK:
+            h ^= self._zobrist_turn
         return h
 
     def evaluate(self, board: BaseBoard) -> float:
@@ -156,6 +198,7 @@ class AlphaBetaEngine(Engine):
         Evaluate the board position.
 
         Uses material count and piece-square tables.
+        Works with any board variant.
 
         Args:
             board: The board to evaluate.
@@ -165,6 +208,7 @@ class AlphaBetaEngine(Engine):
             Positive = good for current player.
         """
         pos = board._pos
+        pst = self._current_pst  # Cached at init or start of search
 
         # Piece masks
         white_men = (pos == -1)
@@ -172,26 +216,23 @@ class AlphaBetaEngine(Engine):
         black_men = (pos == 1)
         black_kings = (pos == 2)
 
-        # Count pieces
-        n_white_men = np.sum(white_men)
-        n_white_kings = np.sum(white_kings)
-        n_black_men = np.sum(black_men)
-        n_black_kings = np.sum(black_kings)
-
         # Material
+        n_white_men = white_men.sum()
+        n_white_kings = white_kings.sum()
+        n_black_men = black_men.sum()
+        n_black_kings = black_kings.sum()
+
         score = (n_black_men - n_white_men) * MAN_VALUE
         score += (n_black_kings - n_white_kings) * KING_VALUE
 
         # PST - Piece Square Tables
-        score += np.sum(PST_MAN_BLACK[black_men])
-        score -= np.sum(PST_MAN_WHITE[white_men])
-        score += np.sum(PST_KING_BLACK[black_kings])
-        score -= np.sum(PST_KING_WHITE[white_kings])
+        score += pst[0][black_men].sum()   # pst_man_black
+        score -= pst[1][white_men].sum()   # pst_man_white
+        score += pst[2][black_kings].sum() # pst_king_black
+        score -= pst[3][white_kings].sum() # pst_king_white
 
         # Return score relative to side to move
-        if board.turn == Color.WHITE:
-            return -score
-        return score
+        return -score if board.turn == Color.WHITE else score
 
     def get_best_move(self, board: BaseBoard, with_evaluation: bool = False) -> Move | tuple[Move, float]:
         """
@@ -215,12 +256,18 @@ class AlphaBetaEngine(Engine):
         self.nodes = 0
         self.stop_search = False
 
+        # Cache board-specific data for this search (avoids repeated lookups)
+        num_squares = len(board._pos)
+        self._current_zobrist = self._get_zobrist_table(num_squares)
+        rows = 10 if num_squares == 50 else (8 if num_squares == 32 else int(np.sqrt(num_squares * 2)))
+        self._current_pst = self._get_pst_tables(num_squares, rows)
+
         # Age history table (decay old values)
         for key in self.history:
             self.history[key] //= 2
 
         # Initial Hash
-        current_hash = self.compute_hash(board)
+        current_hash = self._compute_hash_fast(board)
 
         best_move: Move | None = None
         best_score = -INF
@@ -403,27 +450,28 @@ class AlphaBetaEngine(Engine):
         return alpha
 
     def _update_hash(self, current_hash: int, board: BaseBoard, move: Move) -> int:
+        zt = self._current_zobrist  # Cached zobrist table
+        
         # XOR out source
         start_sq = move.square_list[0]
         piece = board._pos[start_sq]
-        current_hash ^= self.zobrist_table[start_sq][self._get_piece_index(piece)]
+        current_hash ^= zt[start_sq][piece + 2]
 
         # XOR in dest
         end_sq = move.square_list[-1]
         new_piece = piece
         if move.is_promotion:
-            if piece == 1: new_piece = 2
-            elif piece == -1: new_piece = -2
+            new_piece = 2 if piece == 1 else -2
 
-        current_hash ^= self.zobrist_table[end_sq][self._get_piece_index(new_piece)]
+        current_hash ^= zt[end_sq][new_piece + 2]
 
         # XOR out captures
         for cap_sq in move.captured_list:
             cap_piece = board._pos[cap_sq]
-            current_hash ^= self.zobrist_table[cap_sq][self._get_piece_index(cap_piece)]
+            current_hash ^= zt[cap_sq][cap_piece + 2]
 
         # Switch turn
-        current_hash ^= self.zobrist_turn
+        current_hash ^= self._zobrist_turn
 
         return current_hash
 
