@@ -5,10 +5,12 @@
 [![Downloads](https://static.pepy.tech/badge/py-draughts)](https://pepy.tech/project/py-draughts)
 [![Docs](https://img.shields.io/badge/docs-online-blue)](https://miskibin.github.io/py-draughts/)
 
-Fast, modern draughts library with move generation, validation, PDN support, and AI engine.
+Fast, modern draughts library with move generation, validation, PDN support, and AI engines. HUB protocol for external engines communication
 
 > [!IMPORTANT]  
 > Best optimized draughts library utilizing bitboards for ~200x faster move generation than alternatives.
+
+**Features:** multiple variants • Built-in AI engine • (HUB protocol) External engine support ([Scan](https://hjetten.home.xs4all.nl/scan/scan.html), [Kingsrow](http://www.edgilbert.org/Checkers/KingsRow.htm)) • RL/ML ready • Web UI
 
 <img width="1905" alt="Web UI" src="https://github.com/user-attachments/assets/8c3e255e-7fbb-4ae6-a9ab-2445c486c349" />
 
@@ -197,6 +199,11 @@ Use external engines like [Scan](https://hjetten.home.xs4all.nl/scan/scan.html) 
 ...     print(f"Best: {move}, Score: {score}")
 Best: 32-28, Score: 0.15
 ```
+
+Compatible engines:
+- **[Scan](https://hjetten.home.xs4all.nl/scan/scan.html)** - World champion level, supports 10x10
+- **[Kingsrow](http://www.edgilbert.org/Checkers/KingsRow.htm)** - Multiple variants, endgame databases
+- Any engine implementing the Hub protocol
 
 ## [Engine Benchmarking](https://miskibin.github.io/py-draughts/engine.html#benchmarking)
 

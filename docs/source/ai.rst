@@ -311,6 +311,24 @@ and its 180° rotation are strategically equivalent (with colors swapped):
     tensor = board.to_tensor()  # (4, 32)
     mask = board.legal_moves_mask()  # (1024,)
 
+Complete RL Example
+-------------------
+
+See ``examples/reinforcement_learning.py`` for a complete working example
+that trains a policy network using REINFORCE with self-play:
+
+.. code-block:: bash
+
+    pip install torch
+    python examples/reinforcement_learning.py
+
+The example includes:
+
+- Policy network (MLP) for move selection
+- Self-play game generation
+- REINFORCE training loop with discount returns
+- Evaluation against random baseline
+- Temperature annealing for exploration
 
 API Reference
 -------------
