@@ -388,9 +388,9 @@ class Board(BaseBoard):
             self.white_men &= ~mid_bit; self.white_kings &= ~mid_bit
             self.black_men &= ~mid_bit; self.black_kings &= ~mid_bit
             
-            sub: list[Move] = []
+            sub_ortho: list[Move] = []
             captured.add(mid)
-            self._man_captures(land, enemy, captured, forbidden, sub, is_king)
+            self._man_captures(land, enemy, captured, forbidden, sub_ortho, is_king)
             captured.discard(mid)
             self.white_men, self.white_kings, self.black_men, self.black_kings = wm, wk, bm, bk
             
@@ -398,8 +398,8 @@ class Board(BaseBoard):
             base._value = cap_value
             base._is_king_move = is_king
             
-            if sub:
-                for s in sub:
+            if sub_ortho:
+                for s in sub_ortho:
                     combined = base + s
                     combined._value = cap_value + s._value
                     combined._is_king_move = is_king
@@ -479,9 +479,9 @@ class Board(BaseBoard):
                             self.white_men &= ~t_bit; self.white_kings &= ~t_bit
                             self.black_men &= ~t_bit; self.black_kings &= ~t_bit
                             
-                            sub: list[Move] = []
+                            sub_ortho: list[Move] = []
                             captured.add(t); forbidden.add(t)
-                            self._king_captures(land, enemy, captured, forbidden, sub, is_king)
+                            self._king_captures(land, enemy, captured, forbidden, sub_ortho, is_king)
                             captured.discard(t); forbidden.discard(t)
                             self.white_men, self.white_kings, self.black_men, self.black_kings = wm, wk, bm, bk
                             
@@ -489,7 +489,7 @@ class Board(BaseBoard):
                             base._value = cap_value
                             base._is_king_move = is_king
                             
-                            for m in ([self._combine_capture(base, s) for s in sub] if sub else [base]):
+                            for m in ([self._combine_capture(base, s) for s in sub_ortho] if sub_ortho else [base]):
                                 if m._value > max_val:
                                     max_val, local_best = m._value, [m]
                                 elif m._value == max_val:
