@@ -108,6 +108,10 @@ class Move:
         move._len = len(new_captured) + 1
         return move
 
+    def __hash__(self) -> int:
+        """Hash based on the move path (start and end squares)."""
+        return hash((self.square_list[0], self.square_list[-1]))
+
     @classmethod
     def from_uci(cls, move: str, legal_moves: Iterable["Move"]) -> "Move":
         """
