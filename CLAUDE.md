@@ -4,33 +4,40 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Commands
 
-Dev install (package + dev extras: pytest, mypy, sphinx, build, rich, pytest-benchmark):
+Dependencies are managed with **uv** (`uv.lock` is checked in). Sync the env with dev extras:
 
 ```bash
-pip install -e ".[dev]"
+uv sync --extra dev
 ```
 
-Run tests / a single test / a single test method:
+Run tests / a single test file / a single test method:
 
 ```bash
-python -m pytest test/ -v
-python -m pytest test/test_standard_board.py -v
-python -m pytest test/test_engine.py::TestAlphaBetaEngine::test_engine_returns_valid_move -v
+uv run pytest test/ -v
+uv run pytest test/test_standard_board.py -v
+uv run pytest test/test_engine.py::TestAlphaBetaEngine::test_engine_returns_valid_move -v
 ```
 
 Type check (matches CI exactly):
 
 ```bash
-python -m mypy draughts --ignore-missing-imports
+uv run mypy draughts --ignore-missing-imports
 ```
 
 Docs build (Sphinx):
 
 ```bash
-sphinx-build docs/source/ _build
+uv run sphinx-build docs/source/ _build
 ```
 
-CI runs both `pytest test/ -v` and the mypy command above on Python 3.12 (see `.github/workflows/python-app.yml`). Supported Python versions are 3.9–3.14.
+CI installs via `pip install -e ".[dev]"` and runs `pytest test/ -v` + the mypy command on Python 3.12 (see `.github/workflows/python-app.yml`). Supported Python versions are 3.9–3.14.
+
+To add a runtime / dev dependency:
+
+```bash
+uv add <pkg>
+uv add --optional dev <pkg>
+```
 
 ## Architecture
 
