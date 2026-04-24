@@ -142,9 +142,9 @@ def test_engine_populates_transposition_table_for_root(seed):
     root_hash = engine.compute_hash(board)
     engine.get_best_move(board)
 
-    entry = engine.tt.get(root_hash)
+    entry = engine._tt_probe(root_hash)
     assert entry is not None
-    _depth, _flag, _score, best_move = entry
+    _depth, _flag, _score, best_move, _gen = entry
     assert best_move in list(board.legal_moves)
 
 
@@ -172,19 +172,27 @@ def _play_engine_vs_random(board, engine, engine_is_white: bool, seed: int) -> s
     return board.result
 
 
+# Deterministic per-variant seeds (hash() is not stable across Python runs
+# because of PYTHONHASHSEED randomization — so we hard-code seeds here).
+_VARIANT_SEED = {"standard": 11, "american": 23, "russian": 47, "frisian": 71}
+
+
 @pytest.mark.parametrize("variant", ["standard", "american", "russian", "frisian"])
 @pytest.mark.parametrize("game_idx", range(5))
 def test_engine_depth1_beats_random(variant, game_idx):
-    """AlphaBeta depth-1 should consistently beat random moves."""
+    """AlphaBeta depth-1 must never *lose* to random play. Draws are allowed
+    (the engine is materially symmetric at the start and random can force a
+    draw by 50-move rule)."""
     board = get_board(variant)
     engine = AlphaBetaEngine(depth_limit=1)
-    
-    # Alternate colors
+
     engine_is_white = game_idx % 2 == 0
-    result = _play_engine_vs_random(board, engine, engine_is_white, seed=game_idx * 100 + hash(variant))
-    
-    # Engine should win or draw (never lose to random)
-    if engine_is_white:
-        assert result in ("1-0"), f"{variant} game {game_idx}: engine (white) got {result}"
-    else:
-        assert result in ("0-1"), f"{variant} game {game_idx}: engine (black) got {result}"
+    seed = game_idx * 100 + _VARIANT_SEED[variant]
+    result = _play_engine_vs_random(board, engine, engine_is_white, seed=seed)
+
+    # Engine must win or draw — never lose to random.
+    losing_result = "0-1" if engine_is_white else "1-0"
+    assert result != losing_result, (
+        f"{variant} game {game_idx}: depth-1 engine (white={engine_is_white}) "
+        f"lost to random with result {result}"
+    )

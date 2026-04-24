@@ -76,7 +76,8 @@ class BaseBoard(ABC):
     SQUARE_NAMES: list[str] = []
 
     __slots__ = ('white_men', 'white_kings', 'black_men', 'black_kings',
-                 'turn', 'halfmove_clock', '_moves_stack', 'shape')
+                 'turn', 'halfmove_clock', '_moves_stack', 'shape',
+                 '_position_history')
 
     def __init__(self, starting_position: Optional[np.ndarray] = None, turn: Optional[Color] = None) -> None:
         """
@@ -97,6 +98,11 @@ class BaseBoard(ABC):
         self.turn = turn if turn is not None else self.STARTING_COLOR
         self.halfmove_clock = 0
         self._moves_stack: list[Move] = []
+        # Position-hash history for threefold repetition. Cleared on every
+        # irreversible move (capture or man move); a position can only repeat
+        # while halfmove_clock is accumulating, i.e. through reversible king
+        # moves only.
+        self._position_history: list[int] = []
 
         if starting_position is not None:
             self._from_array(starting_position)
@@ -150,6 +156,18 @@ class BaseBoard(ABC):
     @staticmethod
     def _popcount(bb: int) -> int:
         return bin(bb).count('1')
+
+    def _position_key(self) -> int:
+        """Identity of the current position for repetition detection.
+
+        Includes bitboards and side to move. Does NOT include halfmove_clock —
+        repetition is defined on the board state alone, not the draw counter.
+        """
+        return hash((
+            self.white_men, self.white_kings,
+            self.black_men, self.black_kings,
+            self.turn,
+        ))
 
     @property
     @abstractmethod
@@ -226,6 +244,11 @@ class BaseBoard(ABC):
         self._moves_stack.append(move)
         if is_finished:
             self.turn = Color.BLACK if self.turn == Color.WHITE else Color.WHITE
+            # Repetition history: append the new position after the turn flip.
+            # The trailing `halfmove_clock` entries hold all positions reachable
+            # from the current one via reversible moves; anything before the
+            # last halfmove reset is past an irreversible move and can't repeat.
+            self._position_history.append(self._position_key())
 
     def pop(self, is_finished: bool = True) -> Move:
         """
@@ -260,6 +283,8 @@ class BaseBoard(ABC):
         self.halfmove_clock = move.halfmove_clock
         if is_finished:
             self.turn = Color.BLACK if self.turn == Color.WHITE else Color.WHITE
+            if self._position_history:
+                self._position_history.pop()
         return move
 
     def push_uci(self, str_move: str) -> None:
@@ -290,13 +315,28 @@ class BaseBoard(ABC):
         """
         Check for threefold repetition draw.
 
+        Counts occurrences of the current position (bitboards + turn) in the
+        set of positions reachable via reversible moves only — i.e. the
+        trailing ``halfmove_clock`` entries of the repetition history.
+
         Returns:
-            True if the same position has occurred three times.
+            True if the current position has occurred three or more times.
         """
-        if len(self._moves_stack) >= 9:
-            s = self._moves_stack
-            if s[-1].square_list == s[-5].square_list == s[-9].square_list:
-                return True
+        hist = self._position_history
+        if len(hist) < 4:
+            return False
+        # Only positions reachable without an irreversible move can repeat.
+        window = hist[-self.halfmove_clock:] if self.halfmove_clock else hist
+        if not window:
+            return False
+        key = window[-1]
+        # Count occurrences of the current key in the reversible window.
+        count = 0
+        for k in window:
+            if k == key:
+                count += 1
+                if count >= 3:
+                    return True
         return False
 
 
@@ -577,6 +617,7 @@ class BaseBoard(ABC):
         new.halfmove_clock = self.halfmove_clock
         new.shape = self.shape
         new._moves_stack = []
+        new._position_history = []
         return new
 
     def __copy__(self) -> "BaseBoard":
