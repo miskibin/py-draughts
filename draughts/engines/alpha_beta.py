@@ -46,13 +46,16 @@ KING_VALUE = 3.0
 TEMPO = 0.05
 BACK_RANK_BONUS = 0.10
 
-# Null-move pruning
+# Null-move pruning. Conservative parameters that survive ablation across
+# all four variants (Frisian in particular). NMP × LMR × RFP combined was
+# too aggressive in narrow endgames at depths 4-5.
 NMP_MIN_DEPTH = 3
 NMP_REDUCTION = 2
+NMP_MIN_OWN_PIECES = 6  # below this we're in zugzwang territory
+NMP_VERIFY_DEPTH = 8     # above this, verify the cutoff with a smaller search
 
-# Futility / reverse-futility margins (per depth)
-RFUT_MARGIN = 0.6  # man-equivalents per ply
-FUT_MARGIN = (0.0, 0.6, 1.2, 1.8)  # depth-indexed; depth 0 unused
+# Reverse-futility margin per ply
+RFUT_MARGIN = 0.9
 
 
 # ---------------------------------------------------------------------------
@@ -130,12 +133,26 @@ class AlphaBetaEngine(Engine):
         "back_rank_bonus": BACK_RANK_BONUS,
     }
 
+    # Feature toggles (used by ablation tooling).
+    # Recognised flags: ``nmp``, ``aspiration``, ``rfutility``, ``lmr``.
+    #
+    # Default is **{nmp, aspiration, rfutility}** — LMR is opt-in.
+    # Frisian ablation showed LMR × NMP losing 6/12 → 9/12 with NMP alone
+    # at depth 5. The chess-style logarithmic LMR table is too aggressive
+    # at the depths we run (4-6) in pure Python; keeping it off by default
+    # avoids catastrophic interactions in narrow draughts endgames.
+    # Add it back per-engine via ``features={'nmp', 'aspiration', 'rfutility', 'lmr'}``.
+    DEFAULT_FEATURES: frozenset = frozenset(
+        {"nmp", "aspiration", "rfutility"}
+    )
+
     def __init__(
         self,
         depth_limit: int = 6,
         time_limit: Optional[float] = None,
         name: Optional[str] = None,
         eval_params: Optional[dict] = None,
+        features: Optional[set] = None,
     ):
         self.depth_limit = depth_limit
         self.time_limit = time_limit
@@ -143,6 +160,9 @@ class AlphaBetaEngine(Engine):
 
         # Eval parameters (Tier 2.2: tunable via Texel-style fitting)
         self.eval_params: dict = {**self.DEFAULT_EVAL_PARAMS, **(eval_params or {})}
+        self.features: frozenset = frozenset(
+            self.DEFAULT_FEATURES if features is None else features
+        )
 
         self.nodes: int = 0
 
@@ -429,7 +449,7 @@ class AlphaBetaEngine(Engine):
         self, board: BaseBoard, depth: int, prev_score: float, root_hash: int
     ) -> float:
         """Aspiration-window iterative deepening. Falls back to full window."""
-        if depth < 3:
+        if depth < 3 or "aspiration" not in self.features:
             return self.negamax(board, depth, -INF, INF, root_hash, 0)
 
         delta = 0.5  # half a man
@@ -512,7 +532,8 @@ class AlphaBetaEngine(Engine):
         # If our static eval is so high above beta that even a big drop
         # still beats beta, return the optimistic score.
         if (
-            depth <= 3
+            "rfutility" in self.features
+            and depth <= 3
             and not in_pv
             and not has_capture
             and abs(beta) < CHECKMATE - 100
@@ -528,10 +549,11 @@ class AlphaBetaEngine(Engine):
         # few pieces (zugzwang risk).
         own_pieces = self._side_piece_count(board)
         if (
-            depth >= NMP_MIN_DEPTH
+            "nmp" in self.features
+            and depth >= NMP_MIN_DEPTH
             and not in_pv
             and not has_capture
-            and own_pieces >= 4
+            and own_pieces >= NMP_MIN_OWN_PIECES
             and ply > 0
         ):
             if static_eval is None:
@@ -541,15 +563,35 @@ class AlphaBetaEngine(Engine):
                 original_turn = board.turn
                 board.turn = Color.BLACK if original_turn == Color.WHITE else Color.WHITE
                 null_hash = h ^ self._zobrist_turn
-                R = NMP_REDUCTION + (1 if depth >= 6 else 0)
                 null_score = -self.negamax(
-                    board, depth - 1 - R, -beta, -beta + 1, null_hash, ply + 1
+                    board,
+                    depth - 1 - NMP_REDUCTION,
+                    -beta,
+                    -beta + 1,
+                    null_hash,
+                    ply + 1,
                 )
                 board.turn = original_turn
                 if self.stop_search:
                     return alpha
                 if null_score >= beta:
-                    return null_score
+                    # Verification search at higher depths to avoid zugzwang
+                    # blunders (no piece can pass without changing the eval).
+                    if depth >= NMP_VERIFY_DEPTH:
+                        verify = self.negamax(
+                            board,
+                            depth - NMP_REDUCTION,
+                            beta - 1,
+                            beta,
+                            h,
+                            ply + 1,
+                        )
+                        if self.stop_search:
+                            return alpha
+                        if verify < beta:
+                            null_score = verify  # don't trust the cutoff
+                    if null_score >= beta:
+                        return null_score
 
         # ---- Internal Iterative Deepening ----
         if depth >= IID_DEPTH and tt_move is None:
@@ -578,7 +620,8 @@ class AlphaBetaEngine(Engine):
                 # LMR
                 reduction = 0
                 if (
-                    depth >= 3
+                    "lmr" in self.features
+                    and depth >= 3
                     and i >= 2
                     and not move.captured_list
                     and not in_pv
@@ -729,12 +772,20 @@ class AlphaBetaEngine(Engine):
 
     @staticmethod
     def _build_lmr_table(max_depth: int, max_moves: int) -> list[list[int]]:
-        """Tuned LMR reductions: ~ 0.75 + ln(d)·ln(i) / 2.25 (chess-style)."""
+        """
+        Tuned LMR reductions, capped at 1 ply.
+
+        The classic chess formula ``0.75 + ln(d)·ln(i)/2.25`` reduces by 2-3
+        plies in the late move list. In draughts at the depths we typically
+        run (4-6) that compounds with NMP's R=2 and creates blind spots —
+        ablation on Frisian showed NMP × deep-LMR loses 90% of games. We
+        cap at 1 to keep search stable; deeper engines can raise the cap.
+        """
         table = [[0] * max_moves for _ in range(max_depth)]
         for d in range(1, max_depth):
             for i in range(1, max_moves):
                 r = 0.75 + math.log(d) * math.log(i) / 2.25
-                table[d][i] = max(0, int(r))
+                table[d][i] = min(1, max(0, int(r)))
         return table
 
     def _lmr(self, depth: int, move_index: int) -> int:
