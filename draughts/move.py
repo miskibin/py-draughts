@@ -112,6 +112,20 @@ class Move:
         """Hash based on the move path (start and end squares)."""
         return hash((self.square_list[0], self.square_list[-1]))
 
+    @property
+    def capture_value(self) -> float:
+        """
+        Material value of all pieces captured by this move.
+
+        Kings count as 2.0, men as 1.0. Returns 0.0 for non-captures. Used for
+        move ordering in variants where the most-valuable capture is forced
+        (e.g. Frisian) and as an MVV-LVA component generally.
+        """
+        total = 0.0
+        for piece in self.captured_entities:
+            total += 2.0 if abs(piece) == 2 else 1.0
+        return total
+
     @classmethod
     def from_uci(cls, move: str, legal_moves: Iterable["Move"]) -> "Move":
         """

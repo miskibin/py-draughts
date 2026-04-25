@@ -76,7 +76,7 @@ class BaseBoard(ABC):
     SQUARE_NAMES: list[str] = []
 
     __slots__ = ('white_men', 'white_kings', 'black_men', 'black_kings',
-                 'turn', 'halfmove_clock', '_moves_stack', 'shape')
+                 'turn', 'halfmove_clock', '_moves_stack', '_position_keys', 'shape')
 
     def __init__(self, starting_position: Optional[np.ndarray] = None, turn: Optional[Color] = None) -> None:
         """
@@ -97,11 +97,13 @@ class BaseBoard(ABC):
         self.turn = turn if turn is not None else self.STARTING_COLOR
         self.halfmove_clock = 0
         self._moves_stack: list[Move] = []
+        self._position_keys: list[tuple[int, int, int, int, int]] = []
 
         if starting_position is not None:
             self._from_array(starting_position)
         else:
             self._init_default_position()
+        self._position_keys.append(self._position_key())
         logger.info(f"Board initialized with shape {self.shape}.")
 
     @abstractmethod
@@ -150,6 +152,10 @@ class BaseBoard(ABC):
     @staticmethod
     def _popcount(bb: int) -> int:
         return bin(bb).count('1')
+
+    def _position_key(self) -> tuple[int, int, int, int, int]:
+        """Compact, hashable key uniquely identifying the current position (incl. side to move)."""
+        return (self.white_men, self.white_kings, self.black_men, self.black_kings, self.turn.value)
 
     @property
     @abstractmethod
@@ -226,6 +232,7 @@ class BaseBoard(ABC):
         self._moves_stack.append(move)
         if is_finished:
             self.turn = Color.BLACK if self.turn == Color.WHITE else Color.WHITE
+            self._position_keys.append(self._position_key())
 
     def pop(self, is_finished: bool = True) -> Move:
         """
@@ -260,6 +267,8 @@ class BaseBoard(ABC):
         self.halfmove_clock = move.halfmove_clock
         if is_finished:
             self.turn = Color.BLACK if self.turn == Color.WHITE else Color.WHITE
+            if self._position_keys:
+                self._position_keys.pop()
         return move
 
     def push_uci(self, str_move: str) -> None:
@@ -290,13 +299,31 @@ class BaseBoard(ABC):
         """
         Check for threefold repetition draw.
 
+        A position can only repeat across reversible moves (king moves with
+        no captures). We therefore only need to scan back as far as the
+        last irreversible move, bounded by ``halfmove_clock``.
+
         Returns:
-            True if the same position has occurred three times.
+            True if the same position has occurred three times (counting
+            the current state).
         """
-        if len(self._moves_stack) >= 9:
-            s = self._moves_stack
-            if s[-1].square_list == s[-5].square_list == s[-9].square_list:
-                return True
+        keys = self._position_keys
+        n = len(keys)
+        if n < 5:
+            return False
+        current = keys[-1]
+        # Same side to move can only recur every 2 plies.
+        # Window cannot exceed halfmove_clock + 1 (incl. current).
+        window = min(n, self.halfmove_clock + 1)
+        count = 0
+        i = n - 1
+        stop = n - window
+        while i >= stop:
+            if keys[i] == current:
+                count += 1
+                if count >= 3:
+                    return True
+            i -= 2
         return False
 
 
@@ -577,6 +604,7 @@ class BaseBoard(ABC):
         new.halfmove_clock = self.halfmove_clock
         new.shape = self.shape
         new._moves_stack = []
+        new._position_keys = list(self._position_keys)
         return new
 
     def __copy__(self) -> "BaseBoard":

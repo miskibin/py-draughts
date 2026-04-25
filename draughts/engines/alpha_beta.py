@@ -1,394 +1,602 @@
 """Alpha-Beta search engine with advanced optimizations."""
-import time
+from __future__ import annotations
+
+import math
 import random
-from typing import List
-from loguru import logger
+import time
+from typing import List, Optional, Tuple
+
 import numpy as np
+from loguru import logger
 
 from draughts.boards.base import BaseBoard
-from draughts.boards.standard import Move
 from draughts.engines.engine import Engine
 from draughts.models import Color
+from draughts.move import Move
 
 
+# ---------------------------------------------------------------------------
 # Constants
+# ---------------------------------------------------------------------------
+
 INF = 10000.0
 CHECKMATE = 1000.0
-TT_MAX_SIZE = 500000  # Maximum transposition table entries
-IID_DEPTH = 3  # Internal Iterative Deepening threshold
-QS_MAX_DEPTH = 8  # Quiescence search depth limit
 
-# Piece values
+# Two-bucket transposition table size (must be a power of two for masking).
+TT_BUCKETS = 1 << 18  # 262 144 buckets × 2 entries = 524 288 slots
+
+IID_DEPTH = 3
+QS_MAX_DEPTH = 8
+
+# Halfmove clock keys are capped: any value >= 64 collapses onto the same
+# key. All variant draw thresholds are <= 50, so distinct draw-relevant
+# values still hash differently.
+HALFMOVE_CAP = 64
+
+# TT bound flags
+EXACT = 0
+LOWER = 1  # value is a lower bound (caused beta cutoff)
+UPPER = 2  # value is an upper bound (no move improved alpha)
+
+# Piece values (Tier 2.1: kings raised from 2.5 → 3.0 per Scan/Kingsrow norms)
 MAN_VALUE = 1.0
-KING_VALUE = 2.5  # Kings are very powerful in draughts
+KING_VALUE = 3.0
 
+# Eval feature weights
+TEMPO = 0.05
+BACK_RANK_BONUS = 0.10
+
+# Null-move pruning
+NMP_MIN_DEPTH = 3
+NMP_REDUCTION = 2
+
+# Futility / reverse-futility margins (per depth)
+RFUT_MARGIN = 0.6  # man-equivalents per ply
+FUT_MARGIN = (0.0, 0.6, 1.2, 1.8)  # depth-indexed; depth 0 unused
+
+
+# ---------------------------------------------------------------------------
+# PST helpers
+# ---------------------------------------------------------------------------
 
 def _create_pst_man(num_squares: int, rows: int) -> np.ndarray:
-    """Create piece-square table for men (rewards advancement)."""
-    squares_per_row = num_squares // rows
+    """Piece-square table for men (rewards advancement)."""
+    cols = num_squares // rows
     pst = np.zeros(num_squares)
     for i in range(num_squares):
-        row = i // squares_per_row
-        # Higher value for squares closer to promotion (row 0)
-        advancement_bonus = (rows - 1 - row) / (rows - 1) * 0.3
-        # Small center bonus
-        col = i % squares_per_row
-        center_bonus = (1 - abs(col - squares_per_row / 2) / (squares_per_row / 2)) * 0.05
-        pst[i] = advancement_bonus + center_bonus
+        row = i // cols
+        col = i % cols
+        advancement = (rows - 1 - row) / (rows - 1) * 0.3
+        center = (1 - abs(col - cols / 2) / (cols / 2)) * 0.05
+        pst[i] = advancement + center
     return pst
 
 
 def _create_pst_king(num_squares: int, rows: int) -> np.ndarray:
-    """Create piece-square table for kings (prefers center)."""
-    squares_per_row = num_squares // rows
+    """Piece-square table for kings (prefers center)."""
+    cols = num_squares // rows
     pst = np.zeros(num_squares)
-    center_row = rows / 2
-    center_col = squares_per_row / 2
+    cr, cc = rows / 2, cols / 2
     for i in range(num_squares):
-        row = i // squares_per_row
-        col = i % squares_per_row
-        # Distance from center (normalized)
-        row_dist = abs(row - center_row) / center_row
-        col_dist = abs(col - center_col) / center_col
-        # Higher value for center squares
-        pst[i] = (1 - (row_dist + col_dist) / 2) * 0.25
+        row, col = i // cols, i % cols
+        rd = abs(row - cr) / cr
+        cdv = abs(col - cc) / cc
+        pst[i] = (1 - (rd + cdv) / 2) * 0.25
     return pst
+
+
+# ---------------------------------------------------------------------------
+# Engine
+# ---------------------------------------------------------------------------
 
 
 class AlphaBetaEngine(Engine):
     """
-    AI engine using Negamax search with alpha-beta pruning.
+    AI engine using Negamax with alpha-beta pruning and a battery of
+    standard search optimisations.
 
-    This engine implements a strong draughts AI with several optimizations
-    for efficient tree search. Works with any board variant (Standard, American, etc.).
+    **Search**
+        - Iterative deepening with aspiration windows
+        - Principal-variation search (PVS)
+        - Two-bucket transposition table (depth-preferred + always-replace)
+          with generation-based aging
+        - Variant-aware Zobrist hashing including the halfmove clock
+        - Null-move pruning (disabled when captures are forced)
+        - Reverse futility / razoring at shallow depths
+        - Late-move reduction with a logarithmic schedule
+        - Quiescence search on captures
 
-    **Algorithm:**
+    **Move ordering**
+        - PV move from TT → captures by ``capture_value`` (MVV) →
+          killers → history heuristic
 
-    - **Negamax**: Simplified minimax using ``max(a,b) = -min(-a,-b)``
-    - **Iterative Deepening**: Progressively deeper searches for time control
-    - **Transposition Table**: Zobrist hashing to cache evaluated positions
-    - **Quiescence Search**: Extends captures to avoid horizon effects
-    - **Move Ordering**: PV moves, captures, killers, history heuristic
-    - **PVS/LMR**: Principal Variation Search with Late Move Reductions
-
-    **Evaluation:**
-
-    - Material balance (men=1.0, kings=2.5)
-    - Piece-Square Tables rewarding advancement and center control
-
-    Attributes:
-        depth_limit: Maximum search depth.
-        time_limit: Optional time limit in seconds.
-        nodes: Number of nodes searched in last call.
+    **Evaluation**
+        - Material with king = 3.0 (Scan/Kingsrow convention)
+        - Piece-square tables
+        - Side-to-move tempo bonus
+        - Back-rank guard bonus (opening / midgame only)
 
     Example:
         >>> from draughts import Board, AlphaBetaEngine
         >>> board = Board()
-        >>> engine = AlphaBetaEngine(depth_limit=5)
-        >>> move = engine.get_best_move(board)
-        >>> board.push(move)
-
-    Example with American Draughts:
-        >>> from draughts.boards.american import Board
-        >>> board = Board()
         >>> engine = AlphaBetaEngine(depth_limit=6)
         >>> move = engine.get_best_move(board)
-
-    Example with evaluation:
-        >>> move, score = engine.get_best_move(board, with_evaluation=True)
-        >>> print(f"Best: {move}, Score: {score:.2f}")
     """
 
-    def __init__(self, depth_limit: int = 6, time_limit: float | None = None, name: str | None = None):
-        """
-        Initialize the engine.
+    DEFAULT_EVAL_PARAMS: dict = {
+        "man_value": MAN_VALUE,
+        "king_value": KING_VALUE,
+        "tempo": TEMPO,
+        "back_rank_bonus": BACK_RANK_BONUS,
+    }
 
-        Args:
-            depth_limit: Maximum search depth. Higher = stronger but slower.
-                Recommended: 5-6 for play, 7-8 for analysis.
-            time_limit: Optional time limit in seconds. If set, search uses
-                iterative deepening and stops when time expires.
-            name: Custom engine name. Defaults to class name.
-
-        Example:
-            >>> engine = AlphaBetaEngine(depth_limit=6)
-            >>> engine = AlphaBetaEngine(depth_limit=20, time_limit=1.0)
-        """
+    def __init__(
+        self,
+        depth_limit: int = 6,
+        time_limit: Optional[float] = None,
+        name: Optional[str] = None,
+        eval_params: Optional[dict] = None,
+    ):
         self.depth_limit = depth_limit
         self.time_limit = time_limit
         self.name = name or self.__class__.__name__
+
+        # Eval parameters (Tier 2.2: tunable via Texel-style fitting)
+        self.eval_params: dict = {**self.DEFAULT_EVAL_PARAMS, **(eval_params or {})}
+
         self.nodes: int = 0
-        self.tt: dict[int, tuple[int, int, float, Move | None]] = {}
-        self.history: dict[tuple[int, int], int] = {}
+
+        # Two-bucket TT
+        self._tt_size = TT_BUCKETS
+        self._tt_mask = TT_BUCKETS - 1
+        self._tt_dp: list[Optional[tuple]] = [None] * TT_BUCKETS
+        self._tt_ar: list[Optional[tuple]] = [None] * TT_BUCKETS
+        self._tt_gen = 0  # incremented at the start of each search
+
+        # History / killers
+        self.history: dict[tuple, int] = {}
         self.killers: dict[int, list[Move]] = {}
 
-        # Zobrist Hashing - initialized lazily per board size
-        self._zobrist_rng = random.Random(0)
-        self._zobrist_tables: dict[int, list[list[int]]] = {}  # num_squares -> table
-        self._zobrist_turn = self._zobrist_rng.getrandbits(64)
-        
-        # PST tables - cached per board configuration
-        self._pst_cache: dict[tuple[int, int], tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]] = {}
-        
-        # Current search state (set at start of search, used during eval)
-        # Initialize with standard 50-square defaults so evaluate() works standalone
-        self._current_zobrist: list[list[int]] = self._get_zobrist_table(50)
-        self._current_pst: tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray] = self._get_pst_tables(50, 10)
+        # Zobrist tables — keyed by ``(GAME_TYPE, num_squares)``
+        # so that 50-square Standard and Frisian get different keys.
+        self._zobrist_tables: dict[tuple, tuple[list, list]] = {}
+        self._zobrist_turn = random.Random("draughts:turn").getrandbits(64)
+
+        # PST cache
+        self._pst_cache: dict[tuple[int, int], tuple] = {}
+
+        # Per-search bound state
+        self._current_zobrist: tuple[list, list] = self._make_zobrist(20, 50)
+        self._current_pst = self._get_pst_tables(50, 10)
 
         self.start_time: float = 0.0
         self.stop_search: bool = False
 
+        # LMR table (depth × move_index)
+        self._lmr_table = self._build_lmr_table(64, 64)
+
+    # ------------------------------------------------------------------
+    # Public API expected by older tests
+    # ------------------------------------------------------------------
+
     @property
     def inspected_nodes(self) -> int:
-        """Number of nodes searched in the last ``get_best_move`` call."""
         return self.nodes
 
     @inspected_nodes.setter
     def inspected_nodes(self, value: int) -> None:
         self.nodes = value
 
-    def _get_zobrist_table(self, num_squares: int) -> list[list[int]]:
-        """Get or create Zobrist table for given board size."""
-        if num_squares not in self._zobrist_tables:
-            # Create new table with deterministic RNG
-            rng = random.Random(num_squares)  # Seed based on size for consistency
-            table = [[rng.getrandbits(64) for _ in range(5)] for _ in range(num_squares)]
-            self._zobrist_tables[num_squares] = table
-        return self._zobrist_tables[num_squares]
+    @property
+    def tt(self) -> dict:
+        """
+        Dict-like view of the transposition table for backwards compatibility.
 
-    def _get_pst_tables(self, num_squares: int, rows: int) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
-        """Get or create PST tables for given board configuration."""
+        Each accessible key returns a ``(depth, flag, score, move)`` tuple
+        (the legacy 4-tuple); the new entries also carry ``key`` and
+        ``generation`` fields internally.
+        """
+        return _TTView(self)
+
+    # ------------------------------------------------------------------
+    # Zobrist
+    # ------------------------------------------------------------------
+
+    @staticmethod
+    def _make_zobrist(game_type: int, num_squares: int) -> tuple[list, list]:
+        """
+        Build a Zobrist table for a ``(GAME_TYPE, num_squares)`` pair.
+
+        Two variants with the same square count (e.g. Standard and Frisian)
+        get distinct tables because the seed depends on ``GAME_TYPE``.
+        """
+        seed = f"draughts:{game_type}:{num_squares}"
+        rng = random.Random(seed)
+        piece = [[rng.getrandbits(64) for _ in range(5)] for _ in range(num_squares)]
+        halfmove = [rng.getrandbits(64) for _ in range(HALFMOVE_CAP)]
+        return piece, halfmove
+
+    def _get_zobrist_table(self, board: BaseBoard) -> tuple[list, list]:
+        key = (board.GAME_TYPE, board.SQUARES_COUNT)
+        table = self._zobrist_tables.get(key)
+        if table is None:
+            table = self._make_zobrist(board.GAME_TYPE, board.SQUARES_COUNT)
+            self._zobrist_tables[key] = table
+        return table
+
+    def _get_pst_tables(self, num_squares: int, rows: int) -> tuple:
         key = (num_squares, rows)
-        if key not in self._pst_cache:
-            pst_man_black = _create_pst_man(num_squares, rows)
-            pst_man_white = pst_man_black[::-1].copy()
-            pst_king_black = _create_pst_king(num_squares, rows)
-            pst_king_white = pst_king_black[::-1].copy()
-            self._pst_cache[key] = (pst_man_black, pst_man_white, pst_king_black, pst_king_white)
-        return self._pst_cache[key]
+        cache = self._pst_cache.get(key)
+        if cache is None:
+            pmb = _create_pst_man(num_squares, rows)
+            pmw = pmb[::-1].copy()
+            pkb = _create_pst_king(num_squares, rows)
+            pkw = pkb[::-1].copy()
+            cache = (pmb, pmw, pkb, pkw)
+            self._pst_cache[key] = cache
+        return cache
 
-    def _get_piece_index(self, piece):
+    @staticmethod
+    def _piece_idx(piece: int) -> int:
         return piece + 2
 
     def _compute_hash_fast(self, board: BaseBoard) -> int:
-        """Compute hash using cached zobrist table."""
+        """Compute Zobrist hash using cached current zobrist tables."""
+        pt, ht = self._current_zobrist
         h = 0
-        for i, piece in enumerate(board._pos):
+        pos = board._pos
+        for i, piece in enumerate(pos):
             if piece != 0:
-                h ^= self._current_zobrist[i][self._get_piece_index(piece)]
+                h ^= pt[i][piece + 2]
         if board.turn == Color.BLACK:
             h ^= self._zobrist_turn
+        h ^= ht[min(board.halfmove_clock, HALFMOVE_CAP - 1)]
         return h
 
     def compute_hash(self, board: BaseBoard) -> int:
-        """Compute Zobrist hash for a board position (standalone, slower)."""
-        num_squares = len(board._pos)
-        zobrist_table = self._get_zobrist_table(num_squares)
-        
+        """Standalone Zobrist hash for a position."""
+        pt, ht = self._get_zobrist_table(board)
         h = 0
-        for i, piece in enumerate(board._pos):
+        pos = board._pos
+        for i, piece in enumerate(pos):
             if piece != 0:
-                h ^= zobrist_table[i][self._get_piece_index(piece)]
+                h ^= pt[i][piece + 2]
         if board.turn == Color.BLACK:
             h ^= self._zobrist_turn
+        h ^= ht[min(board.halfmove_clock, HALFMOVE_CAP - 1)]
         return h
+
+    def _update_hash(self, h: int, board: BaseBoard, move: Move) -> int:
+        """Incrementally update Zobrist hash for a single move (pre-push)."""
+        pt, ht = self._current_zobrist
+
+        # Out: old halfmove
+        h ^= ht[min(board.halfmove_clock, HALFMOVE_CAP - 1)]
+
+        start_sq = move.square_list[0]
+        end_sq = move.square_list[-1]
+        piece = board._pos[start_sq]
+
+        # Out: source piece
+        h ^= pt[start_sq][piece + 2]
+
+        # Detect promotion robustly from board state (not relying on
+        # ``move.is_promotion``, which is only set during ``board.push``).
+        end_bit = 1 << end_sq
+        is_promo = False
+        if piece == -1 and (board.PROMO_WHITE & end_bit):
+            is_promo = True
+        elif piece == 1 and (board.PROMO_BLACK & end_bit):
+            is_promo = True
+
+        new_piece = piece if not is_promo else (2 if piece == 1 else -2)
+        h ^= pt[end_sq][new_piece + 2]
+
+        # Captures
+        for cap_sq in move.captured_list:
+            cap_piece = board._pos[cap_sq]
+            h ^= pt[cap_sq][cap_piece + 2]
+
+        # In: new halfmove (kings not capturing increments; everything else resets)
+        if abs(piece) == 2 and not move.captured_list:
+            new_hm = board.halfmove_clock + 1
+        else:
+            new_hm = 0
+        h ^= ht[min(new_hm, HALFMOVE_CAP - 1)]
+
+        # Switch turn
+        h ^= self._zobrist_turn
+        return h
+
+    # ------------------------------------------------------------------
+    # Evaluation
+    # ------------------------------------------------------------------
 
     def evaluate(self, board: BaseBoard) -> float:
         """
-        Evaluate the board position.
+        Static evaluation from the side-to-move's perspective.
 
-        Uses material count and piece-square tables.
-        Works with any board variant.
-
-        Args:
-            board: The board to evaluate.
-
-        Returns:
-            Score from the perspective of the side to move.
-            Positive = good for current player.
+        Material (king=3.0) + piece-square tables + tempo + back-rank.
+        Parameters are pulled from ``self.eval_params`` so they can be
+        Texel-tuned (see ``tools/tune_eval.py``).
         """
         pos = board._pos
-        pst = self._current_pst  # Cached at init or start of search
+        pmb, pmw, pkb, pkw = self._current_pst
+        p = self.eval_params
 
-        # Piece masks
         white_men = (pos == -1)
         white_kings = (pos == -2)
         black_men = (pos == 1)
         black_kings = (pos == 2)
 
-        # Material
-        n_white_men = white_men.sum()
-        n_white_kings = white_kings.sum()
-        n_black_men = black_men.sum()
-        n_black_kings = black_kings.sum()
+        n_wm = int(white_men.sum())
+        n_wk = int(white_kings.sum())
+        n_bm = int(black_men.sum())
+        n_bk = int(black_kings.sum())
 
-        score = (n_black_men - n_white_men) * MAN_VALUE
-        score += (n_black_kings - n_white_kings) * KING_VALUE
+        # Material from black's perspective (will flip below).
+        score = (n_bm - n_wm) * p["man_value"]
+        score += (n_bk - n_wk) * p["king_value"]
 
-        # PST - Piece Square Tables
-        score += pst[0][black_men].sum()   # pst_man_black
-        score -= pst[1][white_men].sum()   # pst_man_white
-        score += pst[2][black_kings].sum() # pst_king_black
-        score -= pst[3][white_kings].sum() # pst_king_white
+        # PST
+        score += pmb[black_men].sum()
+        score -= pmw[white_men].sum()
+        score += pkb[black_kings].sum()
+        score -= pkw[white_kings].sum()
 
-        # Return score relative to side to move
-        return -score if board.turn == Color.WHITE else score
+        # Back-rank bonus — only meaningful while pieces are still developing.
+        total = n_wm + n_wk + n_bm + n_bk
+        if total >= 14:
+            n_squares = board.SQUARES_COUNT
+            rows = board.shape[0]
+            cols = n_squares // rows
+            bbr = int(black_men[:cols].sum())
+            wbr = int(white_men[n_squares - cols:].sum())
+            score += bbr * p["back_rank_bonus"]
+            score -= wbr * p["back_rank_bonus"]
 
-    def get_best_move(self, board: BaseBoard, with_evaluation: bool = False) -> Move | tuple[Move, float]:
+        # Flip to side-to-move
+        score = -score if board.turn == Color.WHITE else score
+        # Tempo
+        score += p["tempo"]
+        return float(score)
+
+    # ------------------------------------------------------------------
+    # Search entry point
+    # ------------------------------------------------------------------
+
+    def get_best_move(
+        self, board: BaseBoard, with_evaluation: bool = False
+    ) -> Move | tuple[Move, float]:
         """
-        Find the best move for the current position.
-
-        Args:
-            board: The board to analyze.
-            with_evaluation: If True, return ``(move, score)`` tuple.
-
-        Returns:
-            Best :class:`Move`, or ``(Move, float)`` if ``with_evaluation=True``.
-
-        Raises:
-            ValueError: If no legal moves are available.
-
-        Example:
-            >>> move = engine.get_best_move(board)
-            >>> move, score = engine.get_best_move(board, with_evaluation=True)
+        Find the best move. Uses iterative deepening with aspiration windows.
         """
         self.start_time = time.time()
         self.nodes = 0
         self.stop_search = False
+        self._tt_gen = (self._tt_gen + 1) & 0xFF
 
-        # Cache board-specific data for this search (avoids repeated lookups)
         num_squares = len(board._pos)
-        self._current_zobrist = self._get_zobrist_table(num_squares)
-        rows = 10 if num_squares == 50 else (8 if num_squares == 32 else int(np.sqrt(num_squares * 2)))
+        self._current_zobrist = self._get_zobrist_table(board)
+        rows = board.shape[0]
         self._current_pst = self._get_pst_tables(num_squares, rows)
 
-        # Age history table (decay old values)
-        for key in self.history:
-            self.history[key] //= 2
+        # Decay history each search
+        for k in self.history:
+            self.history[k] //= 2
 
-        # Initial Hash
-        current_hash = self._compute_hash_fast(board)
+        # Reset killers per search to avoid stale entries influencing ordering
+        self.killers.clear()
 
-        best_move: Move | None = None
-        best_score = -INF
-
-        # Iterative Deepening
+        root_hash = self._compute_hash_fast(board)
         max_depth = self.depth_limit or 6
 
+        best_move: Optional[Move] = None
+        best_score = -INF
+        prev_score = 0.0
+
         for d in range(1, max_depth + 1):
-            try:
-                score = self.negamax(board, d, -INF, INF, current_hash)
-
-                # Retrieve PV from TT
-                entry = self.tt.get(current_hash)
-                if entry:
-                    best_move = entry[3]
-                    best_score = score
-
-                logger.debug(f"Depth {d}: Score {score:.3f}, Move {best_move}, Nodes {self.nodes}")
-
-                # Time check
-                if self.time_limit and (time.time() - self.start_time > self.time_limit):
-                    break
-
-            except TimeoutError:
+            score = self._aspiration_search(board, d, prev_score, root_hash)
+            # Don't trust results from a search that was cut off mid-flight.
+            if self.stop_search:
                 break
 
-        # Limit TT size
-        if len(self.tt) > TT_MAX_SIZE:
-            keys_to_remove = list(self.tt.keys())[:len(self.tt) - TT_MAX_SIZE // 2]
-            for k in keys_to_remove:
-                del self.tt[k]
+            entry = self._tt_probe(root_hash)
+            if entry is not None:
+                tt_move = entry[4]
+                if tt_move is not None:
+                    best_move = tt_move
+                    best_score = score
+                    prev_score = score
 
-        logger.info(f"Best move: {best_move}, Score: {best_score:.2f}, Nodes: {self.nodes}")
+            if self.time_limit and (time.time() - self.start_time > self.time_limit):
+                break
 
         legal_moves = list(board.legal_moves)
         if not legal_moves:
             raise ValueError("No legal moves available")
-
         if best_move is None:
             best_move = legal_moves[0]
-            best_score = -INF
+            best_score = self.evaluate(board)
+
+        logger.info(f"Best move: {best_move}, Score: {best_score:.2f}, Nodes: {self.nodes}")
 
         if with_evaluation:
             return best_move, float(best_score)
         return best_move
 
-    def negamax(self, board: BaseBoard, depth: int, alpha: float, beta: float, h: int) -> float:
-        """Negamax search with alpha-beta pruning."""
+    def _aspiration_search(
+        self, board: BaseBoard, depth: int, prev_score: float, root_hash: int
+    ) -> float:
+        """Aspiration-window iterative deepening. Falls back to full window."""
+        if depth < 3:
+            return self.negamax(board, depth, -INF, INF, root_hash, 0)
+
+        delta = 0.5  # half a man
+        alpha = prev_score - delta
+        beta = prev_score + delta
+        while True:
+            score = self.negamax(board, depth, alpha, beta, root_hash, 0)
+            if self.stop_search:
+                return score
+            if score <= alpha:
+                alpha -= delta
+                delta *= 2
+            elif score >= beta:
+                beta += delta
+                delta *= 2
+            else:
+                return score
+            if delta > INF / 4:
+                # Safety: fall back to full window once
+                return self.negamax(board, depth, -INF, INF, root_hash, 0)
+
+    # ------------------------------------------------------------------
+    # Negamax
+    # ------------------------------------------------------------------
+
+    def negamax(
+        self,
+        board: BaseBoard,
+        depth: int,
+        alpha: float,
+        beta: float,
+        h: int,
+        ply: int = 0,
+    ) -> float:
+        """Negamax search with alpha-beta pruning and friends."""
         self.nodes += 1
 
-        # Check time
-        if self.nodes % 2048 == 0:
+        # Time check (cheap)
+        if self.nodes & 2047 == 0:
             if self.time_limit and (time.time() - self.start_time > self.time_limit):
                 self.stop_search = True
-
         if self.stop_search:
             return alpha
 
-        # Transposition Table Lookup
-        tt_entry = self.tt.get(h)
-        if tt_entry:
-            tt_depth, tt_flag, tt_score, tt_move = tt_entry
-            if tt_depth >= depth:
-                if tt_flag == 0:  # Exact
-                    return tt_score
-                elif tt_flag == 1:  # Lowerbound (Alpha)
-                    alpha = max(alpha, tt_score)
-                elif tt_flag == 2:  # Upperbound (Beta)
-                    beta = min(beta, tt_score)
+        # In a PV node, beta - alpha > 1 (full window). Used to gate NMP/futility.
+        in_pv = (beta - alpha) > 1.0001
 
-                if alpha >= beta:
+        # ---- TT probe ----
+        tt_entry = self._tt_probe(h)
+        tt_move: Optional[Move] = None
+        if tt_entry is not None:
+            _key, tt_depth, tt_flag, tt_score, tt_move, _gen = tt_entry
+            if tt_depth >= depth and not in_pv:
+                if tt_flag == EXACT:
+                    return tt_score
+                if tt_flag == LOWER and tt_score >= beta:
+                    return tt_score
+                if tt_flag == UPPER and tt_score <= alpha:
                     return tt_score
 
-        # Base case: Leaf or Game Over
+        # ---- Leaf ----
         if depth <= 0:
             return self.quiescence_search(board, alpha, beta, h)
 
+        # ---- Generate legal moves once ----
         legal_moves = list(board.legal_moves)
         if not legal_moves:
-            return -CHECKMATE + ((self.depth_limit or 6) - depth)
+            # No legal moves = loss. Prefer faster mates.
+            return -CHECKMATE + ply
 
-        # Check for draw
         if board.is_draw:
             return 0.0
 
-        # Internal Iterative Deepening
-        tt_entry = self.tt.get(h)
-        if depth >= IID_DEPTH and (not tt_entry or tt_entry[3] is None):
-            self.negamax(board, depth - 2, alpha, beta, h)
+        has_capture = any(m.captured_list for m in legal_moves)
 
-        # Move Ordering
-        legal_moves = self._order_moves(legal_moves, board, h, depth)
+        # Static eval used by RFP/NMP. Compute lazily.
+        static_eval: Optional[float] = None
+
+        # ---- Reverse futility (static null move) ----
+        # If our static eval is so high above beta that even a big drop
+        # still beats beta, return the optimistic score.
+        if (
+            depth <= 3
+            and not in_pv
+            and not has_capture
+            and abs(beta) < CHECKMATE - 100
+        ):
+            static_eval = self.evaluate(board)
+            margin = depth * RFUT_MARGIN * MAN_VALUE
+            if static_eval - margin >= beta:
+                return static_eval - margin
+
+        # ---- Null-move pruning ----
+        # Disabled when a capture is forced (analogous to "in check" in chess),
+        # in PV nodes, near the leaves, or when the side-to-move has very
+        # few pieces (zugzwang risk).
+        own_pieces = self._side_piece_count(board)
+        if (
+            depth >= NMP_MIN_DEPTH
+            and not in_pv
+            and not has_capture
+            and own_pieces >= 4
+            and ply > 0
+        ):
+            if static_eval is None:
+                static_eval = self.evaluate(board)
+            if static_eval >= beta:
+                # Make null move (just flip turn; halfmove clock unchanged)
+                original_turn = board.turn
+                board.turn = Color.BLACK if original_turn == Color.WHITE else Color.WHITE
+                null_hash = h ^ self._zobrist_turn
+                R = NMP_REDUCTION + (1 if depth >= 6 else 0)
+                null_score = -self.negamax(
+                    board, depth - 1 - R, -beta, -beta + 1, null_hash, ply + 1
+                )
+                board.turn = original_turn
+                if self.stop_search:
+                    return alpha
+                if null_score >= beta:
+                    return null_score
+
+        # ---- Internal Iterative Deepening ----
+        if depth >= IID_DEPTH and tt_move is None:
+            self.negamax(board, depth - 2, alpha, beta, h, ply + 1)
+            if self.stop_search:
+                return alpha
+            iid_entry = self._tt_probe(h)
+            if iid_entry is not None:
+                tt_move = iid_entry[4]
+
+        # ---- Move ordering ----
+        legal_moves = self._order_moves(legal_moves, tt_move, depth)
 
         best_value = -INF
-        best_move = None
-        tt_flag = 1  # Alpha (Lowerbound)
+        best_move: Optional[Move] = None
+        flag = UPPER
+        original_alpha = alpha
 
         for i, move in enumerate(legal_moves):
-            # Incremental Hash Update
             new_hash = self._update_hash(h, board, move)
-
             board.push(move)
 
-            # PVS (Principal Variation Search)
             if i == 0:
-                val = -self.negamax(board, depth - 1, -beta, -alpha, new_hash)
+                val = -self.negamax(board, depth - 1, -beta, -alpha, new_hash, ply + 1)
             else:
-                # LMR (Late Move Reductions)
+                # LMR
                 reduction = 0
-                if depth >= 3 and i >= 3 and not move.captured_list:
-                    reduction = 1
-
-                # Null Window Search with possible reduction
-                val = -self.negamax(board, depth - 1 - reduction, -alpha - 1, -alpha, new_hash)
-
-                # Re-search if needed
+                if (
+                    depth >= 3
+                    and i >= 2
+                    and not move.captured_list
+                    and not in_pv
+                ):
+                    reduction = self._lmr(depth, i)
+                # Null-window search
+                val = -self.negamax(
+                    board, depth - 1 - reduction, -alpha - 1, -alpha, new_hash, ply + 1
+                )
+                # Re-search if surprise
                 if val > alpha and (reduction > 0 or val < beta):
-                    val = -self.negamax(board, depth - 1, -beta, -alpha, new_hash)
+                    val = -self.negamax(
+                        board, depth - 1, -beta, -alpha, new_hash, ply + 1
+                    )
 
             board.pop()
 
+            # Cut off mid-search? Don't trust val.
             if self.stop_search:
                 return alpha
 
@@ -396,119 +604,216 @@ class AlphaBetaEngine(Engine):
                 best_value = val
                 best_move = move
 
-            alpha = max(alpha, val)
+            if val > alpha:
+                alpha = val
+                flag = EXACT
+
             if alpha >= beta:
-                tt_flag = 2  # Beta (Upperbound)
+                flag = LOWER
                 if not move.captured_list:
                     self._update_killers(move, depth)
                 self._update_history(move, depth)
                 break
 
-        # Store in TT
-        self.tt[h] = (depth, tt_flag, best_value, best_move)
+        # ---- TT store (only when search is intact) ----
+        if not self.stop_search:
+            self._tt_store(h, depth, flag, best_value, best_move)
 
         return best_value
 
-    def quiescence_search(self, board: BaseBoard, alpha: float, beta: float, h: int, qs_depth: int = 0) -> float:
-        """Search captures until position is quiet."""
+    # ------------------------------------------------------------------
+    # Quiescence
+    # ------------------------------------------------------------------
+
+    def quiescence_search(
+        self,
+        board: BaseBoard,
+        alpha: float,
+        beta: float,
+        h: int,
+        qs_depth: int = 0,
+    ) -> float:
+        """Capture-only search to dampen the horizon effect."""
         self.nodes += 1
+        if self.nodes & 2047 == 0:
+            if self.time_limit and (time.time() - self.start_time > self.time_limit):
+                self.stop_search = True
+        if self.stop_search:
+            return alpha
 
-        # Stand-pat (static evaluation)
         stand_pat = self.evaluate(board)
-
         if stand_pat >= beta:
             return beta
-
-        if alpha < stand_pat:
+        if stand_pat > alpha:
             alpha = stand_pat
 
-        # Depth limit to prevent explosion
         if qs_depth >= QS_MAX_DEPTH:
             return stand_pat
 
-        # Generate only captures
-        legal_moves = list(board.legal_moves)
-        captures = [m for m in legal_moves if m.captured_list]
-
+        captures = [m for m in board.legal_moves if m.captured_list]
         if not captures:
             return stand_pat
 
-        # Order captures (MVV-LVA)
-        captures = self._order_captures(captures, board)
-
+        captures = self._order_captures(captures)
         for move in captures:
             new_hash = self._update_hash(h, board, move)
             board.push(move)
             score = -self.quiescence_search(board, -beta, -alpha, new_hash, qs_depth + 1)
             board.pop()
-
+            if self.stop_search:
+                return alpha
             if score >= beta:
                 return beta
             if score > alpha:
                 alpha = score
-
         return alpha
 
-    def _update_hash(self, current_hash: int, board: BaseBoard, move: Move) -> int:
-        zt = self._current_zobrist  # Cached zobrist table
-        
-        # XOR out source
-        start_sq = move.square_list[0]
-        piece = board._pos[start_sq]
-        current_hash ^= zt[start_sq][piece + 2]
+    # ------------------------------------------------------------------
+    # Move ordering
+    # ------------------------------------------------------------------
 
-        # XOR in dest
-        end_sq = move.square_list[-1]
-        new_piece = piece
-        if move.is_promotion:
-            new_piece = 2 if piece == 1 else -2
+    def _order_moves(
+        self,
+        moves: List[Move],
+        tt_move: Optional[Move] = None,
+        depth: int = 0,
+    ) -> List[Move]:
+        killers = self.killers.get(depth, ())
 
-        current_hash ^= zt[end_sq][new_piece + 2]
-
-        # XOR out captures
-        for cap_sq in move.captured_list:
-            cap_piece = board._pos[cap_sq]
-            current_hash ^= zt[cap_sq][cap_piece + 2]
-
-        # Switch turn
-        current_hash ^= self._zobrist_turn
-
-        return current_hash
-
-    def _order_moves(self, moves: List[Move], board: BaseBoard | None = None, h: int = 0, depth: int = 0) -> List[Move]:
-        tt_entry = self.tt.get(h)
-        pv_move = tt_entry[3] if tt_entry else None
-
-        def score_move(move):
-            if move == pv_move:
-                return 1000000
-
-            if move.captured_list:
-                return 100000 + len(move.captured_list) * 1000
-
-            killers = self.killers.get(depth, [])
-            if move in killers:
-                return 90000
-
-            start = move.square_list[0]
-            end = move.square_list[-1]
-            return self.history.get((start, end), 0)
+        def score_move(m: Move) -> float:
+            if tt_move is not None and m == tt_move:
+                return 1e9
+            if m.captured_list:
+                # MVV-style: total captured material × 1e4 + count
+                return 1e5 + m.capture_value * 1e4 + len(m.captured_list)
+            if m in killers:
+                return 9e4
+            start = m.square_list[0]
+            end = m.square_list[-1]
+            promo = 1 if m.is_promotion else 0
+            return self.history.get((start, end, promo), 0)
 
         moves.sort(key=score_move, reverse=True)
         return moves
 
-    def _order_captures(self, moves: List[Move], board: BaseBoard) -> List[Move]:
-        moves.sort(key=lambda m: len(m.captured_list), reverse=True)
+    @staticmethod
+    def _order_captures(moves: List[Move]) -> List[Move]:
+        """Sort captures by material value first, count as tiebreak."""
+        moves.sort(
+            key=lambda m: (m.capture_value, len(m.captured_list)),
+            reverse=True,
+        )
         return moves
 
-    def _update_killers(self, move: Move, depth: int):
-        if depth not in self.killers:
-            self.killers[depth] = []
-        if move not in self.killers[depth]:
-            self.killers[depth].insert(0, move)
-            self.killers[depth] = self.killers[depth][:2]
+    def _update_killers(self, move: Move, depth: int) -> None:
+        bucket = self.killers.setdefault(depth, [])
+        if move in bucket:
+            return
+        bucket.insert(0, move)
+        del bucket[2:]
 
-    def _update_history(self, move: Move, depth: int):
-        start = move.square_list[0]
-        end = move.square_list[-1]
-        self.history[(start, end)] = self.history.get((start, end), 0) + depth * depth
+    def _update_history(self, move: Move, depth: int) -> None:
+        key = (move.square_list[0], move.square_list[-1], 1 if move.is_promotion else 0)
+        self.history[key] = self.history.get(key, 0) + depth * depth
+
+    # ------------------------------------------------------------------
+    # Misc helpers
+    # ------------------------------------------------------------------
+
+    @staticmethod
+    def _side_piece_count(board: BaseBoard) -> int:
+        """Pieces of the side to move (used to gate NMP for zugzwang risk)."""
+        if board.turn == Color.WHITE:
+            return board._popcount(board.white_men) + board._popcount(board.white_kings)
+        return board._popcount(board.black_men) + board._popcount(board.black_kings)
+
+    @staticmethod
+    def _build_lmr_table(max_depth: int, max_moves: int) -> list[list[int]]:
+        """Tuned LMR reductions: ~ 0.75 + ln(d)·ln(i) / 2.25 (chess-style)."""
+        table = [[0] * max_moves for _ in range(max_depth)]
+        for d in range(1, max_depth):
+            for i in range(1, max_moves):
+                r = 0.75 + math.log(d) * math.log(i) / 2.25
+                table[d][i] = max(0, int(r))
+        return table
+
+    def _lmr(self, depth: int, move_index: int) -> int:
+        d = min(depth, len(self._lmr_table) - 1)
+        i = min(move_index, len(self._lmr_table[0]) - 1)
+        return self._lmr_table[d][i]
+
+    # ------------------------------------------------------------------
+    # Transposition table
+    # ------------------------------------------------------------------
+
+    def _tt_probe(self, key: int) -> Optional[tuple]:
+        idx = key & self._tt_mask
+        e = self._tt_dp[idx]
+        if e is not None and e[0] == key:
+            return e
+        e = self._tt_ar[idx]
+        if e is not None and e[0] == key:
+            return e
+        return None
+
+    def _tt_store(
+        self,
+        key: int,
+        depth: int,
+        flag: int,
+        score: float,
+        move: Optional[Move],
+    ) -> None:
+        idx = key & self._tt_mask
+        new_entry = (key, depth, flag, score, move, self._tt_gen)
+        dp = self._tt_dp[idx]
+        # Depth-preferred: replace if empty, same key, deeper, or aged out.
+        if (
+            dp is None
+            or dp[0] == key
+            or dp[5] != self._tt_gen
+            or dp[1] <= depth
+        ):
+            self._tt_dp[idx] = new_entry
+        else:
+            self._tt_ar[idx] = new_entry
+
+
+# ---------------------------------------------------------------------------
+# Backwards-compatible TT view
+# ---------------------------------------------------------------------------
+
+
+class _TTView:
+    """
+    Minimal dict-like view exposing the modern TT through the legacy
+    ``engine.tt[hash] -> (depth, flag, score, move)`` API.
+    """
+
+    __slots__ = ("_engine",)
+
+    def __init__(self, engine: AlphaBetaEngine):
+        self._engine = engine
+
+    def get(self, key: int, default=None):
+        e = self._engine._tt_probe(key)
+        if e is None:
+            return default
+        return (e[1], e[2], e[3], e[4])
+
+    def __getitem__(self, key: int):
+        v = self.get(key)
+        if v is None:
+            raise KeyError(key)
+        return v
+
+    def __contains__(self, key: int) -> bool:
+        return self._engine._tt_probe(key) is not None
+
+    def __len__(self) -> int:
+        n = 0
+        for arr in (self._engine._tt_dp, self._engine._tt_ar):
+            for e in arr:
+                if e is not None:
+                    n += 1
+        return n
