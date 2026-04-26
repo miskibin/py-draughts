@@ -1,16 +1,38 @@
-# py-draughts
+# py-draughts — fastest Python draughts & checkers library
 
-[![GitHub Actions](https://github.com/michalskibinski109/checkers/actions/workflows/python-app.yml/badge.svg)](https://github.com/michalskibinski109/checkers/actions/workflows/python-app.yml)
+[![GitHub Actions](https://github.com/miskibin/py-draughts/actions/workflows/python-app.yml/badge.svg)](https://github.com/miskibin/py-draughts/actions/workflows/python-app.yml)
 [![PyPI version](https://badge.fury.io/py/py-draughts.svg)](https://badge.fury.io/py/py-draughts)
 [![Downloads](https://static.pepy.tech/badge/py-draughts)](https://pepy.tech/project/py-draughts)
 [![Docs](https://img.shields.io/badge/docs-online-blue)](https://miskibin.github.io/py-draughts/)
+[![Python](https://img.shields.io/pypi/pyversions/py-draughts.svg)](https://pypi.org/project/py-draughts/)
+[![License](https://img.shields.io/badge/license-GPL--3.0-blue.svg)](LICENSE)
 
-Fast, modern draughts library with move generation, validation, PDN support, and AI engines. HUB protocol for external engines communication
+**py-draughts** (import name: `draughts`) is a fast, modern Python library for **draughts** (also known as **checkers**). Bitboard-backed move generation, PDN/FEN parsing, a built-in alpha-beta engine, HUB protocol bridge for external engines like [Scan](https://hjetten.home.xs4all.nl/scan/scan.html) and [Kingsrow](http://www.edgilbert.org/Checkers/KingsRow.htm), an interactive web UI, and tensor exports for RL / ML — all in one package.
 
-> [!IMPORTANT]  
-> Best optimized draughts library utilizing bitboards for ~200x faster move generation than alternatives.
+> [!IMPORTANT]
+> The fastest pure-Python draughts library: **~200x faster** legal-move generation than [pydraughts](https://pypi.org/project/pydraughts/), with 8 supported variants and 260+ tests.
 
-**Features:** multiple variants • Built-in AI engine • (HUB protocol) External engine support ([Scan](https://hjetten.home.xs4all.nl/scan/scan.html), [Kingsrow](http://www.edgilbert.org/Checkers/KingsRow.htm)) • RL/ML ready • Web UI
+## py-draughts vs pydraughts
+
+| | py-draughts | pydraughts |
+|---|---|---|
+| Legal moves generation | **21.4 µs** | 5.18 ms (**243x slower**) |
+| Make move | **1.2 µs** | 552.50 µs (**460x slower**) |
+| Board init | **3.3 µs** | 579.45 µs (**176x slower**) |
+| FEN parse | **27.4 µs** | 295.10 µs (**11x slower**) |
+| Variants | 8 (Standard, American, Frisian, Russian, Brazilian, Antidraughts, Breakthrough, Frysk!) | 6 |
+| Built-in AI engine | ✅ Alpha-beta + transposition tables | ❌ External only |
+| Engine benchmarking suite | ✅ | ❌ |
+| Web UI | ✅ FastAPI + interactive board | ❌ |
+| SVG rendering | ✅ | ❌ |
+| ML/RL helpers (tensors, masks) | ✅ | ❌ |
+| Test suite | 260+ tests, real Lidraughts PDN replays | Limited |
+| HUB protocol (Scan, Kingsrow) | ✅ | ✅ |
+| Implementation | Bitboards (NumPy uint64) | Object lists |
+
+[Full comparison →](https://miskibin.github.io/py-draughts/comparison.html)
+
+**Features:** 8 variants • Built-in AI engine • External engines via HUB protocol ([Scan](https://hjetten.home.xs4all.nl/scan/scan.html), [Kingsrow](http://www.edgilbert.org/Checkers/KingsRow.htm)) • RL/ML ready (tensors, masks) • SVG rendering • Web UI
 
 ## [Installation](https://miskibin.github.io/py-draughts/)
 
@@ -291,10 +313,10 @@ Legal moves generation in **~10-30 microseconds**:
 
 | Operation | py-draughts | pydraughts | Speedup |
 |-----------|-------------|------------|---------|
-| Board init | 2.30 µs | 547.10 µs | **238x faster** |
-| FEN parse | 21.00 µs | 358.90 µs | **17x faster** |
-| Legal moves | 17.40 µs | 3.61 ms | **207x faster** |
-| Make move | 0.90 µs | 507.75 µs | **564x faster** |
+| Board init | 3.30 µs | 579.45 µs | **176x faster** |
+| FEN parse | 27.40 µs | 295.10 µs | **11x faster** |
+| Legal moves | 21.35 µs | 5.18 ms | **243x faster** |
+| Make move | 1.20 µs | 552.50 µs | **460x faster** |
 
 <img src="docs/source/_static/speed_comparison.png" alt="Speed Comparison Chart" width="700">
 
@@ -302,10 +324,10 @@ Engine search at various depths:
 
 | Depth | Time | Nodes |
 |-------|------|-------|
-| 5 | 130 ms | 3,525 |
-| 6 | 350 ms | 9,537 |
-| 7 | 933 ms | 25,202 |
-| 8 | 4.9 s | 122,168 |
+| 5 | 274 ms | 3,263 |
+| 6 | 619 ms | 7,330 |
+| 7 | 2.20 s | 21,642 |
+| 8 | 6.55 s | 98,987 |
 
 <img src="docs/source/_static/engine_benchmark.png" alt="Engine Benchmark" width="600">
 

@@ -1,3 +1,7 @@
+.. meta::
+   :description: Drop-in FastAPI web server for playing draughts and checkers in the browser — interactive board, engine vs engine matches, position analysis.
+   :keywords: draughts web ui, online checkers, fastapi draughts server, play draughts python, engine match ui
+
 Server
 ======
 

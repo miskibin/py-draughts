@@ -62,7 +62,7 @@ def test_no_mid_capture_promotion():
 
 
 def test_pdn_round_trip():
-    """A self-played Brazilian game should serialize and re-parse identically."""
+    """A randomly-played Brazilian game should serialize and re-parse identically."""
     import random
 
     board = BrazilianBoard()

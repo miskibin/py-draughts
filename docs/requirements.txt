@@ -3,4 +3,6 @@ sphinx
 furo
 sphinx-copybutton
 sphinx-design
+sphinx-sitemap
+sphinxext-opengraph
 sphinxcontrib-mermaid==0.8.1

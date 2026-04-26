@@ -1,5 +1,8 @@
 :layout: landing
-:description: Fast, modern Python draughts library — move generation, PDN/FEN, AI engine, and a web UI.
+
+.. meta::
+   :description: py-draughts — the fastest Python draughts / checkers library. Bitboard move generation ~200x faster than pydraughts. Built-in alpha-beta engine, HUB protocol, web UI, SVG rendering, ML tensors. 8 variants: International, American, Frisian, Russian, Brazilian, Antidraughts, Breakthrough, Frysk!.
+   :keywords: python draughts, python checkers, draughts library, checkers library, pydraughts alternative, international draughts, frisian draughts, russian draughts, brazilian draughts, antidraughts, breakthrough, frysk, bitboard, pdn, fen, alpha-beta engine, hub protocol, board game ai
 
 py-draughts
 ===========
@@ -9,14 +12,17 @@ py-draughts
    <div class="hero">
      <div class="hero-title">py&#8209;draughts</div>
      <p class="hero-subtitle">
-       The fastest pure-Python draughts library. Move generation, validation,
-       PDN/FEN, an alpha-beta engine, a web UI, and tooling for AI / RL agents —
-       across International, American, Frisian, and Russian variants.
+       The fastest pure-Python <strong>draughts / checkers</strong> library —
+       bitboard move generation ~200× faster than pydraughts. Built-in
+       alpha-beta engine, HUB protocol bridge (Scan, Kingsrow), web UI,
+       SVG rendering, and ML/RL helpers across 8 variants:
+       International, American, Frisian, Russian, Brazilian, Antidraughts,
+       Breakthrough, and Frysk!.
      </p>
      <div class="hero-badges">
        <a href="https://pypi.org/project/py-draughts/"><img alt="PyPI" src="https://badge.fury.io/py/py-draughts.svg"></a>
        <a href="https://pepy.tech/project/py-draughts"><img alt="Downloads" src="https://static.pepy.tech/badge/py-draughts"></a>
-       <a href="https://github.com/michalskibinski109/py-draughts"><img alt="GitHub" src="https://img.shields.io/github/stars/michalskibinski109/py-draughts?style=social"></a>
+       <a href="https://github.com/miskibin/py-draughts"><img alt="GitHub" src="https://img.shields.io/github/stars/miskibin/py-draughts?style=social"></a>
      </div>
    </div>
 
@@ -65,6 +71,13 @@ py-draughts
 
       Performance numbers for legal-move generation and engine search,
       plus the tooling used to produce them.
+
+   .. grid-item-card:: :octicon:`git-compare;1em;sd-text-primary` vs pydraughts
+      :link: comparison
+      :link-type: doc
+
+      Side-by-side comparison: speed, variants, engine, web UI, ML support.
+      Why py-draughts is ~200× faster.
 
 Installation
 ------------
@@ -119,7 +132,7 @@ Variants
    * - :class:`draughts.StandardBoard`
      - 10×10
      - Yes
-     - International draughts (alias: :class:`draughts.Board`)
+     - International draughts / FMJD (alias: :class:`draughts.Board`)
    * - :class:`draughts.AmericanBoard`
      - 8×8
      - No
@@ -127,11 +140,27 @@ Variants
    * - :class:`draughts.FrisianBoard`
      - 10×10
      - Yes
-     - Orthogonal captures allowed
+     - Diagonal + orthogonal captures
    * - :class:`draughts.RussianBoard`
      - 8×8
      - Yes
-     - Russian draughts
+     - Mid-capture promotion
+   * - :class:`draughts.BrazilianBoard`
+     - 8×8
+     - Yes
+     - International rules on 8×8
+   * - :class:`draughts.AntidraughtsBoard`
+     - 10×10
+     - Yes
+     - Lose all pieces (or get blocked) to win
+   * - :class:`draughts.BreakthroughBoard`
+     - 10×10
+     - Yes
+     - First player to make a king wins
+   * - :class:`draughts.FryskBoard`
+     - 10×10
+     - Yes
+     - Frisian rules with 5 men per side
 
 .. toctree::
    :hidden:
@@ -148,3 +177,4 @@ Variants
    :caption: Reference
 
    benchmarking
+   comparison

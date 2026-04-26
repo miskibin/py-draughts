@@ -1,3 +1,7 @@
+.. meta::
+   :description: py-draughts core API — Board, legal moves, push/pop, PDN and FEN parsing for International, American, Frisian, Russian, Brazilian, Antidraughts, Breakthrough, and Frysk! draughts variants.
+   :keywords: python draughts api, draughts board, legal_moves, push_uci, pdn parser, fen parser, draughts variants
+
 Core API
 ========
 

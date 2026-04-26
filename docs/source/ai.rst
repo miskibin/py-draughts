@@ -1,3 +1,7 @@
+.. meta::
+   :description: Build draughts / checkers AI agents with py-draughts — tensor representations, legal-move masks, MCTS skeleton, REINFORCE self-play example for reinforcement learning.
+   :keywords: draughts ai, checkers reinforcement learning, mcts draughts, alphazero checkers, self-play, neural network draughts, legal moves mask
+
 Writing Your Own AI
 ===================
 

@@ -1,3 +1,7 @@
+.. meta::
+   :description: Render draughts and checkers boards as SVG with py-draughts — arrows, highlights, kings, full Jupyter notebook integration, 8×8 and 10×10 boards.
+   :keywords: draughts svg, checkers svg, render draughts board, jupyter draughts, board visualization python
+
 SVG Rendering
 =============
 

@@ -90,7 +90,7 @@ def test_max_capture_still_mandatory():
 
 
 def test_pdn_round_trip():
-    """Self-played antidraughts PDN should re-parse identically."""
+    """A randomly-played antidraughts PDN should re-parse identically."""
     import random
 
     board = AntidraughtsBoard()

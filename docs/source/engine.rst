@@ -1,3 +1,7 @@
+.. meta::
+   :description: py-draughts engine — built-in alpha-beta search with transposition tables and iterative deepening, plus a HUB protocol bridge for external engines like Scan and Kingsrow.
+   :keywords: draughts engine, alpha-beta draughts, hub protocol, scan engine, kingsrow, python checkers ai, transposition table
+
 Engine
 ======
 
@@ -38,10 +42,10 @@ Performance
 ============  ============  ============
 Depth         Avg Time      Avg Nodes
 ============  ============  ============
-5             130 ms        2,896
-6             350 ms        9,163
-7             933 ms        24,528
-8             4.9 s         122,168
+5             274 ms        3,263
+6             619 ms        7,330
+7             2.20 s        21,642
+8             6.55 s        98,987
 ============  ============  ============
 
 - **Depth 5-6**: Strong play, responsive (< 1s per move)

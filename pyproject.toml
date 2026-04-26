@@ -4,14 +4,37 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "py-draughts"
-version = "1.7.1"
-description = "Fastest python draughts library with advanced WEB UI, move generation and validation, PDN and FEN parsing and writing and advenced engine + benchmarking. Supports multiple variants of game."
+version = "1.8.1"
+description = "Fastest Python draughts / checkers library (import: draughts). Bitboard move generation ~200x faster than pydraughts. PDN/FEN, alpha-beta engine, HUB protocol, web UI. 8 variants: International, American, Frisian, Russian, Brazilian, Antidraughts, Breakthrough, Frysk!"
 readme = "readme.md"
 license = {file = "LICENSE"}
 authors = [
     { name = "Michał Skibiński", email = "mskibinski109@gmail.com" }
 ]
-keywords = ["draughts", "checkers", "AI", "mini-max", "game", "board"]
+keywords = [
+    "draughts",
+    "checkers",
+    "international-draughts",
+    "american-checkers",
+    "english-draughts",
+    "frisian-draughts",
+    "russian-draughts",
+    "brazilian-draughts",
+    "antidraughts",
+    "breakthrough",
+    "frysk",
+    "bitboard",
+    "pdn",
+    "fen",
+    "alpha-beta",
+    "minimax",
+    "hub-protocol",
+    "game-engine",
+    "board-game",
+    "AI",
+    "reinforcement-learning",
+    "pydraughts-alternative",
+]
 classifiers = [
     "Development Status :: 5 - Production/Stable",
     "Intended Audience :: Developers",
@@ -42,9 +65,11 @@ dependencies = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/michalskibinski109/py-draughts"
-Documentation = "https://michalskibinski109.github.io/py-draughts/index.html"
-Repository = "https://github.com/michalskibinski109/py-draughts"
+Homepage = "https://github.com/miskibin/py-draughts"
+Documentation = "https://miskibin.github.io/py-draughts/"
+Repository = "https://github.com/miskibin/py-draughts"
+Issues = "https://github.com/miskibin/py-draughts/issues"
+Changelog = "https://github.com/miskibin/py-draughts/blob/main/changelog.md"
 
 [project.optional-dependencies]
 dev = [

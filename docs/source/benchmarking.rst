@@ -1,3 +1,7 @@
+.. meta::
+   :description: py-draughts benchmark methodology and results — legal-move generation in microseconds, alpha-beta engine search depth performance, comparison with pydraughts.
+   :keywords: fastest python draughts, draughts benchmark, pydraughts speed, bitboard performance, alpha-beta benchmark
+
 Benchmarking (Internal)
 =======================
 
@@ -6,7 +10,7 @@ This page documents the internal benchmarking tools used for performance testing
 Performance Results
 -------------------
 
-The following benchmarks were run on January 7, 2026.
+The following benchmarks were run on April 26, 2026.
 
 Legal Moves Generation
 ~~~~~~~~~~~~~~~~~~~~~~
@@ -26,19 +30,19 @@ Performance of the legal moves generator across different board positions:
      - Time (µs)
      - Move Count
    * - Opening
-     - 11.93
+     - 15.64
      - 9
    * - King Captures
-     - 28.10
+     - 31.40
      - 2
    * - Midgame
-     - 9.36
+     - 11.11
      - 9
    * - Complex
-     - 12.64
+     - 14.99
      - 7
    * - Start Position
-     - 24.90
+     - 23.75
      - 9
 
 Engine Depth Performance
@@ -59,35 +63,35 @@ AlphaBeta engine search performance at different depths:
      - Avg Time
      - Avg Nodes
    * - 1
-     - 1.03 ms
-     - 27
+     - 1.85 ms
+     - 24
    * - 2
-     - 8.37 ms
-     - 117
+     - 7.65 ms
+     - 92
    * - 3
-     - 12.64 ms
-     - 312
+     - 32.16 ms
+     - 382
    * - 4
-     - 35.92 ms
-     - 971
+     - 68.39 ms
+     - 1,021
    * - 5
-     - 130.32 ms
-     - 3,525
+     - 274.07 ms
+     - 3,263
    * - 6
-     - 349.03 ms
-     - 9,537
+     - 619.21 ms
+     - 7,330
    * - 7
-     - 932.85 ms
-     - 25,202
+     - 2.20 s
+     - 21,642
    * - 8
-     - 4.90 s
-     - 122,168
+     - 6.55 s
+     - 98,987
    * - 9
-     - 5.93 s
-     - 153,152
+     - 11.24 s
+     - 150,824
    * - 10
-     - 25.90 s
-     - 641,085
+     - 21.50 s
+     - 401,439
 
 .. image:: _static/engine_depth_time.png
    :alt: Engine Search Time by Depth
