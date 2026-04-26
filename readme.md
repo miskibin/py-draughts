@@ -126,15 +126,28 @@ False
 
 ## [Variants](https://miskibin.github.io/py-draughts/core.html#boards)
 
-| Variant | Class | Board | Flying Kings | Max Capture |
-|---------|-------|-------|--------------|-------------|
-| Standard | `StandardBoard` | 10×10 | Yes | Required |
-| American | `AmericanBoard` | 8×8 | No | Not required |
-| Frisian | `FrisianBoard` | 10×10 | Yes | Required |
-| Russian | `RussianBoard` | 8×8 | Yes | Not required |
+| Variant | Class | Board | Flying Kings | Max Capture | Notes |
+|---------|-------|-------|--------------|-------------|-------|
+| Standard | `StandardBoard` | 10×10 | Yes | Required | International / FMJD rules |
+| American | `AmericanBoard` | 8×8 | No | Not required | Men capture forward only |
+| Frisian | `FrisianBoard` | 10×10 | Yes | Required (by value) | Diagonal + orthogonal captures |
+| Russian | `RussianBoard` | 8×8 | Yes | Not required | Mid-capture promotion |
+| Brazilian | `BrazilianBoard` | 8×8 | Yes | Required | International rules on 8×8 |
+| Antidraughts | `AntidraughtsBoard` | 10×10 | Yes | Required | Lose all pieces (or get blocked) to win |
+| Breakthrough | `BreakthroughBoard` | 10×10 | Yes | Required | First player to make a king wins |
+| Frysk! | `FryskBoard` | 10×10 | Yes | Required (by value) | Frisian rules with 5 men per side |
 
 ```python
->>> from draughts import StandardBoard, AmericanBoard, FrisianBoard, RussianBoard
+>>> from draughts import (
+...     StandardBoard,
+...     AmericanBoard,
+...     FrisianBoard,
+...     RussianBoard,
+...     BrazilianBoard,
+...     AntidraughtsBoard,
+...     BreakthroughBoard,
+...     FryskBoard,
+... )
 
 >>> board = AmericanBoard()
 >>> board
@@ -309,7 +322,7 @@ Tests include:
 - **Real game replays** - PDN games from Lidraughts for all variants
 - **Edge cases** - Complex king captures, promotion mid-capture, draw rules
 - **Engine correctness** - Hash stability, transposition tables, board immutability
-- **All 4 variants** - Standard, American, Frisian, Russian
+- **All 8 variants** - Standard, American, Frisian, Russian, Brazilian, Antidraughts, Breakthrough, Frysk!
 
 ## Contributing
 

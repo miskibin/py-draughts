@@ -17,7 +17,8 @@
 """
 py-draughts: A fast draughts library with move generation, validation, and AI.
 
-Supports Standard (International), American, Frisian, and Russian variants.
+Supports Standard (International), American, Frisian, Russian, Brazilian,
+Antidraughts, Breakthrough, and Frysk! variants.
 """
 
 import sys
@@ -34,8 +35,12 @@ except ValueError:
 
 # Board classes
 from draughts.boards.american import Board as AmericanBoard
+from draughts.boards.antidraughts import Board as AntidraughtsBoard
 from draughts.boards.base import BaseBoard
+from draughts.boards.brazilian import Board as BrazilianBoard
+from draughts.boards.breakthrough import Board as BreakthroughBoard
 from draughts.boards.frisian import Board as FrisianBoard
+from draughts.boards.frysk import Board as FryskBoard
 from draughts.boards.russian import Board as RussianBoard
 from draughts.boards.standard import Board as StandardBoard
 
@@ -69,6 +74,10 @@ __all__ = [
     "FrisianBoard",
     "AmericanBoard",
     "RussianBoard",
+    "BrazilianBoard",
+    "AntidraughtsBoard",
+    "BreakthroughBoard",
+    "FryskBoard",
     # Engines
     "Engine",
     "AlphaBetaEngine",
