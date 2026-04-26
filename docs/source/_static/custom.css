@@ -1,0 +1,258 @@
+/* ======================================================================
+   py-draughts modern docs styling
+   ====================================================================== */
+
+@import url('https://rsms.me/inter/inter.css');
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&display=swap');
+
+:root {
+    --pyd-radius: 10px;
+    --pyd-radius-sm: 6px;
+    --pyd-shadow: 0 1px 2px rgba(15, 23, 42, 0.04), 0 4px 12px rgba(15, 23, 42, 0.06);
+}
+
+html {
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11", "ss01";
+}
+
+body {
+    font-family: var(--font-stack);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+/* ----- Sidebar tweaks ----- */
+.sidebar-brand {
+    font-weight: 700;
+    letter-spacing: -0.02em;
+}
+
+.sidebar-brand-text {
+    font-size: 1.25rem;
+}
+
+.sidebar-tree .toctree-l1 > .reference {
+    font-weight: 600;
+    border-radius: var(--pyd-radius-sm);
+}
+
+.sidebar-tree .reference {
+    border-radius: var(--pyd-radius-sm);
+    transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+/* ----- Headings ----- */
+h1, h2, h3, h4, h5, h6 {
+    letter-spacing: -0.02em;
+    font-weight: 700;
+}
+
+h1 {
+    font-size: 2.25rem;
+    margin-bottom: 0.75rem;
+}
+
+h2 {
+    font-size: 1.625rem;
+    margin-top: 2.5rem;
+    padding-bottom: 0.25rem;
+    border-bottom: 1px solid var(--color-background-border);
+}
+
+h3 {
+    font-size: 1.25rem;
+    margin-top: 2rem;
+}
+
+/* ----- Code blocks ----- */
+.highlight {
+    border-radius: var(--pyd-radius);
+    box-shadow: var(--pyd-shadow);
+    margin: 1.25rem 0;
+}
+
+.highlight pre {
+    padding: 1rem 1.25rem;
+    font-size: 0.875rem;
+    line-height: 1.6;
+    font-family: var(--font-stack--monospace);
+}
+
+code.literal,
+.docutils.literal.notranslate {
+    background: var(--color-inline-code-background);
+    border: 1px solid var(--color-background-border);
+    border-radius: var(--pyd-radius-sm);
+    padding: 0.125em 0.4em;
+    font-size: 0.875em;
+    font-weight: 500;
+}
+
+/* ----- Inline copy button ----- */
+button.copybtn {
+    border-radius: var(--pyd-radius-sm);
+    opacity: 0;
+    transition: opacity 0.2s;
+}
+
+.highlight:hover button.copybtn {
+    opacity: 0.8;
+}
+
+button.copybtn:hover {
+    opacity: 1 !important;
+}
+
+/* ----- Tables ----- */
+table.docutils {
+    border-radius: var(--pyd-radius);
+    overflow: hidden;
+    border: 1px solid var(--color-background-border);
+    box-shadow: var(--pyd-shadow);
+    border-collapse: separate;
+    border-spacing: 0;
+}
+
+table.docutils thead {
+    background: var(--color-background-secondary);
+}
+
+table.docutils thead th {
+    font-weight: 600;
+    text-transform: uppercase;
+    font-size: 0.75rem;
+    letter-spacing: 0.05em;
+    padding: 0.75rem 1rem;
+}
+
+table.docutils tbody td {
+    padding: 0.75rem 1rem;
+    border-top: 1px solid var(--color-background-border);
+}
+
+/* ----- Admonitions ----- */
+.admonition {
+    border-radius: var(--pyd-radius);
+    border: 1px solid var(--color-background-border);
+    border-left-width: 4px;
+    box-shadow: var(--pyd-shadow);
+}
+
+.admonition-title {
+    font-weight: 600;
+    letter-spacing: -0.01em;
+}
+
+/* ----- Cards (sphinx-design) ----- */
+.sd-card {
+    border-radius: var(--pyd-radius) !important;
+    border: 1px solid var(--color-background-border) !important;
+    box-shadow: var(--pyd-shadow) !important;
+    transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+}
+
+.sd-card:hover {
+    transform: translateY(-2px);
+    border-color: var(--color-brand-primary) !important;
+    box-shadow: 0 4px 12px rgba(15, 23, 42, 0.08), 0 12px 24px rgba(15, 23, 42, 0.06) !important;
+}
+
+.sd-card .sd-card-header {
+    background: transparent !important;
+    border-bottom: 1px solid var(--color-background-border) !important;
+    font-weight: 600;
+    font-size: 1rem;
+}
+
+.sd-card .sd-card-body {
+    font-size: 0.925rem;
+    line-height: 1.55;
+    color: var(--color-foreground-secondary);
+}
+
+/* ----- Buttons ----- */
+.sd-btn {
+    border-radius: var(--pyd-radius-sm) !important;
+    font-weight: 500 !important;
+    padding: 0.5rem 1rem !important;
+    transition: all 0.15s ease !important;
+}
+
+.sd-btn-primary {
+    background: var(--color-brand-primary) !important;
+    border-color: var(--color-brand-primary) !important;
+}
+
+/* ----- Hero / index landing ----- */
+.hero {
+    text-align: center;
+    padding: 2.5rem 0 1.5rem;
+}
+
+.hero .hero-title {
+    font-size: 3rem;
+    font-weight: 800;
+    letter-spacing: -0.04em;
+    margin: 0 0 0.5rem;
+    background: linear-gradient(135deg, var(--color-brand-primary), #14b8a6);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.hero .hero-subtitle {
+    font-size: 1.15rem;
+    color: var(--color-foreground-secondary);
+    max-width: 38rem;
+    margin: 0 auto 1.25rem;
+    line-height: 1.55;
+}
+
+.hero .hero-badges {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    justify-content: center;
+    margin-bottom: 1rem;
+}
+
+.hero .hero-badges img {
+    height: 22px;
+}
+
+/* ----- API signatures ----- */
+dl.py.class > dt,
+dl.py.function > dt,
+dl.py.method > dt,
+dl.py.attribute > dt,
+dl.py.data > dt {
+    background: var(--color-background-secondary);
+    border-left: 3px solid var(--color-brand-primary);
+    border-radius: var(--pyd-radius-sm);
+    padding: 0.65rem 0.9rem;
+    font-family: var(--font-stack--monospace);
+    font-size: 0.875rem;
+}
+
+/* ----- Footer ----- */
+.footer-icons {
+    display: flex;
+    gap: 0.75rem;
+    align-items: center;
+}
+
+.footer-icons svg {
+    width: 18px;
+    height: 18px;
+}
+
+/* ----- Dark mode tweaks ----- */
+@media (prefers-color-scheme: dark) {
+    body[data-theme="auto"] table.docutils thead {
+        background: rgba(45, 212, 191, 0.05);
+    }
+}
+
+body[data-theme="dark"] table.docutils thead {
+    background: rgba(45, 212, 191, 0.05);
+}

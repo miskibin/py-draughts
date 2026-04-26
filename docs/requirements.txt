@@ -1,6 +1,6 @@
 myst-parser
 sphinx
-# readthedocs theme
-sphinx_rtd_theme
-sphinxcontrib-jquery
+furo
+sphinx-copybutton
+sphinx-design
 sphinxcontrib-mermaid==0.8.1
