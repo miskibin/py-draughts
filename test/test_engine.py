@@ -186,6 +186,10 @@ def test_engine_depth1_beats_random(variant, game_idx):
 
     # Engine should win or draw (never lose to random)
     if engine_is_white:
-        assert result in ("1-0"), f"{variant} game {game_idx}: engine (white) got {result}"
+        assert result in ("1-0", "1/2-1/2"), (
+            f"{variant} game {game_idx}: engine (white) got {result}"
+        )
     else:
-        assert result in ("0-1"), f"{variant} game {game_idx}: engine (black) got {result}"
+        assert result in ("0-1", "1/2-1/2"), (
+            f"{variant} game {game_idx}: engine (black) got {result}"
+        )
