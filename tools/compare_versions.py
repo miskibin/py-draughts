@@ -41,14 +41,16 @@ console = Console()
 def load_openings() -> list[dict]:
     """Load openings from CSV file."""
     openings = []
-    with open(OPENINGS_FILE, "r", encoding="utf-8") as f:
+    with open(OPENINGS_FILE, encoding="utf-8") as f:
         reader = csv.DictReader(f)
         for row in reader:
-            openings.append({
-                "name": row["name"],
-                "moves": row["moves"],
-                "fen": row["fen"] if row["fen"].strip() else None,
-            })
+            openings.append(
+                {
+                    "name": row["name"],
+                    "moves": row["moves"],
+                    "fen": row["fen"] if row["fen"].strip() else None,
+                }
+            )
     return openings
 
 
@@ -62,10 +64,11 @@ def get_hardware_info() -> dict[str, Any]:
         "processor": platform.processor(),
         "python_version": platform.python_version(),
     }
-    
+
     # Try to get CPU info
     try:
         import cpuinfo
+
         cpu = cpuinfo.get_cpu_info()
         info["cpu_brand"] = cpu.get("brand_raw", "unknown")
         info["cpu_cores"] = cpu.get("count", "unknown")
@@ -73,18 +76,20 @@ def get_hardware_info() -> dict[str, Any]:
         info["cpu_brand"] = platform.processor() or "unknown"
         try:
             import os
+
             info["cpu_cores"] = os.cpu_count() or "unknown"
         except Exception:
             info["cpu_cores"] = "unknown"
-    
+
     # Try to get memory info
     try:
         import psutil
+
         mem = psutil.virtual_memory()
         info["ram_gb"] = round(mem.total / (1024**3), 1)
     except ImportError:
         info["ram_gb"] = "unknown"
-    
+
     return info
 
 
@@ -99,29 +104,39 @@ def append_results_to_csv(
     num_openings: int,
 ):
     """Append benchmark results to CSV file."""
-    from statistics import median, mean, stdev
-    
+    from statistics import mean, median, stdev
+
     hardware = get_hardware_info()
-    
+
     # Calculate derived metrics
-    v1_avg_nodes = match_stats["v1_nodes"] / match_stats["v1_moves"] if match_stats["v1_moves"] else 0
-    v2_avg_nodes = match_stats["v2_nodes"] / match_stats["v2_moves"] if match_stats["v2_moves"] else 0
-    v1_avg_time = match_stats["v1_time_ms"] / match_stats["v1_moves"] if match_stats["v1_moves"] else 0
-    v2_avg_time = match_stats["v2_time_ms"] / match_stats["v2_moves"] if match_stats["v2_moves"] else 0
-    
-    lm_change_pct = ((median(lm2_medians) - median(lm1_medians)) / median(lm1_medians)) * 100 if median(lm1_medians) else 0
+    v1_avg_nodes = (
+        match_stats["v1_nodes"] / match_stats["v1_moves"] if match_stats["v1_moves"] else 0
+    )
+    v2_avg_nodes = (
+        match_stats["v2_nodes"] / match_stats["v2_moves"] if match_stats["v2_moves"] else 0
+    )
+    v1_avg_time = (
+        match_stats["v1_time_ms"] / match_stats["v1_moves"] if match_stats["v1_moves"] else 0
+    )
+    v2_avg_time = (
+        match_stats["v2_time_ms"] / match_stats["v2_moves"] if match_stats["v2_moves"] else 0
+    )
+
+    lm_change_pct = (
+        ((median(lm2_medians) - median(lm1_medians)) / median(lm1_medians)) * 100
+        if median(lm1_medians)
+        else 0
+    )
     time_change_pct = ((v2_avg_time - v1_avg_time) / v1_avg_time) * 100 if v1_avg_time else 0
-    
+
     row = {
         # Timestamp
         "timestamp": datetime.now().isoformat(),
-        
         # Version info
         "snapshot_name": snapshot_name,
         "snapshot_branch": git_info.get("branch", ""),
         "snapshot_commit": git_info.get("commit", ""),
         "snapshot_dirty": git_info.get("dirty", False),
-        
         # Test parameters
         "warmup_rounds": WARMUP_ROUNDS,
         "benchmark_rounds": BENCHMARK_ROUNDS,
@@ -130,14 +145,12 @@ def append_results_to_csv(
         "num_games": num_games,
         "num_openings": num_openings,
         "positions_count": positions_count,
-        
         # Legal moves - snapshot
         "lm_snapshot_median_ms": round(median(lm1_medians), 3),
         "lm_snapshot_mean_ms": round(mean(lm1_medians), 3),
         "lm_snapshot_min_ms": round(min(lm1_medians), 3),
         "lm_snapshot_max_ms": round(max(lm1_medians), 3),
         "lm_snapshot_stdev_ms": round(stdev(lm1_medians), 3) if len(lm1_medians) > 1 else 0,
-        
         # Legal moves - current
         "lm_current_median_ms": round(median(lm2_medians), 3),
         "lm_current_mean_ms": round(mean(lm2_medians), 3),
@@ -145,7 +158,6 @@ def append_results_to_csv(
         "lm_current_max_ms": round(max(lm2_medians), 3),
         "lm_current_stdev_ms": round(stdev(lm2_medians), 3) if len(lm2_medians) > 1 else 0,
         "lm_change_pct": round(lm_change_pct, 2),
-        
         # Engine match results
         "match_snapshot_wins": match_stats["v1_wins"],
         "match_current_wins": match_stats["v2_wins"],
@@ -157,7 +169,6 @@ def append_results_to_csv(
         "match_time_change_pct": round(time_change_pct, 2),
         "match_snapshot_total_nodes": match_stats["v1_nodes"],
         "match_current_total_nodes": match_stats["v2_nodes"],
-        
         # Hardware info
         "hw_platform": hardware["platform"],
         "hw_platform_release": hardware["platform_release"],
@@ -167,16 +178,16 @@ def append_results_to_csv(
         "hw_ram_gb": hardware["ram_gb"],
         "hw_python_version": hardware["python_version"],
     }
-    
+
     # Check if file exists to determine if we need headers
     file_exists = RESULTS_CSV.exists()
-    
+
     with open(RESULTS_CSV, "a", newline="", encoding="utf-8") as f:
         writer = csv.DictWriter(f, fieldnames=row.keys())
         if not file_exists:
             writer.writeheader()
         writer.writerow(row)
-    
+
     console.print(f"\n[dim]Results appended to {RESULTS_CSV}[/]")
 
 
@@ -204,16 +215,24 @@ def install_package(python: Path, source: Path):
         capture_output=True,
     )
 
+
 def run_legal_moves_benchmark(python: Path, iterations: int = 1) -> dict:
     """Run legal moves benchmark in isolated environment.
-    
+
     Args:
         python: Path to Python executable
         iterations: Number of iterations to run (all in one process for stability)
     """
     worker = WORKERS_DIR / "benchmark_legal_moves.py"
     result = subprocess.run(
-        [str(python), str(worker), str(POSITIONS_FILE), str(WARMUP_ROUNDS), str(BENCHMARK_ROUNDS), str(iterations)],
+        [
+            str(python),
+            str(worker),
+            str(POSITIONS_FILE),
+            str(WARMUP_ROUNDS),
+            str(BENCHMARK_ROUNDS),
+            str(iterations),
+        ],
         capture_output=True,
         text=True,
     )
@@ -224,11 +243,11 @@ def run_legal_moves_benchmark(python: Path, iterations: int = 1) -> dict:
 
 class EngineWorker:
     """Persistent engine worker that stays alive across multiple moves."""
-    
+
     def __init__(self, python: Path):
         self.python = python
         self.process: subprocess.Popen[str] | None = None
-    
+
     def start(self):
         """Start the worker process."""
         worker = WORKERS_DIR / "engine_worker.py"
@@ -255,7 +274,7 @@ class EngineWorker:
                 raise RuntimeError(f"Worker failed to start: {ready}")
         except json.JSONDecodeError:
             raise RuntimeError(f"Worker failed to start (invalid JSON): {ready}")
-    
+
     def new_game(self, fen: str | None) -> dict:
         """Start a new game from given position."""
         if not self.process or self.process.poll() is not None:
@@ -265,19 +284,19 @@ class EngineWorker:
                 return {"error": f"Worker restart failed: {e}"}
         assert self.process.stdin is not None
         assert self.process.stdout is not None
-        
+
         cmd = json.dumps({"cmd": "new_game", "fen": fen})
         try:
             self.process.stdin.write(cmd + "\n")
             self.process.stdin.flush()
         except (BrokenPipeError, OSError) as e:
             return {"error": f"Worker communication failed: {e}"}
-        
+
         response = self.process.stdout.readline()
         if not response:
             return {"error": "Worker died"}
         return json.loads(response)
-    
+
     def get_move(self, depth: int) -> dict:
         """Get engine move from persistent worker (uses current board state)."""
         if not self.process or self.process.poll() is not None:
@@ -288,19 +307,19 @@ class EngineWorker:
                 return {"error": f"Worker restart failed: {e}"}
         assert self.process.stdin is not None
         assert self.process.stdout is not None
-        
+
         cmd = json.dumps({"cmd": "move", "depth": depth})
         try:
             self.process.stdin.write(cmd + "\n")
             self.process.stdin.flush()
         except (BrokenPipeError, OSError) as e:
             return {"error": f"Worker communication failed: {e}"}
-        
+
         response = self.process.stdout.readline()
         if not response:
             return {"error": "Worker died"}
         return json.loads(response)
-    
+
     def apply_move(self, move_str: str) -> dict:
         """Apply opponent's move to our board."""
         if not self.process or self.process.poll() is not None:
@@ -310,19 +329,19 @@ class EngineWorker:
                 return {"error": f"Worker restart failed: {e}"}
         assert self.process.stdin is not None
         assert self.process.stdout is not None
-        
+
         cmd = json.dumps({"cmd": "apply_move", "move": move_str})
         try:
             self.process.stdin.write(cmd + "\n")
             self.process.stdin.flush()
         except (BrokenPipeError, OSError) as e:
             return {"error": f"Worker communication failed: {e}"}
-        
+
         response = self.process.stdout.readline()
         if not response:
             return {"error": "Worker died"}
         return json.loads(response)
-    
+
     def stop(self):
         """Stop the worker process."""
         if self.process and self.process.poll() is None:
@@ -333,11 +352,11 @@ class EngineWorker:
                 self.process.wait(timeout=2)
             except Exception:
                 self.process.kill()
-    
+
     def __enter__(self):
         self.start()
         return self
-    
+
     def __exit__(self, exc_type, exc, tb):
         self.stop()
 
@@ -354,7 +373,7 @@ def get_engine_move(python: Path, fen: str | None, depth: int) -> dict:
 
 def play_match(python1: Path, python2: Path, openings: list[dict], depth: int) -> dict:
     """Play engine vs engine match using persistent workers.
-    
+
     Each opening is played twice: once with v1 as white, once with v2 as white.
     """
     stats = {
@@ -378,12 +397,14 @@ def play_match(python1: Path, python2: Path, openings: list[dict], depth: int) -
             for opening in openings:
                 opening_name = opening["name"]
                 opening_fen = opening["fen"]
-                
+
                 # Play each opening twice: v1 as white, then v2 as white
                 for swap in range(2):
                     game_num += 1
                     color_info = "snapshot=W" if swap == 0 else "current=W"
-                    status.update(f"[bold green]Game {game_num}/{num_games}: {opening_name} ({color_info})...")
+                    status.update(
+                        f"[bold green]Game {game_num}/{num_games}: {opening_name} ({color_info})..."
+                    )
 
                     # Determine who plays white
                     if swap == 0:
@@ -397,15 +418,17 @@ def play_match(python1: Path, python2: Path, openings: list[dict], depth: int) -
                     # Each worker maintains its own board state for proper draw detection
                     init1 = worker1.new_game(opening_fen)
                     init2 = worker2.new_game(opening_fen)
-                    
+
                     if init1.get("error") or init2.get("error"):
-                        console.print(f"[red]Failed to init game: {init1.get('error') or init2.get('error')}[/]")
+                        console.print(
+                            f"[red]Failed to init game: {init1.get('error') or init2.get('error')}[/]"
+                        )
                         continue
 
                     move_count = 0
                     result = {}
                     termination = ""
-                    
+
                     # Determine whose turn it is from FEN
                     # FEN starts with 'W:' or 'B:' to indicate turn
                     if opening_fen and opening_fen.startswith("B:"):
@@ -416,7 +439,9 @@ def play_match(python1: Path, python2: Path, openings: list[dict], depth: int) -
                     while move_count < 400:
                         current_worker = white_worker if is_white_turn else black_worker
                         other_worker = black_worker if is_white_turn else white_worker
-                        current_ver = white_ver if is_white_turn else ("v2" if white_ver == "v1" else "v1")
+                        current_ver = (
+                            white_ver if is_white_turn else ("v2" if white_ver == "v1" else "v1")
+                        )
 
                         result = current_worker.get_move(depth)
 
@@ -446,7 +471,7 @@ def play_match(python1: Path, python2: Path, openings: list[dict], depth: int) -
                         if sync_result.get("error"):
                             termination = "sync_error"
                             break
-                        
+
                         move_count += 1
                         is_white_turn = not is_white_turn
 
@@ -535,11 +560,13 @@ def main():
         dirty = "*" if git.get("dirty") else ""
         snapshot_label += f" ({git.get('branch')}@{git.get('commit')}{dirty})"
 
-    console.print(Panel.fit(
-        f"[bold]Snapshot:[/] {snapshot_label}\n[bold]Current:[/] source code",
-        title="Version Comparison",
-        border_style="blue",
-    ))
+    console.print(
+        Panel.fit(
+            f"[bold]Snapshot:[/] {snapshot_label}\n[bold]Current:[/] source code",
+            title="Version Comparison",
+            border_style="blue",
+        )
+    )
 
     with tempfile.TemporaryDirectory() as tmpdir:
         tmpdir = Path(tmpdir)
@@ -558,18 +585,20 @@ def main():
         console.print("  ✓ Current ready")
 
         # Legal moves benchmark - run all iterations in single process for stability
-        console.print(f"\n[bold]Legal moves benchmark ({BENCHMARK_ITERATIONS} iterations, {BENCHMARK_ROUNDS} rounds each, {WARMUP_ROUNDS} warmup)...[/]")
+        console.print(
+            f"\n[bold]Legal moves benchmark ({BENCHMARK_ITERATIONS} iterations, {BENCHMARK_ROUNDS} rounds each, {WARMUP_ROUNDS} warmup)...[/]"
+        )
 
         with console.status("[green]Benchmarking snapshot (all iterations in one process)..."):
             lm1 = run_legal_moves_benchmark(py1, BENCHMARK_ITERATIONS)
-        
+
         if "error" in lm1:
             console.print(f"[red]Snapshot benchmark error: {lm1['error']}[/]")
             sys.exit(1)
-            
+
         with console.status("[green]Benchmarking current (all iterations in one process)..."):
             lm2 = run_legal_moves_benchmark(py2, BENCHMARK_ITERATIONS)
-        
+
         if "error" in lm2:
             console.print(f"[red]Current benchmark error: {lm2['error']}[/]")
             sys.exit(1)
@@ -577,14 +606,18 @@ def main():
         # Display individual iteration results
         lm1_medians = lm1.get("iteration_medians", [lm1["median_ms"]])
         lm2_medians = lm2.get("iteration_medians", [lm2["median_ms"]])
-        
+
         for i in range(len(lm1_medians)):
-            console.print(f"  Iteration {i + 1}: Snapshot={lm1_medians[i]:.2f}ms, Current={lm2_medians[i]:.2f}ms")
+            console.print(
+                f"  Iteration {i + 1}: Snapshot={lm1_medians[i]:.2f}ms, Current={lm2_medians[i]:.2f}ms"
+            )
 
         # Calculate statistics across all iterations
-        from statistics import median, mean, stdev
+        from statistics import mean, median, stdev
 
-        lm_table = Table(title=f"Legal Moves Benchmark ({BENCHMARK_ITERATIONS} iterations)", box=box.ROUNDED)
+        lm_table = Table(
+            title=f"Legal Moves Benchmark ({BENCHMARK_ITERATIONS} iterations)", box=box.ROUNDED
+        )
         lm_table.add_column("Metric", style="cyan")
         lm_table.add_column("Snapshot", justify="right")
         lm_table.add_column("Current", justify="right")
@@ -637,7 +670,9 @@ def main():
         num_games = len(openings) * 2  # Each opening played as both colors
 
         # Engine match
-        console.print(f"\n[bold]Engine match ({num_games} games from {len(openings)} openings, depth={ENGINE_DEPTH})...[/]")
+        console.print(
+            f"\n[bold]Engine match ({num_games} games from {len(openings)} openings, depth={ENGINE_DEPTH})...[/]"
+        )
         match = play_match(py1, py2, openings, ENGINE_DEPTH)
 
         # Calculate averages
@@ -650,7 +685,10 @@ def main():
         v2_pct = (match["v2_wins"] / num_games) * 100
         draw_pct = (match["draws"] / num_games) * 100
 
-        match_table = Table(title=f"Match Results ({num_games} games from {len(openings)} openings)", box=box.ROUNDED)
+        match_table = Table(
+            title=f"Match Results ({num_games} games from {len(openings)} openings)",
+            box=box.ROUNDED,
+        )
         match_table.add_column("Metric", style="cyan")
         match_table.add_column("Snapshot", justify="right")
         match_table.add_column("Current", justify="right")
@@ -697,7 +735,9 @@ def main():
             console.print("[yellow]⚠ Performance regression detected[/]")
 
         if match["draws"] == num_games:
-            console.print("[dim]Note: 100% draws expected with identical code (deterministic engine)[/]")
+            console.print(
+                "[dim]Note: 100% draws expected with identical code (deterministic engine)[/]"
+            )
 
         # Append results to CSV
         append_results_to_csv(

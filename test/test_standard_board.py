@@ -5,8 +5,8 @@ import numpy as np
 import pytest
 
 from draughts.boards.base import BaseBoard, Color, Figure, Move
-from test._test_helpers import get_board
 from draughts.boards.standard import Board
+from test._test_helpers import get_board
 
 
 class TestBoard:
@@ -25,7 +25,7 @@ class TestBoard:
         assert np.array_equal(self.board.position, Board.STARTING_POSITION)
 
     def test_fen(self):
-        with open(self.random_pos_file, "r") as f:
+        with open(self.random_pos_file) as f:
             random_positions = json.load(f)["positions"]
         for fen in random_positions:
             board1 = Board.from_fen(fen)
@@ -34,7 +34,7 @@ class TestBoard:
             assert board1.turn == board2.turn
 
     def test_legal_moves(self):
-        with open(self.legal_mvs_file, "r") as f:
+        with open(self.legal_mvs_file) as f:
             legal_moves_len = json.load(f)
 
         for fen, moves_len in legal_moves_len.items():
@@ -70,28 +70,32 @@ class TestBoard:
     def test_king_cannot_cross_captured_square(self):
         """
         Test that king cannot cross a square where a piece was already captured.
-        
+
         FEN "W:B:W6,24,28,38,41:B13,K49" - Black king on 49
         Valid path: 49 -> capture 38 -> land on 32 -> capture 28 -> land on 19 -> capture 24 -> land on 30/35
         Invalid: capturing 41 then trying to capture 28 would cross the 41 square again
         """
         import numpy as np
-        
+
         board = Board.from_fen('[FEN "W:B:W6,24,28,38,41:B13,K49"]')
         legal_moves = board.legal_moves
-        
+
         # Should have exactly 2 moves (49x30 and 49x35)
-        assert len(legal_moves) == 2, f"Expected 2 moves, got {len(legal_moves)}: {[str(m) for m in legal_moves]}"
-        
+        assert len(legal_moves) == 2, (
+            f"Expected 2 moves, got {len(legal_moves)}: {[str(m) for m in legal_moves]}"
+        )
+
         # Both moves should capture exactly 3 pieces: 38, 28, 24
         for move in legal_moves:
             captured_1idx = sorted([c + 1 for c in move.captured_list])
-            assert captured_1idx == [24, 28, 38], f"Expected captures [24, 28, 38], got {captured_1idx}"
-        
+            assert captured_1idx == [24, 28, 38], (
+                f"Expected captures [24, 28, 38], got {captured_1idx}"
+            )
+
         # Piece on 41 should NOT be captured (it's on a different branch)
         test_board = Board.from_fen('[FEN "W:B:W6,24,28,38,41:B13,K49"]')
         test_board.push(legal_moves[0])
-        
+
         # Square 41 (0-indexed: 40) should still have a white piece
         assert test_board.position[40] == -1, "White piece on square 41 was incorrectly captured"
         # Square 6 (0-indexed: 5) should still have a white piece

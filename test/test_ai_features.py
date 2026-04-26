@@ -1,4 +1,5 @@
 """Tests for AI/ML support features."""
+
 import copy
 
 import numpy as np
@@ -116,9 +117,9 @@ class TestToTensor:
         tensor = board.to_tensor(perspective=Color.WHITE)
         # Channel 0: own men (white), Channel 2: opponent men (black)
         assert tensor[0].sum() == 20  # White men
-        assert tensor[1].sum() == 0   # White kings
+        assert tensor[1].sum() == 0  # White kings
         assert tensor[2].sum() == 20  # Black men
-        assert tensor[3].sum() == 0   # Black kings
+        assert tensor[3].sum() == 0  # Black kings
 
     def test_tensor_starting_position_black_perspective(self):
         board = Board()
@@ -130,10 +131,10 @@ class TestToTensor:
     def test_tensor_with_kings(self):
         board = Board.from_fen("W:WK25,K30:BK10,K15")
         tensor = board.to_tensor(perspective=Color.WHITE)
-        assert tensor[0].sum() == 0   # No white men
-        assert tensor[1].sum() == 2   # 2 white kings
-        assert tensor[2].sum() == 0   # No black men
-        assert tensor[3].sum() == 2   # 2 black kings
+        assert tensor[0].sum() == 0  # No white men
+        assert tensor[1].sum() == 2  # 2 white kings
+        assert tensor[2].sum() == 0  # No black men
+        assert tensor[3].sum() == 2  # 2 black kings
 
     def test_tensor_american_board(self):
         board = AmericanBoard()
@@ -179,6 +180,7 @@ class TestAgentProtocol:
         class RandomAgent:
             def select_move(self, board):
                 import random
+
                 return random.choice(board.legal_moves)
 
         agent = RandomAgent()
@@ -294,4 +296,3 @@ class TestAgentEngine:
 
         assert engine.nodes == 1
         assert engine.inspected_nodes == 1
-

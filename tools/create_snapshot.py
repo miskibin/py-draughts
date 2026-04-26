@@ -13,16 +13,23 @@ def get_git_info() -> dict:
     try:
         commit = subprocess.run(
             ["git", "rev-parse", "--short", "HEAD"],
-            capture_output=True, text=True, check=True,
+            capture_output=True,
+            text=True,
+            check=True,
         ).stdout.strip()
         branch = subprocess.run(
             ["git", "rev-parse", "--abbrev-ref", "HEAD"],
-            capture_output=True, text=True, check=True,
+            capture_output=True,
+            text=True,
+            check=True,
         ).stdout.strip()
-        dirty = bool(subprocess.run(
-            ["git", "status", "--porcelain"],
-            capture_output=True, text=True,
-        ).stdout.strip())
+        dirty = bool(
+            subprocess.run(
+                ["git", "status", "--porcelain"],
+                capture_output=True,
+                text=True,
+            ).stdout.strip()
+        )
         return {"commit": commit, "branch": branch, "dirty": dirty}
     except (subprocess.CalledProcessError, FileNotFoundError):
         return {}
@@ -40,7 +47,9 @@ def main():
     print("Building wheel...")
     result = subprocess.run(
         [sys.executable, "-m", "build", "--wheel"],
-        cwd=project_root, capture_output=True, text=True,
+        cwd=project_root,
+        capture_output=True,
+        text=True,
     )
     if result.returncode != 0:
         print(f"Build failed:\n{result.stderr}")
@@ -55,11 +64,16 @@ def main():
     shutil.copy(wheel_path, snapshot_dir / wheel_path.name)
 
     git_info = get_git_info()
-    (snapshot_dir / "metadata.json").write_text(json.dumps({
-        "timestamp": datetime.now().isoformat(),
-        "wheel": wheel_path.name,
-        "git": git_info,
-    }, indent=2))
+    (snapshot_dir / "metadata.json").write_text(
+        json.dumps(
+            {
+                "timestamp": datetime.now().isoformat(),
+                "wheel": wheel_path.name,
+                "git": git_info,
+            },
+            indent=2,
+        )
+    )
 
     dirty = " (dirty)" if git_info.get("dirty") else ""
     git_str = f" [{git_info.get('branch')}@{git_info.get('commit')}{dirty}]" if git_info else ""

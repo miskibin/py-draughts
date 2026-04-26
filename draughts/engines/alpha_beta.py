@@ -1,15 +1,16 @@
 """Alpha-Beta search engine with advanced optimizations."""
-import time
+
 import random
+import time
 from typing import List
-from loguru import logger
+
 import numpy as np
+from loguru import logger
 
 from draughts.boards.base import BaseBoard
 from draughts.boards.standard import Move
 from draughts.engines.engine import Engine
 from draughts.models import Color
-
 
 # Constants
 INF = 10000.0
@@ -99,7 +100,9 @@ class AlphaBetaEngine(Engine):
         >>> print(f"Best: {move}, Score: {score:.2f}")
     """
 
-    def __init__(self, depth_limit: int = 6, time_limit: float | None = None, name: str | None = None):
+    def __init__(
+        self, depth_limit: int = 6, time_limit: float | None = None, name: str | None = None
+    ):
         """
         Initialize the engine.
 
@@ -126,14 +129,18 @@ class AlphaBetaEngine(Engine):
         self._zobrist_rng = random.Random(0)
         self._zobrist_tables: dict[int, list[list[int]]] = {}  # num_squares -> table
         self._zobrist_turn = self._zobrist_rng.getrandbits(64)
-        
+
         # PST tables - cached per board configuration
-        self._pst_cache: dict[tuple[int, int], tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]] = {}
-        
+        self._pst_cache: dict[
+            tuple[int, int], tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]
+        ] = {}
+
         # Current search state (set at start of search, used during eval)
         # Initialize with standard 50-square defaults so evaluate() works standalone
         self._current_zobrist: list[list[int]] = self._get_zobrist_table(50)
-        self._current_pst: tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray] = self._get_pst_tables(50, 10)
+        self._current_pst: tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray] = (
+            self._get_pst_tables(50, 10)
+        )
 
         self.start_time: float = 0.0
         self.stop_search: bool = False
@@ -156,7 +163,9 @@ class AlphaBetaEngine(Engine):
             self._zobrist_tables[num_squares] = table
         return self._zobrist_tables[num_squares]
 
-    def _get_pst_tables(self, num_squares: int, rows: int) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+    def _get_pst_tables(
+        self, num_squares: int, rows: int
+    ) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
         """Get or create PST tables for given board configuration."""
         key = (num_squares, rows)
         if key not in self._pst_cache:
@@ -184,7 +193,7 @@ class AlphaBetaEngine(Engine):
         """Compute Zobrist hash for a board position (standalone, slower)."""
         num_squares = len(board._pos)
         zobrist_table = self._get_zobrist_table(num_squares)
-        
+
         h = 0
         for i, piece in enumerate(board._pos):
             if piece != 0:
@@ -211,10 +220,10 @@ class AlphaBetaEngine(Engine):
         pst = self._current_pst  # Cached at init or start of search
 
         # Piece masks
-        white_men = (pos == -1)
-        white_kings = (pos == -2)
-        black_men = (pos == 1)
-        black_kings = (pos == 2)
+        white_men = pos == -1
+        white_kings = pos == -2
+        black_men = pos == 1
+        black_kings = pos == 2
 
         # Material
         n_white_men = white_men.sum()
@@ -226,15 +235,17 @@ class AlphaBetaEngine(Engine):
         score += (n_black_kings - n_white_kings) * KING_VALUE
 
         # PST - Piece Square Tables
-        score += pst[0][black_men].sum()   # pst_man_black
-        score -= pst[1][white_men].sum()   # pst_man_white
-        score += pst[2][black_kings].sum() # pst_king_black
-        score -= pst[3][white_kings].sum() # pst_king_white
+        score += pst[0][black_men].sum()  # pst_man_black
+        score -= pst[1][white_men].sum()  # pst_man_white
+        score += pst[2][black_kings].sum()  # pst_king_black
+        score -= pst[3][white_kings].sum()  # pst_king_white
 
         # Return score relative to side to move
         return -score if board.turn == Color.WHITE else score
 
-    def get_best_move(self, board: BaseBoard, with_evaluation: bool = False) -> Move | tuple[Move, float]:
+    def get_best_move(
+        self, board: BaseBoard, with_evaluation: bool = False
+    ) -> Move | tuple[Move, float]:
         """
         Find the best move for the current position.
 
@@ -259,7 +270,9 @@ class AlphaBetaEngine(Engine):
         # Cache board-specific data for this search (avoids repeated lookups)
         num_squares = len(board._pos)
         self._current_zobrist = self._get_zobrist_table(num_squares)
-        rows = 10 if num_squares == 50 else (8 if num_squares == 32 else int(np.sqrt(num_squares * 2)))
+        rows = (
+            10 if num_squares == 50 else (8 if num_squares == 32 else int(np.sqrt(num_squares * 2)))
+        )
         self._current_pst = self._get_pst_tables(num_squares, rows)
 
         # Age history table (decay old values)
@@ -296,7 +309,7 @@ class AlphaBetaEngine(Engine):
 
         # Limit TT size
         if len(self.tt) > TT_MAX_SIZE:
-            keys_to_remove = list(self.tt.keys())[:len(self.tt) - TT_MAX_SIZE // 2]
+            keys_to_remove = list(self.tt.keys())[: len(self.tt) - TT_MAX_SIZE // 2]
             for k in keys_to_remove:
                 del self.tt[k]
 
@@ -409,7 +422,9 @@ class AlphaBetaEngine(Engine):
 
         return best_value
 
-    def quiescence_search(self, board: BaseBoard, alpha: float, beta: float, h: int, qs_depth: int = 0) -> float:
+    def quiescence_search(
+        self, board: BaseBoard, alpha: float, beta: float, h: int, qs_depth: int = 0
+    ) -> float:
         """Search captures until position is quiet."""
         self.nodes += 1
 
@@ -451,7 +466,7 @@ class AlphaBetaEngine(Engine):
 
     def _update_hash(self, current_hash: int, board: BaseBoard, move: Move) -> int:
         zt = self._current_zobrist  # Cached zobrist table
-        
+
         # XOR out source
         start_sq = move.square_list[0]
         piece = board._pos[start_sq]
@@ -475,7 +490,9 @@ class AlphaBetaEngine(Engine):
 
         return current_hash
 
-    def _order_moves(self, moves: List[Move], board: BaseBoard | None = None, h: int = 0, depth: int = 0) -> List[Move]:
+    def _order_moves(
+        self, moves: List[Move], board: BaseBoard | None = None, h: int = 0, depth: int = 0
+    ) -> List[Move]:
         tt_entry = self.tt.get(h)
         pv_move = tt_entry[3] if tt_entry else None
 

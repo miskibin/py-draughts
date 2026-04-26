@@ -50,6 +50,7 @@ Repository = "https://github.com/michalskibinski109/py-draughts"
 dev = [
     "pytest",
     "mypy",
+    "ruff",
     "sphinx",
     "build",
     "rich",
@@ -71,3 +72,26 @@ draughts = [
 python_version = "3.9"
 warn_return_any = true
 warn_unused_configs = true
+
+[tool.ruff]
+line-length = 100
+target-version = "py39"
+extend-exclude = ["docs", "examples", "_build"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP", "B"]
+ignore = [
+    "E501",  # line too long (handled by formatter)
+    "B008",  # function call in default argument (used widely with FastAPI/typing patterns)
+    "UP007", # Optional[X] vs X | None (kept for 3.9 compatibility readability)
+    "UP045", # X | None vs Optional[X]
+    "UP006", # Use list/dict instead of List/Dict (kept for 3.9 compatibility readability)
+    "UP035", # typing.X is deprecated (kept for 3.9 compatibility readability)
+    "B905",  # zip without explicit strict= (3.9 compatibility)
+]
+
+[tool.ruff.lint.per-file-ignores]
+"draughts/__init__.py" = ["E402", "F401"]
+"**/__init__.py" = ["F401"]
+"test/**" = ["E402", "F401", "F841", "B"]
+"tools/**" = ["B", "E402", "F401", "F541", "F841", "W291", "W293"]

@@ -5,8 +5,8 @@ import numpy as np
 import pytest
 
 from draughts.boards.base import BaseBoard, Color, Figure, Move
-from test._test_helpers import get_board
 from draughts.boards.frisian import Board
+from test._test_helpers import get_board
 
 
 class TestFrisianBoard:
@@ -44,24 +44,24 @@ class TestFrisianBoard:
         # Actually let's use a clearer example
         # White man at 27 (A5), black man at 22 (A7) - can capture up
         # We need adjacent squares in same column
-        
+
         # Row 5 (idx 25-29): A5=25, C5=26, E5=27, G5=28, I5=29
         # Row 4 (idx 20-24): B6=20, D6=21, F6=22, H6=23, J6=24
         # Row 3 (idx 15-19): A7=15, C7=16, E7=17, G7=18, I7=19
-        
+
         # Let's put white on 27 (E5) and black on 22 (F6) - these are orthogonally adjacent
         # Correction: In Frisian, squares are not orthogonally adjacent on the board representation
         # The board only has dark squares. For orthogonal captures, we need to think carefully.
-        
+
         # Actually, the orthogonal jumps work differently. Let me trace through:
         # Square 27 is at row 5, col 2 in our numbering.
         # Row 5 is an odd row (0-indexed: row=5), so it's at board positions [0,2,4,6,8]
         # Square 27: row=5, col=2, so board col = 4
-        
+
         # For orthogonal capture UP from sq 27:
-        # - Target would be sq 22 (row 4, col 2) 
+        # - Target would be sq 22 (row 4, col 2)
         # - Land would be sq 17 (row 3, col 2)
-        
+
         # Actually, this is getting complex. Let's just test via a real game.
         # For now, just verify the basic mechanics work.
         pass
@@ -91,10 +91,13 @@ class TestFrisianBoard:
         # This requires a specific position where a man and king have equal value captures
         pass
 
-    @pytest.mark.parametrize("pdn", [
-        "1. 34-30 20-25 2. 31-26 25x34 3. 39x30 17-21 4. 26x17 12x21",
-        "1. 31-26 20-25 2. 37-31 14-20 3. 32-27 17x37 4. 41x32 19-24",
-    ])
+    @pytest.mark.parametrize(
+        "pdn",
+        [
+            "1. 34-30 20-25 2. 31-26 25x34 3. 39x30 17-21 4. 26x17 12x21",
+            "1. 31-26 20-25 2. 37-31 14-20 3. 32-27 17x37 4. 41x32 19-24",
+        ],
+    )
     def test_pdn_parsing_basic(self, pdn):
         """Test basic PDN parsing for Frisian games."""
         board = Board.from_pdn(pdn)
@@ -103,16 +106,16 @@ class TestFrisianBoard:
 
     def test_play_random_pdns(self):
         """Test that we can play through random PDN games from lidraughts."""
-        with open(self.random_pdns_file, "r") as f:
+        with open(self.random_pdns_file) as f:
             data = json.load(f)
-        
+
         played = 0
         errors = []
         for pdn in data["pdn_positions"]:
             # Skip PDNs that are just headers (no moves)
             if "[Event" in pdn and "1." not in pdn:
                 continue
-            
+
             # Extract just the moves part if there are headers
             if "[Event" in pdn:
                 # Find where moves start (after headers)
@@ -125,34 +128,36 @@ class TestFrisianBoard:
                 if not moves_part or "1." not in moves_part:
                     continue
                 pdn = moves_part
-            
+
             try:
                 board = Board.from_pdn(pdn)
                 played += 1
             except Exception as e:
                 errors.append(f"PDN: {pdn[:80]}...\nError: {e}")
-        
+
         # Ensure we actually tested some games
         assert played > 0, "No PDN games were tested"
         # Allow some failures (some PDN games may have issues)
         success_rate = played / (played + len(errors))
-        assert success_rate >= 0.5, f"Too many failures ({len(errors)}/{played+len(errors)}). First error: {errors[0] if errors else 'none'}"
+        assert success_rate >= 0.5, (
+            f"Too many failures ({len(errors)}/{played + len(errors)}). First error: {errors[0] if errors else 'none'}"
+        )
 
     def test_draw_rules_1v1_kings(self):
         """Test 1 king vs 1 king draw rule (2 moves each = 4 half-moves)."""
         # Create position with just 2 kings
         position = np.zeros(50, dtype=np.int8)
         position[25] = -2  # White king
-        position[45] = 2   # Black king
+        position[45] = 2  # Black king
         board = Board(position, Color.WHITE)
-        
+
         assert not board.is_draw  # Not drawn yet
-        
+
         # Make 4 moves (2 each)
         for _ in range(4):
             if board.legal_moves:
                 board.push(board.legal_moves[0])
-        
+
         assert board.is_5_moves_rule  # Should be drawn now
 
     def test_draw_rules_2v1_kings(self):
@@ -161,11 +166,11 @@ class TestFrisianBoard:
         position = np.zeros(50, dtype=np.int8)
         position[25] = -2  # White king
         position[27] = -2  # White king
-        position[45] = 2   # Black king
+        position[45] = 2  # Black king
         board = Board(position, Color.WHITE)
-        
+
         assert not board.is_16_moves_rule  # Not drawn yet
-        
+
         # Make 14 half-moves
         board.halfmove_clock = 14
         assert board.is_16_moves_rule  # Should be drawn
@@ -175,7 +180,7 @@ class TestFrisianBoard:
         position = np.zeros(50, dtype=np.int8)
         position[27] = -2  # White king in center
         board = Board(position, Color.WHITE)
-        
+
         moves = board.legal_moves
         # King should have many moves (flying king)
         assert len(moves) > 4  # More than just adjacent squares
@@ -196,11 +201,10 @@ class TestFrisianOrthogonalCaptures:
         """Kings can capture orthogonally too."""
         position = np.zeros(50, dtype=np.int8)
         position[27] = -2  # White king
-        position[22] = 1   # Black man in capture range (orthogonally)
+        position[22] = 1  # Black man in capture range (orthogonally)
         board = Board(position, Color.WHITE)
-        
+
         moves = board.legal_moves
         # Should have some captures if orthogonal is set up correctly
         # Due to complexity of orthogonal positioning, just verify no crash
         assert isinstance(moves, list)
-

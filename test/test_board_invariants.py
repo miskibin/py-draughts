@@ -1,9 +1,7 @@
 import numpy as np
 import pytest
 
-from test._test_helpers import get_board
-
-from test._test_helpers import seeded_range
+from test._test_helpers import get_board, seeded_range
 
 
 def _snapshot(board):
