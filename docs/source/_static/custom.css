@@ -220,20 +220,6 @@ table.docutils tbody td {
     height: 22px;
 }
 
-/* ----- API signatures ----- */
-dl.py.class > dt,
-dl.py.function > dt,
-dl.py.method > dt,
-dl.py.attribute > dt,
-dl.py.data > dt {
-    background: var(--color-background-secondary);
-    border-left: 3px solid var(--color-brand-primary);
-    border-radius: var(--pyd-radius-sm);
-    padding: 0.65rem 0.9rem;
-    font-family: var(--font-stack--monospace);
-    font-size: 0.875rem;
-}
-
 /* ----- Footer ----- */
 .footer-icons {
     display: flex;
