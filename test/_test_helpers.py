@@ -3,7 +3,16 @@ from __future__ import annotations
 import random
 from typing import Iterable
 
-from draughts import AmericanBoard, FrisianBoard, RussianBoard, StandardBoard
+from draughts import (
+    AmericanBoard,
+    AntidraughtsBoard,
+    BrazilianBoard,
+    BreakthroughBoard,
+    FrisianBoard,
+    FryskBoard,
+    RussianBoard,
+    StandardBoard,
+)
 from draughts.boards.base import BaseBoard
 
 # Local variant lookup for test compatibility
@@ -12,6 +21,10 @@ BOARDS = {
     "american": AmericanBoard,
     "frisian": FrisianBoard,
     "russian": RussianBoard,
+    "brazilian": BrazilianBoard,
+    "antidraughts": AntidraughtsBoard,
+    "breakthrough": BreakthroughBoard,
+    "frysk": FryskBoard,
 }
 
 

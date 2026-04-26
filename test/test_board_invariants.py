@@ -27,6 +27,10 @@ def _assert_state_equal(board, snapshot):
     [
         *[("standard", seed, 40) for seed in seeded_range(10)],
         *[("american", seed, 40) for seed in seeded_range(10)],
+        *[("brazilian", seed, 40) for seed in seeded_range(10)],
+        *[("antidraughts", seed, 40) for seed in seeded_range(10)],
+        *[("breakthrough", seed, 20) for seed in seeded_range(10)],
+        *[("frysk", seed, 40) for seed in seeded_range(10)],
     ],
 )
 def test_push_pop_roundtrip_random_play(variant, seed, plies):
@@ -61,7 +65,10 @@ def test_push_pop_roundtrip_random_play(variant, seed, plies):
     _assert_state_equal(board, snapshots[0])
 
 
-@pytest.mark.parametrize("variant", ["standard", "american"])
+@pytest.mark.parametrize(
+    "variant",
+    ["standard", "american", "brazilian", "antidraughts", "breakthrough", "frysk"],
+)
 def test_every_legal_move_is_reversible_from_start(variant):
     """From the initial position, every legal move must push/pop cleanly."""
     board = get_board(variant)
