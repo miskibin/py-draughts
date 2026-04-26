@@ -142,9 +142,9 @@ def test_engine_populates_transposition_table_for_root(seed):
     root_hash = engine.compute_hash(board)
     engine.get_best_move(board)
 
-    entry = engine.tt.get(root_hash)
+    entry = engine._tt_probe(root_hash)
     assert entry is not None
-    _depth, _flag, _score, best_move = entry
+    _key, _depth, _flag, _score, best_move, _gen = entry
     assert best_move in list(board.legal_moves)
 
 

@@ -41,7 +41,7 @@ import random
 import re
 import time
 from pathlib import Path
-from typing import Iterable, Optional
+from typing import Optional
 
 from draughts import (
     AlphaBetaEngine,
@@ -254,11 +254,8 @@ def coordinate_descent(
 ) -> dict:
     """Cheap coord-descent in 1D per parameter."""
     eng = AlphaBetaEngine(depth_limit=1, eval_params=params)
-    eng._current_zobrist = eng._get_zobrist_table(dataset[0][0])
-
-    def eval_fn(board: BaseBoard) -> float:
-        eng._current_pst = eng._get_pst_tables(board.SQUARES_COUNT, board.shape[0])
-        return eng.evaluate(board)
+    # ``evaluate`` lazily binds Zobrist & PST tables to the variant.
+    eval_fn = eng.evaluate
 
     best = dict(params)
     K = fit_K(dataset, eval_fn)

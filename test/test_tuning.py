@@ -35,15 +35,8 @@ def test_fit_K_is_positive() -> None:
     rng = random.Random(1)
     dataset = tune_eval.synthetic_dataset(StandardBoard, n=30, rng=rng)
     eng = AlphaBetaEngine(depth_limit=1)
-    eng._current_zobrist = eng._get_zobrist_table(dataset[0][0])
-
-    def eval_fn(board):
-        eng._current_pst = eng._get_pst_tables(board.SQUARES_COUNT, board.shape[0])
-        return eng.evaluate(board)
-
-    K = tune_eval.fit_K(dataset, eval_fn)
-    assert K > 0
-    assert K < 100  # sanity
+    K = tune_eval.fit_K(dataset, eng.evaluate)
+    assert 0 < K < 100  # sanity
 
 
 def test_coordinate_descent_does_not_regress() -> None:
@@ -53,14 +46,8 @@ def test_coordinate_descent_does_not_regress() -> None:
     start = dict(AlphaBetaEngine.DEFAULT_EVAL_PARAMS)
 
     eng = AlphaBetaEngine(depth_limit=1, eval_params=start)
-    eng._current_zobrist = eng._get_zobrist_table(dataset[0][0])
-
-    def eval_fn(board):
-        eng._current_pst = eng._get_pst_tables(board.SQUARES_COUNT, board.shape[0])
-        return eng.evaluate(board)
-
-    K0 = tune_eval.fit_K(dataset, eval_fn)
-    loss_before = tune_eval._loss(dataset, eval_fn, K0)
+    K0 = tune_eval.fit_K(dataset, eng.evaluate)
+    loss_before = tune_eval._loss(dataset, eng.evaluate, K0)
 
     bounds = {
         "man_value": (1.0, 1.0, 0.0),
@@ -71,8 +58,8 @@ def test_coordinate_descent_does_not_regress() -> None:
     tuned = tune_eval.coordinate_descent(start, bounds, dataset, iters=2)
 
     eng.eval_params = tuned
-    K1 = tune_eval.fit_K(dataset, eval_fn)
-    loss_after = tune_eval._loss(dataset, eval_fn, K1)
+    K1 = tune_eval.fit_K(dataset, eng.evaluate)
+    loss_after = tune_eval._loss(dataset, eng.evaluate, K1)
 
     assert loss_after <= loss_before + 1e-6, f"loss regressed: {loss_before} -> {loss_after}"
 
