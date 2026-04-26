@@ -96,7 +96,9 @@ def collect(perf: str, board_cls, users: list[str]) -> list[str]:
                 seen.add(site)
             out.append(pdn)
             kept += 1
-        print(f"  {perf}/{user}: fetched {len(pdns)}, kept {kept}, total {len(out)}/{GAMES_PER_VARIANT}")
+        print(
+            f"  {perf}/{user}: fetched {len(pdns)}, kept {kept}, total {len(out)}/{GAMES_PER_VARIANT}"
+        )
         time.sleep(SLEEP_BETWEEN_USERS)
     return out
 

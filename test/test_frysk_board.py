@@ -44,11 +44,7 @@ def test_random_self_play_terminates():
             break
         board.push(rng.choice(moves))
     # Game must finish or hit draw
-    assert (
-        board.is_draw
-        or not board.legal_moves
-        or len(board._moves_stack) == 300
-    )
+    assert board.is_draw or not board.legal_moves or len(board._moves_stack) == 300
 
 
 def test_pdn_round_trip():
