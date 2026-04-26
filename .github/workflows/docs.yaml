@@ -3,24 +3,23 @@ on: [push, pull_request, workflow_dispatch]
 jobs:
   docs:
     runs-on: ubuntu-latest
-    #permissions:
-    #pages: write
-    #id-token: write
     steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-python@v2
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
       - name: Install dependencies
         run: |
           pip install -r docs/requirements.txt
           pip install -e .[dev]
       - name: Sphinx build
         run: |
-          sphinx-build docs/source/ _build
+          sphinx-build -b html docs/source/ _build --keep-going
       - name: Add .nojekyll
         run: touch _build/.nojekyll
       - name: Deploy
-        uses: peaceiris/actions-gh-pages@v3
-        #        if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+        uses: peaceiris/actions-gh-pages@v4
+        if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
         with:
           publish_branch: github-pages
           github_token: ${{ secrets.GITHUB_TOKEN }}

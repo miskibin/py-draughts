@@ -123,14 +123,14 @@ Use :meth:`~draughts.BaseBoard.to_tensor` to get a neural-network-ready represen
 
 The 4 channels are:
 
-====== ====================================
+======= ====================================
 Channel Description
-====== ====================================
-0      Own men (1.0 where present)
-1      Own kings (1.0 where present)
-2      Opponent men (1.0 where present)
-3      Opponent kings (1.0 where present)
-====== ====================================
+======= ====================================
+0       Own men (1.0 where present)
+1       Own kings (1.0 where present)
+2       Opponent men (1.0 where present)
+3       Opponent kings (1.0 where present)
+======= ====================================
 
 By default, "own" is relative to the current turn. Override with ``perspective``:
 
