@@ -1,0 +1,1154 @@
+<!doctype html>
+<html class="no-js" lang="en" data-content_root="./">
+  <head><meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <meta name="color-scheme" content="light dark"><meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta content="py-draughts engine — built-in alpha-beta search with transposition tables and iterative deepening, plus a HUB protocol bridge for external engines like Scan and Kingsrow." name="description" />
+<meta content="draughts engine, alpha-beta draughts, hub protocol, scan engine, kingsrow, python checkers ai, transposition table" name="keywords" />
+<meta property="og:title" content="Engine" />
+<meta property="og:type" content="website" />
+<meta property="og:url" content="https://miskibin.github.io/py-draughts/engine.html" />
+<meta property="og:site_name" content="py-draughts" />
+<meta property="og:description" content="AI engines for playing draughts. Quick Start: Engine Interface: AlphaBetaEngine: Performance:,,, Depth, Avg Time, Avg Nodes,,, 5, 274 ms, 3,263,, 6, 619 ms, 7,330,, 7, 2.20 s, 21,642,, 8, 6.55 s, 9..." />
+<meta property="og:image" content="https://miskibin.github.io/py-draughts/_static/speed_comparison.png" />
+<meta property="og:image:alt" content="py-draughts vs pydraughts speed comparison — up to 460x faster" />
+<meta name="keywords" content="draughts, checkers, python, international draughts, frisian draughts, russian draughts, brazilian draughts, american checkers, antidraughts, breakthrough, frysk, bitboard, pdn, fen, alpha-beta, hub protocol, game engine, board game ai, pydraughts alternative">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="index" title="Index" href="genindex.html"><link rel="search" title="Search" href="search.html"><link rel="next" title="Writing Your Own AI" href="ai.html"><link rel="prev" title="Core API" href="core.html">
+        <link rel="canonical" href="https://miskibin.github.io/py-draughts/engine.html">
+
+    <!-- Generated with Sphinx 9.1.0 and Furo 2025.12.19 -->
+        <title>Engine - py-draughts 1.7.1</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=d75fae25" />
+    <link rel="stylesheet" type="text/css" href="_static/styles/furo.css?v=7bdb33bb" />
+    <link rel="stylesheet" type="text/css" href="_static/copybutton.css?v=76b2166b" />
+    <link rel="stylesheet" type="text/css" href="_static/sphinx-design.min.css?v=95c83b7e" />
+    <link rel="stylesheet" type="text/css" href="_static/styles/furo-extensions.css?v=8dab3a3b" />
+    <link rel="stylesheet" type="text/css" href="_static/custom.css?v=c354dfeb" />
+    
+    
+
+
+<style>
+  body {
+    --color-code-background: #f0f0f0;
+  --color-code-foreground: black;
+  --color-brand-primary: #0f766e;
+  --color-brand-content: #0f766e;
+  --color-brand-visited: #0f766e;
+  --font-stack: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-stack--monospace: 'JetBrains Mono', 'Fira Code', SFMono-Regular, Menlo, Consolas, monospace;
+  --color-admonition-background: transparent;
+  
+  }
+  @media not print {
+    body[data-theme="dark"] {
+      --color-code-background: #272822;
+  --color-code-foreground: #f8f8f2;
+  --color-brand-primary: #2dd4bf;
+  --color-brand-content: #2dd4bf;
+  --color-brand-visited: #2dd4bf;
+  
+    }
+    @media (prefers-color-scheme: dark) {
+      body:not([data-theme="light"]) {
+        --color-code-background: #272822;
+  --color-code-foreground: #f8f8f2;
+  --color-brand-primary: #2dd4bf;
+  --color-brand-content: #2dd4bf;
+  --color-brand-visited: #2dd4bf;
+  
+      }
+    }
+  }
+</style></head>
+  <body>
+    
+    <script>
+      document.body.dataset.theme = localStorage.getItem("theme") || "auto";
+    </script>
+    
+
+<svg xmlns="http://www.w3.org/2000/svg" style="display: none;">
+  <symbol id="svg-toc" viewBox="0 0 24 24">
+    <title>Contents</title>
+    <svg stroke="currentColor" fill="currentColor" stroke-width="0" viewBox="0 0 1024 1024">
+      <path d="M408 442h480c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8H408c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8zm-8 204c0 4.4 3.6 8 8 8h480c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8H408c-4.4 0-8 3.6-8 8v56zm504-486H120c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8h784c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8zm0 632H120c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8h784c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8zM115.4 518.9L271.7 642c5.8 4.6 14.4.5 14.4-6.9V388.9c0-7.4-8.5-11.5-14.4-6.9L115.4 505.1a8.74 8.74 0 0 0 0 13.8z"/>
+    </svg>
+  </symbol>
+  <symbol id="svg-menu" viewBox="0 0 24 24">
+    <title>Menu</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather-menu">
+      <line x1="3" y1="12" x2="21" y2="12"></line>
+      <line x1="3" y1="6" x2="21" y2="6"></line>
+      <line x1="3" y1="18" x2="21" y2="18"></line>
+    </svg>
+  </symbol>
+  <symbol id="svg-arrow-right" viewBox="0 0 24 24">
+    <title>Expand</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather-chevron-right">
+      <polyline points="9 18 15 12 9 6"></polyline>
+    </svg>
+  </symbol>
+  <symbol id="svg-sun" viewBox="0 0 24 24">
+    <title>Light mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="feather-sun">
+      <circle cx="12" cy="12" r="5"></circle>
+      <line x1="12" y1="1" x2="12" y2="3"></line>
+      <line x1="12" y1="21" x2="12" y2="23"></line>
+      <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+      <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+      <line x1="1" y1="12" x2="3" y2="12"></line>
+      <line x1="21" y1="12" x2="23" y2="12"></line>
+      <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+      <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+    </svg>
+  </symbol>
+  <symbol id="svg-moon" viewBox="0 0 24 24">
+    <title>Dark mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-moon">
+      <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+      <path d="M12 3c.132 0 .263 0 .393 0a7.5 7.5 0 0 0 7.92 12.446a9 9 0 1 1 -8.313 -12.454z" />
+    </svg>
+  </symbol>
+  <symbol id="svg-sun-with-moon" viewBox="0 0 24 24">
+    <title>Auto light/dark, in light mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round"
+      class="icon-custom-derived-from-feather-sun-and-tabler-moon">
+      <path style="opacity: 50%" d="M 5.411 14.504 C 5.471 14.504 5.532 14.504 5.591 14.504 C 3.639 16.319 4.383 19.569 6.931 20.352 C 7.693 20.586 8.512 20.551 9.25 20.252 C 8.023 23.207 4.056 23.725 2.11 21.184 C 0.166 18.642 1.702 14.949 4.874 14.536 C 5.051 14.512 5.231 14.5 5.411 14.5 L 5.411 14.504 Z"/>
+      <line x1="14.5" y1="3.25" x2="14.5" y2="1.25"/>
+      <line x1="14.5" y1="15.85" x2="14.5" y2="17.85"/>
+      <line x1="10.044" y1="5.094" x2="8.63" y2="3.68"/>
+      <line x1="19" y1="14.05" x2="20.414" y2="15.464"/>
+      <line x1="8.2" y1="9.55" x2="6.2" y2="9.55"/>
+      <line x1="20.8" y1="9.55" x2="22.8" y2="9.55"/>
+      <line x1="10.044" y1="14.006" x2="8.63" y2="15.42"/>
+      <line x1="19" y1="5.05" x2="20.414" y2="3.636"/>
+      <circle cx="14.5" cy="9.55" r="3.6"/>
+    </svg>
+  </symbol>
+  <symbol id="svg-moon-with-sun" viewBox="0 0 24 24">
+    <title>Auto light/dark, in dark mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round"
+      class="icon-custom-derived-from-feather-sun-and-tabler-moon">
+      <path d="M 8.282 7.007 C 8.385 7.007 8.494 7.007 8.595 7.007 C 5.18 10.184 6.481 15.869 10.942 17.24 C 12.275 17.648 13.706 17.589 15 17.066 C 12.851 22.236 5.91 23.143 2.505 18.696 C -0.897 14.249 1.791 7.786 7.342 7.063 C 7.652 7.021 7.965 7 8.282 7 L 8.282 7.007 Z"/>
+      <line style="opacity: 50%" x1="18" y1="3.705" x2="18" y2="2.5"/>
+      <line style="opacity: 50%" x1="18" y1="11.295" x2="18" y2="12.5"/>
+      <line style="opacity: 50%" x1="15.316" y1="4.816" x2="14.464" y2="3.964"/>
+      <line style="opacity: 50%" x1="20.711" y1="10.212" x2="21.563" y2="11.063"/>
+      <line style="opacity: 50%" x1="14.205" y1="7.5" x2="13.001" y2="7.5"/>
+      <line style="opacity: 50%" x1="21.795" y1="7.5" x2="23" y2="7.5"/>
+      <line style="opacity: 50%" x1="15.316" y1="10.184" x2="14.464" y2="11.036"/>
+      <line style="opacity: 50%" x1="20.711" y1="4.789" x2="21.563" y2="3.937"/>
+      <circle style="opacity: 50%" cx="18" cy="7.5" r="2.169"/>
+    </svg>
+  </symbol>
+  <symbol id="svg-pencil" viewBox="0 0 24 24">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-pencil-code">
+      <path d="M4 20h4l10.5 -10.5a2.828 2.828 0 1 0 -4 -4l-10.5 10.5v4" />
+      <path d="M13.5 6.5l4 4" />
+      <path d="M20 21l2 -2l-2 -2" />
+      <path d="M17 17l-2 2l2 2" />
+    </svg>
+  </symbol>
+  <symbol id="svg-eye" viewBox="0 0 24 24">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-eye-code">
+      <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+      <path d="M10 12a2 2 0 1 0 4 0a2 2 0 0 0 -4 0" />
+      <path
+        d="M11.11 17.958c-3.209 -.307 -5.91 -2.293 -8.11 -5.958c2.4 -4 5.4 -6 9 -6c3.6 0 6.6 2 9 6c-.21 .352 -.427 .688 -.647 1.008" />
+      <path d="M20 21l2 -2l-2 -2" />
+      <path d="M17 17l-2 2l2 2" />
+    </svg>
+  </symbol>
+</svg>
+
+<input type="checkbox" class="sidebar-toggle" name="__navigation" id="__navigation" aria-label="Toggle site navigation sidebar">
+<input type="checkbox" class="sidebar-toggle" name="__toc" id="__toc" aria-label="Toggle table of contents sidebar">
+<label class="overlay sidebar-overlay" for="__navigation"></label>
+<label class="overlay toc-overlay" for="__toc"></label>
+
+<a class="skip-to-content muted-link" href="#furo-main-content">Skip to content</a>
+
+
+
+<div class="page">
+  <header class="mobile-header">
+    <div class="header-left">
+      <label class="nav-overlay-icon" for="__navigation">
+        <span class="icon"><svg><use href="#svg-menu"></use></svg></span>
+      </label>
+    </div>
+    <div class="header-center">
+      <a href="index.html"><div class="brand">py-draughts 1.7.1</div></a>
+    </div>
+    <div class="header-right">
+      <div class="theme-toggle-container theme-toggle-header">
+        <button class="theme-toggle" aria-label="Toggle Light / Dark / Auto color theme">
+          <svg class="theme-icon-when-auto-light"><use href="#svg-sun-with-moon"></use></svg>
+          <svg class="theme-icon-when-auto-dark"><use href="#svg-moon-with-sun"></use></svg>
+          <svg class="theme-icon-when-dark"><use href="#svg-moon"></use></svg>
+          <svg class="theme-icon-when-light"><use href="#svg-sun"></use></svg>
+        </button>
+      </div>
+      <label class="toc-overlay-icon toc-header-icon" for="__toc">
+        <span class="icon"><svg><use href="#svg-toc"></use></svg></span>
+      </label>
+    </div>
+  </header>
+  <aside class="sidebar-drawer">
+    <div class="sidebar-container">
+      
+      <div class="sidebar-sticky"><a class="sidebar-brand" href="index.html">
+  
+  <span class="sidebar-brand-text">py-draughts 1.7.1</span>
+  
+</a><form class="sidebar-search-container" method="get" action="search.html" role="search">
+  <input class="sidebar-search" placeholder="Search" name="q" aria-label="Search">
+  <input type="hidden" name="check_keywords" value="yes">
+  <input type="hidden" name="area" value="default">
+</form>
+<div id="searchbox"></div><div class="sidebar-scroll"><div class="sidebar-tree">
+  <p class="caption" role="heading"><span class="caption-text">Guide</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="core.html">Core API</a></li>
+<li class="toctree-l1 current current-page"><a class="current reference internal" href="#">Engine</a></li>
+<li class="toctree-l1"><a class="reference internal" href="ai.html">Writing Your Own AI</a></li>
+<li class="toctree-l1"><a class="reference internal" href="svg.html">SVG Rendering</a></li>
+<li class="toctree-l1"><a class="reference internal" href="server.html">Server</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Reference</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="benchmarking.html">Benchmarking (Internal)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="comparison.html">py-draughts vs pydraughts</a></li>
+</ul>
+
+</div>
+</div>
+
+      </div>
+      
+    </div>
+  </aside>
+  <div class="main">
+    <div class="content">
+      <div class="article-container">
+        <a href="#" class="back-to-top muted-link">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+            <path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8v12z"></path>
+          </svg>
+          <span>Back to top</span>
+        </a>
+        <div class="content-icon-container">
+          <div class="view-this-page">
+  <a class="muted-link" href="https://github.com/miskibin/py-draughts/blob/main/docs/source/engine.rst?plain=true" title="View this page">
+    <svg><use href="#svg-eye"></use></svg>
+    <span class="visually-hidden">View this page</span>
+  </a>
+</div><div class="edit-this-page">
+  <a class="muted-link" href="https://github.com/miskibin/py-draughts/edit/main/docs/source/engine.rst" rel="edit" title="Edit this page">
+    <svg><use href="#svg-pencil"></use></svg>
+    <span class="visually-hidden">Edit this page</span>
+  </a>
+</div><div class="theme-toggle-container theme-toggle-content">
+            <button class="theme-toggle" aria-label="Toggle Light / Dark / Auto color theme">
+              <svg class="theme-icon-when-auto-light"><use href="#svg-sun-with-moon"></use></svg>
+              <svg class="theme-icon-when-auto-dark"><use href="#svg-moon-with-sun"></use></svg>
+              <svg class="theme-icon-when-dark"><use href="#svg-moon"></use></svg>
+              <svg class="theme-icon-when-light"><use href="#svg-sun"></use></svg>
+            </button>
+          </div>
+          <label class="toc-overlay-icon toc-content-icon" for="__toc">
+            <span class="icon"><svg><use href="#svg-toc"></use></svg></span>
+          </label>
+        </div>
+        <article role="main" id="furo-main-content">
+          <section id="engine">
+<h1>Engine<a class="headerlink" href="#engine" title="Link to this heading">¶</a></h1>
+<p>AI engines for playing draughts.</p>
+<section id="quick-start">
+<h2>Quick Start<a class="headerlink" href="#quick-start" title="Link to this heading">¶</a></h2>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">draughts</span><span class="w"> </span><span class="kn">import</span> <span class="n">Board</span><span class="p">,</span> <span class="n">AlphaBetaEngine</span>
+
+<span class="n">board</span> <span class="o">=</span> <span class="n">Board</span><span class="p">()</span>
+<span class="n">engine</span> <span class="o">=</span> <span class="n">AlphaBetaEngine</span><span class="p">(</span><span class="n">depth_limit</span><span class="o">=</span><span class="mi">5</span><span class="p">)</span>
+
+<span class="c1"># Get best move</span>
+<span class="n">best_move</span> <span class="o">=</span> <span class="n">engine</span><span class="o">.</span><span class="n">get_best_move</span><span class="p">(</span><span class="n">board</span><span class="p">)</span>
+<span class="n">board</span><span class="o">.</span><span class="n">push</span><span class="p">(</span><span class="n">best_move</span><span class="p">)</span>
+
+<span class="c1"># Get move with evaluation score</span>
+<span class="n">move</span><span class="p">,</span> <span class="n">score</span> <span class="o">=</span> <span class="n">engine</span><span class="o">.</span><span class="n">get_best_move</span><span class="p">(</span><span class="n">board</span><span class="p">,</span> <span class="n">with_evaluation</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+<section id="engine-interface">
+<h2>Engine Interface<a class="headerlink" href="#engine-interface" title="Link to this heading">¶</a></h2>
+<dl class="py class">
+<dt class="sig sig-object py" id="draughts.Engine">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">draughts.</span></span><span class="sig-name descname"><span class="pre">Engine</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">depth_limit</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">6</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">time_limit</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">name</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/draughts/engines/engine.html#Engine"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#draughts.Engine" title="Link to this definition">¶</a></dt>
+<dd><p>Abstract base class for draughts engines.</p>
+<p>Implement this interface to create custom engines compatible with
+the <a class="reference internal" href="server.html#draughts.Server" title="draughts.Server"><code class="xref py py-class docutils literal notranslate"><span class="pre">Server</span></code></a> for interactive play and testing.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>depth_limit</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a><em> | </em><em>None</em>)</p></li>
+<li><p><strong>time_limit</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a><em> | </em><em>None</em>)</p></li>
+<li><p><strong>name</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em> | </em><em>None</em>)</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="draughts.Engine.depth_limit">
+<span class="sig-name descname"><span class="pre">depth_limit</span></span><a class="headerlink" href="#draughts.Engine.depth_limit" title="Link to this definition">¶</a></dt>
+<dd><p>Maximum search depth (if applicable).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)">int</a> | None</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="draughts.Engine.time_limit">
+<span class="sig-name descname"><span class="pre">time_limit</span></span><a class="headerlink" href="#draughts.Engine.time_limit" title="Link to this definition">¶</a></dt>
+<dd><p>Maximum time per move in seconds (if applicable).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)">float</a> | None</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="draughts.Engine.name">
+<span class="sig-name descname"><span class="pre">name</span></span><a class="headerlink" href="#draughts.Engine.name" title="Link to this definition">¶</a></dt>
+<dd><p>Engine name (defaults to class name).</p>
+</dd></dl>
+
+<p class="rubric">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span><span class="w"> </span><span class="nn">draughts</span><span class="w"> </span><span class="kn">import</span> <span class="n">Engine</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span><span class="w"> </span><span class="nn">random</span>
+<span class="gp">&gt;&gt;&gt;</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="k">class</span><span class="w"> </span><span class="nc">RandomEngine</span><span class="p">(</span><span class="n">Engine</span><span class="p">):</span>
+<span class="gp">... </span>    <span class="k">def</span><span class="w"> </span><span class="nf">get_best_move</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">board</span><span class="p">,</span> <span class="n">with_evaluation</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+<span class="gp">... </span>        <span class="n">move</span> <span class="o">=</span> <span class="n">random</span><span class="o">.</span><span class="n">choice</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="n">board</span><span class="o">.</span><span class="n">legal_moves</span><span class="p">))</span>
+<span class="gp">... </span>        <span class="k">return</span> <span class="p">(</span><span class="n">move</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">)</span> <span class="k">if</span> <span class="n">with_evaluation</span> <span class="k">else</span> <span class="n">move</span>
+</pre></div>
+</div>
+<dl class="py method">
+<dt class="sig sig-object py" id="draughts.Engine.get_best_move">
+<span class="property"><span class="k"><span class="pre">abstractmethod</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">get_best_move</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">board</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">with_evaluation</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/draughts/engines/engine.html#Engine.get_best_move"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#draughts.Engine.get_best_move" title="Link to this definition">¶</a></dt>
+<dd><p>Find the best move for the current position.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>board</strong> (<em>BaseBoard</em>) – The current board state.</p></li>
+<li><p><strong>with_evaluation</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><em>bool</em></a>) – If True, return <code class="docutils literal notranslate"><span class="pre">(move,</span> <span class="pre">score)</span></code> tuple.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Best <code class="xref py py-class docutils literal notranslate"><span class="pre">Move</span></code>, or <code class="docutils literal notranslate"><span class="pre">(Move,</span> <span class="pre">float)</span></code> if <code class="docutils literal notranslate"><span class="pre">with_evaluation=True</span></code>.
+Positive scores favor the current player.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><em>Move</em> | <a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.14)">tuple</a>[<em>Move</em>, <a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)">float</a>]</p>
+</dd>
+</dl>
+<p class="rubric">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">move</span> <span class="o">=</span> <span class="n">engine</span><span class="o">.</span><span class="n">get_best_move</span><span class="p">(</span><span class="n">board</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">move</span><span class="p">,</span> <span class="n">score</span> <span class="o">=</span> <span class="n">engine</span><span class="o">.</span><span class="n">get_best_move</span><span class="p">(</span><span class="n">board</span><span class="p">,</span> <span class="n">with_evaluation</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+</pre></div>
+</div>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+<section id="alphabetaengine">
+<h2>AlphaBetaEngine<a class="headerlink" href="#alphabetaengine" title="Link to this heading">¶</a></h2>
+<dl class="py class">
+<dt class="sig sig-object py" id="draughts.AlphaBetaEngine">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">draughts.</span></span><span class="sig-name descname"><span class="pre">AlphaBetaEngine</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">depth_limit</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">6</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">time_limit</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">name</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/draughts/engines/alpha_beta.html#AlphaBetaEngine"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#draughts.AlphaBetaEngine" title="Link to this definition">¶</a></dt>
+<dd><p>AI engine using Negamax search with alpha-beta pruning.</p>
+<p>This engine implements a strong draughts AI with several optimizations
+for efficient tree search. Works with any board variant (Standard, American, etc.).</p>
+<p><strong>Algorithm:</strong></p>
+<ul class="simple">
+<li><p><strong>Negamax</strong>: Simplified minimax using <code class="docutils literal notranslate"><span class="pre">max(a,b)</span> <span class="pre">=</span> <span class="pre">-min(-a,-b)</span></code></p></li>
+<li><p><strong>Iterative Deepening</strong>: Progressively deeper searches for time control</p></li>
+<li><p><strong>Transposition Table</strong>: Zobrist hashing to cache evaluated positions</p></li>
+<li><p><strong>Quiescence Search</strong>: Extends captures to avoid horizon effects</p></li>
+<li><p><strong>Move Ordering</strong>: PV moves, captures, killers, history heuristic</p></li>
+<li><p><strong>PVS/LMR</strong>: Principal Variation Search with Late Move Reductions</p></li>
+</ul>
+<p><strong>Evaluation:</strong></p>
+<ul class="simple">
+<li><p>Material balance (men=1.0, kings=2.5)</p></li>
+<li><p>Piece-Square Tables rewarding advancement and center control</p></li>
+</ul>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>depth_limit</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a><em> | </em><em>None</em>)</p></li>
+<li><p><strong>time_limit</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a><em> | </em><em>None</em>)</p></li>
+<li><p><strong>name</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em> | </em><em>None</em>)</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="draughts.AlphaBetaEngine.depth_limit">
+<span class="sig-name descname"><span class="pre">depth_limit</span></span><a class="headerlink" href="#draughts.AlphaBetaEngine.depth_limit" title="Link to this definition">¶</a></dt>
+<dd><p>Maximum search depth.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)">int</a> | None</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="draughts.AlphaBetaEngine.time_limit">
+<span class="sig-name descname"><span class="pre">time_limit</span></span><a class="headerlink" href="#draughts.AlphaBetaEngine.time_limit" title="Link to this definition">¶</a></dt>
+<dd><p>Optional time limit in seconds.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)">float</a> | None</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="draughts.AlphaBetaEngine.nodes">
+<span class="sig-name descname"><span class="pre">nodes</span></span><a class="headerlink" href="#draughts.AlphaBetaEngine.nodes" title="Link to this definition">¶</a></dt>
+<dd><p>Number of nodes searched in last call.</p>
+</dd></dl>
+
+<p class="rubric">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span><span class="w"> </span><span class="nn">draughts</span><span class="w"> </span><span class="kn">import</span> <span class="n">Board</span><span class="p">,</span> <span class="n">AlphaBetaEngine</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">board</span> <span class="o">=</span> <span class="n">Board</span><span class="p">()</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">engine</span> <span class="o">=</span> <span class="n">AlphaBetaEngine</span><span class="p">(</span><span class="n">depth_limit</span><span class="o">=</span><span class="mi">5</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">move</span> <span class="o">=</span> <span class="n">engine</span><span class="o">.</span><span class="n">get_best_move</span><span class="p">(</span><span class="n">board</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">board</span><span class="o">.</span><span class="n">push</span><span class="p">(</span><span class="n">move</span><span class="p">)</span>
+</pre></div>
+</div>
+<dl>
+<dt>Example with American Draughts:</dt><dd><div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span><span class="w"> </span><span class="nn">draughts.boards.american</span><span class="w"> </span><span class="kn">import</span> <span class="n">Board</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">board</span> <span class="o">=</span> <span class="n">Board</span><span class="p">()</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">engine</span> <span class="o">=</span> <span class="n">AlphaBetaEngine</span><span class="p">(</span><span class="n">depth_limit</span><span class="o">=</span><span class="mi">6</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">move</span> <span class="o">=</span> <span class="n">engine</span><span class="o">.</span><span class="n">get_best_move</span><span class="p">(</span><span class="n">board</span><span class="p">)</span>
+</pre></div>
+</div>
+</dd>
+<dt>Example with evaluation:</dt><dd><div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">move</span><span class="p">,</span> <span class="n">score</span> <span class="o">=</span> <span class="n">engine</span><span class="o">.</span><span class="n">get_best_move</span><span class="p">(</span><span class="n">board</span><span class="p">,</span> <span class="n">with_evaluation</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Best: </span><span class="si">{</span><span class="n">move</span><span class="si">}</span><span class="s2">, Score: </span><span class="si">{</span><span class="n">score</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</dd>
+</dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="draughts.AlphaBetaEngine.__init__">
+<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">depth_limit</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">6</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">time_limit</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">name</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/draughts/engines/alpha_beta.html#AlphaBetaEngine.__init__"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#draughts.AlphaBetaEngine.__init__" title="Link to this definition">¶</a></dt>
+<dd><p>Initialize the engine.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>depth_limit</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a>) – Maximum search depth. Higher = stronger but slower.
+Recommended: 5-6 for play, 7-8 for analysis.</p></li>
+<li><p><strong>time_limit</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a><em> | </em><em>None</em>) – Optional time limit in seconds. If set, search uses
+iterative deepening and stops when time expires.</p></li>
+<li><p><strong>name</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em> | </em><em>None</em>) – Custom engine name. Defaults to class name.</p></li>
+</ul>
+</dd>
+</dl>
+<p class="rubric">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">engine</span> <span class="o">=</span> <span class="n">AlphaBetaEngine</span><span class="p">(</span><span class="n">depth_limit</span><span class="o">=</span><span class="mi">6</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">engine</span> <span class="o">=</span> <span class="n">AlphaBetaEngine</span><span class="p">(</span><span class="n">depth_limit</span><span class="o">=</span><span class="mi">20</span><span class="p">,</span> <span class="n">time_limit</span><span class="o">=</span><span class="mf">1.0</span><span class="p">)</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="draughts.AlphaBetaEngine.evaluate">
+<span class="sig-name descname"><span class="pre">evaluate</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">board</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/draughts/engines/alpha_beta.html#AlphaBetaEngine.evaluate"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#draughts.AlphaBetaEngine.evaluate" title="Link to this definition">¶</a></dt>
+<dd><p>Evaluate the board position.</p>
+<p>Uses material count and piece-square tables.
+Works with any board variant.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>board</strong> (<em>BaseBoard</em>) – The board to evaluate.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Score from the perspective of the side to move.
+Positive = good for current player.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)">float</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="draughts.AlphaBetaEngine.get_best_move">
+<span class="sig-name descname"><span class="pre">get_best_move</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">board</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">with_evaluation</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/draughts/engines/alpha_beta.html#AlphaBetaEngine.get_best_move"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#draughts.AlphaBetaEngine.get_best_move" title="Link to this definition">¶</a></dt>
+<dd><p>Find the best move for the current position.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>board</strong> (<em>BaseBoard</em>) – The board to analyze.</p></li>
+<li><p><strong>with_evaluation</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><em>bool</em></a>) – If True, return <code class="docutils literal notranslate"><span class="pre">(move,</span> <span class="pre">score)</span></code> tuple.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Best <code class="xref py py-class docutils literal notranslate"><span class="pre">Move</span></code>, or <code class="docutils literal notranslate"><span class="pre">(Move,</span> <span class="pre">float)</span></code> if <code class="docutils literal notranslate"><span class="pre">with_evaluation=True</span></code>.</p>
+</dd>
+<dt class="field-odd">Raises<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#ValueError" title="(in Python v3.14)"><strong>ValueError</strong></a> – If no legal moves are available.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><em>Move</em> | <a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.14)">tuple</a>[<em>Move</em>, <a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)">float</a>]</p>
+</dd>
+</dl>
+<p class="rubric">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">move</span> <span class="o">=</span> <span class="n">engine</span><span class="o">.</span><span class="n">get_best_move</span><span class="p">(</span><span class="n">board</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">move</span><span class="p">,</span> <span class="n">score</span> <span class="o">=</span> <span class="n">engine</span><span class="o">.</span><span class="n">get_best_move</span><span class="p">(</span><span class="n">board</span><span class="p">,</span> <span class="n">with_evaluation</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+</pre></div>
+</div>
+</dd></dl>
+
+</dd></dl>
+
+<section id="performance">
+<h3>Performance<a class="headerlink" href="#performance" title="Link to this heading">¶</a></h3>
+<div class="table-wrapper docutils container">
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>Depth</p></th>
+<th class="head"><p>Avg Time</p></th>
+<th class="head"><p>Avg Nodes</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>5</p></td>
+<td><p>274 ms</p></td>
+<td><p>3,263</p></td>
+</tr>
+<tr class="row-odd"><td><p>6</p></td>
+<td><p>619 ms</p></td>
+<td><p>7,330</p></td>
+</tr>
+<tr class="row-even"><td><p>7</p></td>
+<td><p>2.20 s</p></td>
+<td><p>21,642</p></td>
+</tr>
+<tr class="row-odd"><td><p>8</p></td>
+<td><p>6.55 s</p></td>
+<td><p>98,987</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<ul class="simple">
+<li><p><strong>Depth 5-6</strong>: Strong play, responsive (&lt; 1s per move)</p></li>
+<li><p><strong>Depth 7-8</strong>: Very strong, suitable for analysis</p></li>
+</ul>
+<a class="reference internal image-reference" href="_images/engine_benchmark.png"><img alt="Engine Benchmark" src="_images/engine_benchmark.png" style="width: 500px;" />
+</a>
+</section>
+</section>
+<section id="hubengine">
+<h2>HubEngine<a class="headerlink" href="#hubengine" title="Link to this heading">¶</a></h2>
+<p>Use external engines implementing the Hub protocol (e.g., <a class="reference external" href="https://hjetten.home.xs4all.nl/scan/scan.html">Scan</a>).</p>
+<dl class="py class">
+<dt class="sig sig-object py" id="draughts.HubEngine">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">draughts.</span></span><span class="sig-name descname"><span class="pre">HubEngine</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">path</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">time_limit</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">depth_limit</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">init_timeout</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">10.0</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/draughts/engines/hub.html#HubEngine"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#draughts.HubEngine" title="Link to this definition">¶</a></dt>
+<dd><p>Engine wrapper for Hub protocol (used by Scan and similar engines).</p>
+<p>This class manages subprocess communication with an external draughts
+engine using the Hub protocol (version 2).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>path</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em> | </em><em>Path</em>)</p></li>
+<li><p><strong>time_limit</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a><em> | </em><em>None</em>)</p></li>
+<li><p><strong>depth_limit</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a><em> | </em><em>None</em>)</p></li>
+<li><p><strong>init_timeout</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a>)</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="draughts.HubEngine.path">
+<span class="sig-name descname"><span class="pre">path</span></span><a class="headerlink" href="#draughts.HubEngine.path" title="Link to this definition">¶</a></dt>
+<dd><p>Path to the engine executable</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="draughts.HubEngine.time_limit">
+<span class="sig-name descname"><span class="pre">time_limit</span></span><a class="headerlink" href="#draughts.HubEngine.time_limit" title="Link to this definition">¶</a></dt>
+<dd><p>Default time per move in seconds</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)">float</a> | None</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="draughts.HubEngine.depth_limit">
+<span class="sig-name descname"><span class="pre">depth_limit</span></span><a class="headerlink" href="#draughts.HubEngine.depth_limit" title="Link to this definition">¶</a></dt>
+<dd><p>Maximum search depth (None for no limit)</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)">int</a> | None</p>
+</dd>
+</dl>
+</dd></dl>
+
+<p class="rubric">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">engine</span> <span class="o">=</span> <span class="n">HubEngine</span><span class="p">(</span><span class="s2">&quot;scan.exe&quot;</span><span class="p">,</span> <span class="n">time_limit</span><span class="o">=</span><span class="mf">1.0</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">engine</span><span class="o">.</span><span class="n">start</span><span class="p">()</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">move</span> <span class="o">=</span> <span class="n">engine</span><span class="o">.</span><span class="n">get_best_move</span><span class="p">(</span><span class="n">board</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">engine</span><span class="o">.</span><span class="n">quit</span><span class="p">()</span>
+</pre></div>
+</div>
+<p># Or with context manager:
+&gt;&gt;&gt; with HubEngine(“scan.exe”) as engine:
+…     move = engine.get_best_move(board)</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="draughts.HubEngine.__init__">
+<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">path</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">time_limit</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">depth_limit</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">init_timeout</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">10.0</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/draughts/engines/hub.html#HubEngine.__init__"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#draughts.HubEngine.__init__" title="Link to this definition">¶</a></dt>
+<dd><p>Initialize Hub engine wrapper.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>path</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em> | </em><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><em>Path</em></a>) – Path to the engine executable</p></li>
+<li><p><strong>time_limit</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a>) – Time limit per move in seconds (default 1.0)</p></li>
+<li><p><strong>depth_limit</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a><em> | </em><em>None</em>) – Maximum search depth (None for no limit)</p></li>
+<li><p><strong>init_timeout</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a>) – Timeout for engine initialization in seconds</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="draughts.HubEngine.start">
+<span class="sig-name descname"><span class="pre">start</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/draughts/engines/hub.html#HubEngine.start"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#draughts.HubEngine.start" title="Link to this definition">¶</a></dt>
+<dd><p>Start the engine subprocess and complete initialization handshake.</p>
+<p>The Hub protocol initialization:
+1. GUI sends “hub”
+2. Engine responds with id, param declarations, then “wait”
+3. GUI optionally sends set-param commands
+4. GUI sends “init”
+5. Engine responds with “ready”</p>
+<dl class="field-list simple">
+<dt class="field-odd">Raises<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#FileNotFoundError" title="(in Python v3.14)"><strong>FileNotFoundError</strong></a> – If engine executable not found</p></li>
+<li><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#TimeoutError" title="(in Python v3.14)"><strong>TimeoutError</strong></a> – If engine doesn’t respond in time</p></li>
+<li><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#RuntimeError" title="(in Python v3.14)"><strong>RuntimeError</strong></a> – If initialization fails</p></li>
+</ul>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>None</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="draughts.HubEngine.quit">
+<span class="sig-name descname"><span class="pre">quit</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/draughts/engines/hub.html#HubEngine.quit"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#draughts.HubEngine.quit" title="Link to this definition">¶</a></dt>
+<dd><p>Send quit command and terminate the engine subprocess.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>None</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="draughts.HubEngine.get_best_move">
+<span class="sig-name descname"><span class="pre">get_best_move</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">board</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">with_evaluation</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/draughts/engines/hub.html#HubEngine.get_best_move"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#draughts.HubEngine.get_best_move" title="Link to this definition">¶</a></dt>
+<dd><p>Get the best move for the given board position.</p>
+<p>Implements the Engine interface. Sends the position to the engine,
+starts a search, and returns the best move.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>board</strong> (<em>BaseBoard</em>) – The current board state</p></li>
+<li><p><strong>with_evaluation</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><em>bool</em></a>) – If True, return (move, score) tuple</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Move object, or (Move, score) if with_evaluation=True</p>
+</dd>
+<dt class="field-odd">Raises<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#RuntimeError" title="(in Python v3.14)"><strong>RuntimeError</strong></a> – If engine not started or search fails</p></li>
+<li><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#ValueError" title="(in Python v3.14)"><strong>ValueError</strong></a> – If board variant not supported</p></li>
+</ul>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><em>Move</em> | <a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.14)">tuple</a>[<em>Move</em>, <a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)">float</a>]</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<p>Example:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">draughts</span><span class="w"> </span><span class="kn">import</span> <span class="n">Board</span><span class="p">,</span> <span class="n">HubEngine</span>
+
+<span class="k">with</span> <span class="n">HubEngine</span><span class="p">(</span><span class="s2">&quot;path/to/scan.exe&quot;</span><span class="p">,</span> <span class="n">time_limit</span><span class="o">=</span><span class="mf">1.0</span><span class="p">)</span> <span class="k">as</span> <span class="n">engine</span><span class="p">:</span>
+    <span class="n">board</span> <span class="o">=</span> <span class="n">Board</span><span class="p">()</span>
+    <span class="n">move</span><span class="p">,</span> <span class="n">score</span> <span class="o">=</span> <span class="n">engine</span><span class="o">.</span><span class="n">get_best_move</span><span class="p">(</span><span class="n">board</span><span class="p">,</span> <span class="n">with_evaluation</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+<section id="custom-engine">
+<h2>Custom Engine<a class="headerlink" href="#custom-engine" title="Link to this heading">¶</a></h2>
+<p>Inherit from <a class="reference internal" href="#draughts.Engine" title="draughts.Engine"><code class="xref py py-class docutils literal notranslate"><span class="pre">Engine</span></code></a> to create your own:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">draughts</span><span class="w"> </span><span class="kn">import</span> <span class="n">Engine</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">random</span>
+
+<span class="k">class</span><span class="w"> </span><span class="nc">RandomEngine</span><span class="p">(</span><span class="n">Engine</span><span class="p">):</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_best_move</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">board</span><span class="p">,</span> <span class="n">with_evaluation</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+        <span class="n">move</span> <span class="o">=</span> <span class="n">random</span><span class="o">.</span><span class="n">choice</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="n">board</span><span class="o">.</span><span class="n">legal_moves</span><span class="p">))</span>
+        <span class="k">return</span> <span class="p">(</span><span class="n">move</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">)</span> <span class="k">if</span> <span class="n">with_evaluation</span> <span class="k">else</span> <span class="n">move</span>
+</pre></div>
+</div>
+<p>Use with the <a class="reference internal" href="server.html"><span class="doc">Server</span></a> for interactive testing.</p>
+</section>
+<section id="benchmarking">
+<h2>Benchmarking<a class="headerlink" href="#benchmarking" title="Link to this heading">¶</a></h2>
+<p>Compare two engines against each other with comprehensive statistics.</p>
+<section id="id1">
+<h3>Quick Start<a class="headerlink" href="#id1" title="Link to this heading">¶</a></h3>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">draughts</span><span class="w"> </span><span class="kn">import</span> <span class="n">Benchmark</span><span class="p">,</span> <span class="n">AlphaBetaEngine</span>
+
+<span class="c1"># Compare two engines</span>
+<span class="n">stats</span> <span class="o">=</span> <span class="n">Benchmark</span><span class="p">(</span>
+    <span class="n">AlphaBetaEngine</span><span class="p">(</span><span class="n">depth_limit</span><span class="o">=</span><span class="mi">4</span><span class="p">),</span>
+    <span class="n">AlphaBetaEngine</span><span class="p">(</span><span class="n">depth_limit</span><span class="o">=</span><span class="mi">6</span><span class="p">),</span>
+    <span class="n">games</span><span class="o">=</span><span class="mi">20</span>
+<span class="p">)</span><span class="o">.</span><span class="n">run</span><span class="p">()</span>
+
+<span class="nb">print</span><span class="p">(</span><span class="n">stats</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Output:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="o">============================================================</span>
+  <span class="n">BENCHMARK</span><span class="p">:</span> <span class="n">AlphaBetaEngine</span> <span class="p">(</span><span class="n">d</span><span class="o">=</span><span class="mi">4</span><span class="p">)</span> <span class="n">vs</span> <span class="n">AlphaBetaEngine</span> <span class="p">(</span><span class="n">d</span><span class="o">=</span><span class="mi">6</span><span class="p">)</span>
+<span class="o">============================================================</span>
+
+  <span class="n">RESULTS</span><span class="p">:</span> <span class="mi">2</span><span class="o">-</span><span class="mi">12</span><span class="o">-</span><span class="mi">6</span> <span class="p">(</span><span class="n">W</span><span class="o">-</span><span class="n">L</span><span class="o">-</span><span class="n">D</span><span class="p">)</span>
+  <span class="n">AlphaBetaEngine</span> <span class="p">(</span><span class="n">d</span><span class="o">=</span><span class="mi">4</span><span class="p">)</span> <span class="n">win</span> <span class="n">rate</span><span class="p">:</span> <span class="mf">25.0</span><span class="o">%</span>
+  <span class="n">Elo</span> <span class="n">difference</span><span class="p">:</span> <span class="o">-</span><span class="mi">191</span>
+
+  <span class="n">PERFORMANCE</span>
+  <span class="n">Avg</span> <span class="n">game</span> <span class="n">length</span><span class="p">:</span> <span class="mf">85.3</span> <span class="n">moves</span>
+  <span class="n">AlphaBetaEngine</span> <span class="p">(</span><span class="n">d</span><span class="o">=</span><span class="mi">4</span><span class="p">):</span> <span class="mf">25.2</span><span class="n">ms</span><span class="o">/</span><span class="n">move</span><span class="p">,</span> <span class="mi">312</span> <span class="n">nodes</span><span class="o">/</span><span class="n">move</span>
+  <span class="n">AlphaBetaEngine</span> <span class="p">(</span><span class="n">d</span><span class="o">=</span><span class="mi">6</span><span class="p">):</span> <span class="mf">142.5</span><span class="n">ms</span><span class="o">/</span><span class="n">move</span><span class="p">,</span> <span class="mi">1850</span> <span class="n">nodes</span><span class="o">/</span><span class="n">move</span>
+  <span class="n">Total</span> <span class="n">time</span><span class="p">:</span> <span class="mf">45.2</span><span class="n">s</span>
+  <span class="o">...</span>
+</pre></div>
+</div>
+</section>
+<section id="benchmark-class">
+<h3>Benchmark Class<a class="headerlink" href="#benchmark-class" title="Link to this heading">¶</a></h3>
+<dl class="py class">
+<dt class="sig sig-object py" id="draughts.Benchmark">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">draughts.</span></span><span class="sig-name descname"><span class="pre">Benchmark</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">engine1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">engine2</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">board_class</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">&lt;class</span> <span class="pre">'draughts.boards.standard.Board'&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">games</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">10</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">openings</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">swap_colors</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">max_moves</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">200</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">workers</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/draughts/benchmark.html#Benchmark"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#draughts.Benchmark" title="Link to this definition">¶</a></dt>
+<dd><p>Benchmark two engines against each other.</p>
+<p class="rubric">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span><span class="w"> </span><span class="nn">draughts</span><span class="w"> </span><span class="kn">import</span> <span class="n">Benchmark</span><span class="p">,</span> <span class="n">AlphaBetaEngine</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">bench</span> <span class="o">=</span> <span class="n">Benchmark</span><span class="p">(</span><span class="n">AlphaBetaEngine</span><span class="p">(</span><span class="n">depth_limit</span><span class="o">=</span><span class="mi">4</span><span class="p">),</span> <span class="n">AlphaBetaEngine</span><span class="p">(</span><span class="n">depth_limit</span><span class="o">=</span><span class="mi">6</span><span class="p">))</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="nb">print</span><span class="p">(</span><span class="n">bench</span><span class="o">.</span><span class="n">run</span><span class="p">())</span>
+</pre></div>
+</div>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>engine1</strong> (<a class="reference internal" href="#draughts.Engine" title="draughts.Engine"><em>Engine</em></a>)</p></li>
+<li><p><strong>engine2</strong> (<a class="reference internal" href="#draughts.Engine" title="draughts.Engine"><em>Engine</em></a>)</p></li>
+<li><p><strong>board_class</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#type" title="(in Python v3.14)"><em>type</em></a><em>[</em><em>BaseBoard</em><em>]</em>)</p></li>
+<li><p><strong>games</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a>)</p></li>
+<li><p><strong>openings</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.14)"><em>list</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.14)"><em>tuple</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em>, </em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em> | </em><em>None</em><em>]</em><em>]</em>)</p></li>
+<li><p><strong>swap_colors</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><em>bool</em></a>)</p></li>
+<li><p><strong>max_moves</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a>)</p></li>
+<li><p><strong>workers</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a>)</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="draughts.Benchmark.__init__">
+<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">engine1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">engine2</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">board_class</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">&lt;class</span> <span class="pre">'draughts.boards.standard.Board'&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">games</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">10</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">openings</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">swap_colors</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">max_moves</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">200</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">workers</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/draughts/benchmark.html#Benchmark.__init__"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#draughts.Benchmark.__init__" title="Link to this definition">¶</a></dt>
+<dd><dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>engine1</strong> (<a class="reference internal" href="#draughts.Engine" title="draughts.engines.engine.Engine"><em>Engine</em></a>)</p></li>
+<li><p><strong>engine2</strong> (<a class="reference internal" href="#draughts.Engine" title="draughts.engines.engine.Engine"><em>Engine</em></a>)</p></li>
+<li><p><strong>board_class</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#type" title="(in Python v3.14)"><em>type</em></a><em>[</em><em>BaseBoard</em><em>]</em>)</p></li>
+<li><p><strong>games</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a>)</p></li>
+<li><p><strong>openings</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.14)"><em>list</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em>] </em><em>| </em><em>None</em>)</p></li>
+<li><p><strong>swap_colors</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><em>bool</em></a>)</p></li>
+<li><p><strong>max_moves</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a>)</p></li>
+<li><p><strong>workers</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a>)</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="draughts.Benchmark.run">
+<span class="sig-name descname"><span class="pre">run</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/draughts/benchmark.html#Benchmark.run"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#draughts.Benchmark.run" title="Link to this definition">¶</a></dt>
+<dd><p>Run benchmark and return statistics.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference internal" href="#draughts.BenchmarkStats" title="draughts.benchmark.BenchmarkStats"><em>BenchmarkStats</em></a></p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+<section id="parameters">
+<h3>Parameters<a class="headerlink" href="#parameters" title="Link to this heading">¶</a></h3>
+<ul class="simple">
+<li><p><strong>engine1, engine2</strong>: Any <code class="xref py py-class docutils literal notranslate"><span class="pre">Engine</span></code> instances to compare</p></li>
+<li><p><strong>board_class</strong>: Board variant (<code class="docutils literal notranslate"><span class="pre">StandardBoard</span></code>, <code class="docutils literal notranslate"><span class="pre">AmericanBoard</span></code>, etc.)</p></li>
+<li><p><strong>games</strong>: Number of games to play (default: 10)</p></li>
+<li><p><strong>openings</strong>: List of FEN strings for starting positions</p></li>
+<li><p><strong>swap_colors</strong>: Alternate colors between games (default: True)</p></li>
+<li><p><strong>max_moves</strong>: Maximum moves per game (default: 200)</p></li>
+<li><p><strong>workers</strong>: Parallel workers (default: 1, sequential)</p></li>
+</ul>
+</section>
+<section id="custom-names">
+<h3>Custom Names<a class="headerlink" href="#custom-names" title="Link to this heading">¶</a></h3>
+<p>Engines with the same class name are automatically distinguished by their settings:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># These will show as &quot;AlphaBetaEngine (d=4)&quot; and &quot;AlphaBetaEngine (d=6)&quot;</span>
+<span class="n">Benchmark</span><span class="p">(</span>
+    <span class="n">AlphaBetaEngine</span><span class="p">(</span><span class="n">depth_limit</span><span class="o">=</span><span class="mi">4</span><span class="p">),</span>
+    <span class="n">AlphaBetaEngine</span><span class="p">(</span><span class="n">depth_limit</span><span class="o">=</span><span class="mi">6</span><span class="p">)</span>
+<span class="p">)</span>
+</pre></div>
+</div>
+<p>Or provide custom names:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">Benchmark</span><span class="p">(</span>
+    <span class="n">AlphaBetaEngine</span><span class="p">(</span><span class="n">depth_limit</span><span class="o">=</span><span class="mi">4</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s2">&quot;FastBot&quot;</span><span class="p">),</span>
+    <span class="n">AlphaBetaEngine</span><span class="p">(</span><span class="n">depth_limit</span><span class="o">=</span><span class="mi">6</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s2">&quot;StrongBot&quot;</span><span class="p">)</span>
+<span class="p">)</span>
+</pre></div>
+</div>
+</section>
+<section id="custom-openings">
+<h3>Custom Openings<a class="headerlink" href="#custom-openings" title="Link to this heading">¶</a></h3>
+<p>By default, 10x10 boards use built-in opening positions. Provide your own:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">draughts</span><span class="w"> </span><span class="kn">import</span> <span class="n">Benchmark</span><span class="p">,</span> <span class="n">AlphaBetaEngine</span><span class="p">,</span> <span class="n">STANDARD_OPENINGS</span>
+
+<span class="c1"># Use specific FEN positions</span>
+<span class="n">custom_openings</span> <span class="o">=</span> <span class="p">[</span>
+    <span class="s2">&quot;W:W31,32,33,34,35:B1,2,3,4,5&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;B:W40,41,42:B10,11,12&quot;</span><span class="p">,</span>
+<span class="p">]</span>
+
+<span class="n">stats</span> <span class="o">=</span> <span class="n">Benchmark</span><span class="p">(</span>
+    <span class="n">AlphaBetaEngine</span><span class="p">(</span><span class="n">depth_limit</span><span class="o">=</span><span class="mi">4</span><span class="p">),</span>
+    <span class="n">AlphaBetaEngine</span><span class="p">(</span><span class="n">depth_limit</span><span class="o">=</span><span class="mi">6</span><span class="p">),</span>
+    <span class="n">openings</span><span class="o">=</span><span class="n">custom_openings</span>
+<span class="p">)</span><span class="o">.</span><span class="n">run</span><span class="p">()</span>
+
+<span class="c1"># Or use the built-in openings</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Available openings: </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">STANDARD_OPENINGS</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+<section id="different-board-variants">
+<h3>Different Board Variants<a class="headerlink" href="#different-board-variants" title="Link to this heading">¶</a></h3>
+<p>Test engines on any supported variant:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">draughts</span><span class="w"> </span><span class="kn">import</span> <span class="n">Benchmark</span><span class="p">,</span> <span class="n">AlphaBetaEngine</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">draughts</span><span class="w"> </span><span class="kn">import</span> <span class="n">AmericanBoard</span><span class="p">,</span> <span class="n">FrisianBoard</span><span class="p">,</span> <span class="n">RussianBoard</span>
+
+<span class="c1"># American checkers (8x8)</span>
+<span class="n">stats</span> <span class="o">=</span> <span class="n">Benchmark</span><span class="p">(</span>
+    <span class="n">AlphaBetaEngine</span><span class="p">(</span><span class="n">depth_limit</span><span class="o">=</span><span class="mi">5</span><span class="p">),</span>
+    <span class="n">AlphaBetaEngine</span><span class="p">(</span><span class="n">depth_limit</span><span class="o">=</span><span class="mi">7</span><span class="p">),</span>
+    <span class="n">board_class</span><span class="o">=</span><span class="n">AmericanBoard</span><span class="p">,</span>
+    <span class="n">games</span><span class="o">=</span><span class="mi">10</span>
+<span class="p">)</span><span class="o">.</span><span class="n">run</span><span class="p">()</span>
+</pre></div>
+</div>
+</section>
+<section id="saving-results-to-csv">
+<h3>Saving Results to CSV<a class="headerlink" href="#saving-results-to-csv" title="Link to this heading">¶</a></h3>
+<p>Save benchmark results to CSV for tracking over time:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">stats</span> <span class="o">=</span> <span class="n">Benchmark</span><span class="p">(</span><span class="n">e1</span><span class="p">,</span> <span class="n">e2</span><span class="p">,</span> <span class="n">games</span><span class="o">=</span><span class="mi">20</span><span class="p">)</span><span class="o">.</span><span class="n">run</span><span class="p">()</span>
+<span class="n">stats</span><span class="o">.</span><span class="n">to_csv</span><span class="p">(</span><span class="s2">&quot;benchmark_results.csv&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>If the file exists, results are appended. The CSV includes:</p>
+<ul class="simple">
+<li><p>Timestamp, engine names, game count</p></li>
+<li><p>Wins, losses, draws, win rate, Elo difference</p></li>
+<li><p>Average moves, time per move, nodes per move</p></li>
+<li><p>Total benchmark time</p></li>
+</ul>
+</section>
+<section id="statistics">
+<h3>Statistics<a class="headerlink" href="#statistics" title="Link to this heading">¶</a></h3>
+<p>The <code class="xref py py-class docutils literal notranslate"><span class="pre">BenchmarkStats</span></code> object provides:</p>
+<ul class="simple">
+<li><p><strong>games</strong>: Total games played</p></li>
+<li><p><strong>e1_wins, e2_wins, draws</strong>: Win/loss/draw counts</p></li>
+<li><p><strong>e1_win_rate</strong>: Engine 1’s win rate (0.0-1.0)</p></li>
+<li><p><strong>elo_diff</strong>: Estimated Elo difference (positive = engine1 stronger)</p></li>
+<li><p><strong>avg_moves</strong>: Average game length</p></li>
+<li><p><strong>avg_time_e1, avg_time_e2</strong>: Average time per move</p></li>
+<li><p><strong>avg_nodes_e1, avg_nodes_e2</strong>: Average nodes searched per move</p></li>
+<li><p><strong>results</strong>: List of individual <code class="xref py py-class docutils literal notranslate"><span class="pre">GameResult</span></code> objects</p></li>
+</ul>
+<dl class="py class">
+<dt class="sig sig-object py" id="draughts.BenchmarkStats">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">draughts.</span></span><span class="sig-name descname"><span class="pre">BenchmarkStats</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">*</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">e1_name</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">e2_name</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">results</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">&lt;factory&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">total_time</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.0</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/draughts/benchmark.html#BenchmarkStats"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#draughts.BenchmarkStats" title="Link to this definition">¶</a></dt>
+<dd><p>Aggregated benchmark statistics.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>e1_name</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a>)</p></li>
+<li><p><strong>e2_name</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a>)</p></li>
+<li><p><strong>results</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.14)"><em>list</em></a><em>[</em><a class="reference internal" href="#draughts.GameResult" title="draughts.benchmark.GameResult"><em>GameResult</em></a><em>]</em>)</p></li>
+<li><p><strong>total_time</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a>)</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="draughts.BenchmarkStats.model_config">
+<span class="sig-name descname"><span class="pre">model_config</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">{'arbitrary_types_allowed':</span> <span class="pre">True}</span></span><a class="headerlink" href="#draughts.BenchmarkStats.model_config" title="Link to this definition">¶</a></dt>
+<dd><p>Configuration for the model, should be a dictionary conforming to [<cite>ConfigDict</cite>][pydantic.config.ConfigDict].</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="draughts.BenchmarkStats.elo_diff">
+<span class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">elo_diff</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></span><a class="headerlink" href="#draughts.BenchmarkStats.elo_diff" title="Link to this definition">¶</a></dt>
+<dd><p>Elo difference (positive = e1 stronger).</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="draughts.BenchmarkStats.to_csv">
+<span class="sig-name descname"><span class="pre">to_csv</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">path</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'benchmark_results.csv'</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/draughts/benchmark.html#BenchmarkStats.to_csv"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#draughts.BenchmarkStats.to_csv" title="Link to this definition">¶</a></dt>
+<dd><p>Save benchmark results to CSV file.</p>
+<p>If the file exists, results are appended. Otherwise, a new file is created
+with headers.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>path</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em> | </em><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><em>Path</em></a>) – Path to CSV file (default: “benchmark_results.csv”)</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Path to the saved CSV file.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><em>Path</em></a></p>
+</dd>
+</dl>
+<p class="rubric">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">stats</span> <span class="o">=</span> <span class="n">Benchmark</span><span class="p">(</span><span class="n">e1</span><span class="p">,</span> <span class="n">e2</span><span class="p">,</span> <span class="n">games</span><span class="o">=</span><span class="mi">10</span><span class="p">)</span><span class="o">.</span><span class="n">run</span><span class="p">()</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">stats</span><span class="o">.</span><span class="n">to_csv</span><span class="p">(</span><span class="s2">&quot;results.csv&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="draughts.GameResult">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">draughts.</span></span><span class="sig-name descname"><span class="pre">GameResult</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">game_number</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">winner</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">moves</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">e1_time</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">e2_time</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">e1_nodes</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">e2_nodes</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">e1_color</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">Color.WHITE</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">opening</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">''</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">final_fen</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">''</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">termination</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'unknown'</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/draughts/benchmark.html#GameResult"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#draughts.GameResult" title="Link to this definition">¶</a></dt>
+<dd><p>Result of a single game.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>game_number</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a>)</p></li>
+<li><p><strong>winner</strong> (<em>Color</em><em> | </em><em>None</em>)</p></li>
+<li><p><strong>moves</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a>)</p></li>
+<li><p><strong>e1_time</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a>)</p></li>
+<li><p><strong>e2_time</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a>)</p></li>
+<li><p><strong>e1_nodes</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a>)</p></li>
+<li><p><strong>e2_nodes</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a>)</p></li>
+<li><p><strong>e1_color</strong> (<em>Color</em>)</p></li>
+<li><p><strong>opening</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a>)</p></li>
+<li><p><strong>final_fen</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a>)</p></li>
+<li><p><strong>termination</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a>)</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="draughts.GameResult.model_config">
+<span class="sig-name descname"><span class="pre">model_config</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">{'arbitrary_types_allowed':</span> <span class="pre">True}</span></span><a class="headerlink" href="#draughts.GameResult.model_config" title="Link to this definition">¶</a></dt>
+<dd><p>Configuration for the model, should be a dictionary conforming to [<cite>ConfigDict</cite>][pydantic.config.ConfigDict].</p>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+</section>
+</section>
+
+        </article>
+      </div>
+      <footer>
+        
+        <div class="related-pages">
+          <a class="next-page" href="ai.html">
+              <div class="page-info">
+                <div class="context">
+                  <span>Next</span>
+                </div>
+                <div class="title">Writing Your Own AI</div>
+              </div>
+              <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
+            </a>
+          <a class="prev-page" href="core.html">
+              <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
+              <div class="page-info">
+                <div class="context">
+                  <span>Previous</span>
+                </div>
+                
+                <div class="title">Core API</div>
+                
+              </div>
+            </a>
+        </div>
+        <div class="bottom-of-page">
+          <div class="left-details">
+            <div class="copyright">
+                Copyright &#169; 2023-2026, Michał Skibiński
+            </div>
+            Made with 
+            <a href="https://github.com/pradyunsg/furo">Furo</a>
+            
+          </div>
+          <div class="right-details">
+            <div class="icons">
+              <a class="muted-link " href="https://github.com/miskibin/py-draughts" aria-label="GitHub">
+                <svg stroke="currentColor" fill="currentColor" stroke-width="0" viewBox="0 0 16 16">
+                    <path fill-rule="evenodd" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0 0 16 8c0-4.42-3.58-8-8-8z"></path>
+                </svg>
+            </a>
+              <a class="muted-link " href="https://pypi.org/project/py-draughts/" aria-label="PyPI"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm-1.7 4.5h3.4v9h-3.4v-9zm0 11h3.4v3.4h-3.4v-3.4z"/></svg></a>
+              
+            </div>
+          </div>
+        </div>
+        
+      </footer>
+    </div>
+    <aside class="toc-drawer">
+      
+      
+      <div class="toc-sticky toc-scroll">
+        <div class="toc-title-container">
+          <span class="toc-title">
+            On this page
+          </span>
+        </div>
+        <div class="toc-tree-container">
+          <div class="toc-tree">
+            <ul>
+<li><a class="reference internal" href="#">Engine</a><ul>
+<li><a class="reference internal" href="#quick-start">Quick Start</a></li>
+<li><a class="reference internal" href="#engine-interface">Engine Interface</a><ul>
+<li><a class="reference internal" href="#draughts.Engine"><code class="docutils literal notranslate"><span class="pre">Engine</span></code></a><ul>
+<li><a class="reference internal" href="#draughts.Engine.depth_limit"><code class="docutils literal notranslate"><span class="pre">Engine.depth_limit</span></code></a></li>
+<li><a class="reference internal" href="#draughts.Engine.time_limit"><code class="docutils literal notranslate"><span class="pre">Engine.time_limit</span></code></a></li>
+<li><a class="reference internal" href="#draughts.Engine.name"><code class="docutils literal notranslate"><span class="pre">Engine.name</span></code></a></li>
+<li><a class="reference internal" href="#draughts.Engine.get_best_move"><code class="docutils literal notranslate"><span class="pre">Engine.get_best_move()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li><a class="reference internal" href="#alphabetaengine">AlphaBetaEngine</a><ul>
+<li><a class="reference internal" href="#draughts.AlphaBetaEngine"><code class="docutils literal notranslate"><span class="pre">AlphaBetaEngine</span></code></a><ul>
+<li><a class="reference internal" href="#draughts.AlphaBetaEngine.depth_limit"><code class="docutils literal notranslate"><span class="pre">AlphaBetaEngine.depth_limit</span></code></a></li>
+<li><a class="reference internal" href="#draughts.AlphaBetaEngine.time_limit"><code class="docutils literal notranslate"><span class="pre">AlphaBetaEngine.time_limit</span></code></a></li>
+<li><a class="reference internal" href="#draughts.AlphaBetaEngine.nodes"><code class="docutils literal notranslate"><span class="pre">AlphaBetaEngine.nodes</span></code></a></li>
+<li><a class="reference internal" href="#draughts.AlphaBetaEngine.__init__"><code class="docutils literal notranslate"><span class="pre">AlphaBetaEngine.__init__()</span></code></a></li>
+<li><a class="reference internal" href="#draughts.AlphaBetaEngine.evaluate"><code class="docutils literal notranslate"><span class="pre">AlphaBetaEngine.evaluate()</span></code></a></li>
+<li><a class="reference internal" href="#draughts.AlphaBetaEngine.get_best_move"><code class="docutils literal notranslate"><span class="pre">AlphaBetaEngine.get_best_move()</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#performance">Performance</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#hubengine">HubEngine</a><ul>
+<li><a class="reference internal" href="#draughts.HubEngine"><code class="docutils literal notranslate"><span class="pre">HubEngine</span></code></a><ul>
+<li><a class="reference internal" href="#draughts.HubEngine.path"><code class="docutils literal notranslate"><span class="pre">HubEngine.path</span></code></a></li>
+<li><a class="reference internal" href="#draughts.HubEngine.time_limit"><code class="docutils literal notranslate"><span class="pre">HubEngine.time_limit</span></code></a></li>
+<li><a class="reference internal" href="#draughts.HubEngine.depth_limit"><code class="docutils literal notranslate"><span class="pre">HubEngine.depth_limit</span></code></a></li>
+<li><a class="reference internal" href="#draughts.HubEngine.__init__"><code class="docutils literal notranslate"><span class="pre">HubEngine.__init__()</span></code></a></li>
+<li><a class="reference internal" href="#draughts.HubEngine.start"><code class="docutils literal notranslate"><span class="pre">HubEngine.start()</span></code></a></li>
+<li><a class="reference internal" href="#draughts.HubEngine.quit"><code class="docutils literal notranslate"><span class="pre">HubEngine.quit()</span></code></a></li>
+<li><a class="reference internal" href="#draughts.HubEngine.get_best_move"><code class="docutils literal notranslate"><span class="pre">HubEngine.get_best_move()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li><a class="reference internal" href="#custom-engine">Custom Engine</a></li>
+<li><a class="reference internal" href="#benchmarking">Benchmarking</a><ul>
+<li><a class="reference internal" href="#id1">Quick Start</a></li>
+<li><a class="reference internal" href="#benchmark-class">Benchmark Class</a><ul>
+<li><a class="reference internal" href="#draughts.Benchmark"><code class="docutils literal notranslate"><span class="pre">Benchmark</span></code></a><ul>
+<li><a class="reference internal" href="#draughts.Benchmark.__init__"><code class="docutils literal notranslate"><span class="pre">Benchmark.__init__()</span></code></a></li>
+<li><a class="reference internal" href="#draughts.Benchmark.run"><code class="docutils literal notranslate"><span class="pre">Benchmark.run()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li><a class="reference internal" href="#parameters">Parameters</a></li>
+<li><a class="reference internal" href="#custom-names">Custom Names</a></li>
+<li><a class="reference internal" href="#custom-openings">Custom Openings</a></li>
+<li><a class="reference internal" href="#different-board-variants">Different Board Variants</a></li>
+<li><a class="reference internal" href="#saving-results-to-csv">Saving Results to CSV</a></li>
+<li><a class="reference internal" href="#statistics">Statistics</a><ul>
+<li><a class="reference internal" href="#draughts.BenchmarkStats"><code class="docutils literal notranslate"><span class="pre">BenchmarkStats</span></code></a><ul>
+<li><a class="reference internal" href="#draughts.BenchmarkStats.model_config"><code class="docutils literal notranslate"><span class="pre">BenchmarkStats.model_config</span></code></a></li>
+<li><a class="reference internal" href="#draughts.BenchmarkStats.elo_diff"><code class="docutils literal notranslate"><span class="pre">BenchmarkStats.elo_diff</span></code></a></li>
+<li><a class="reference internal" href="#draughts.BenchmarkStats.to_csv"><code class="docutils literal notranslate"><span class="pre">BenchmarkStats.to_csv()</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#draughts.GameResult"><code class="docutils literal notranslate"><span class="pre">GameResult</span></code></a><ul>
+<li><a class="reference internal" href="#draughts.GameResult.model_config"><code class="docutils literal notranslate"><span class="pre">GameResult.model_config</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+
+          </div>
+        </div>
+      </div>
+      
+      
+    </aside>
+  </div>
+</div><script src="_static/documentation_options.js?v=02e1c2dd"></script>
+    <script src="_static/doctools.js?v=fd6eb6e6"></script>
+    <script src="_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="_static/scripts/furo.js?v=46bd48cc"></script>
+    <script src="_static/clipboard.min.js?v=a7894cd8"></script>
+    <script src="_static/copybutton.js?v=30646c52"></script>
+    <script src="_static/design-tabs.js?v=f930bc37"></script>
+    </body>
+</html>

@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://miskibin.github.io/py-draughts/sitemap.xml
