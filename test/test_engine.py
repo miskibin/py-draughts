@@ -1,9 +1,8 @@
 import pytest
-from test._test_helpers import get_board
-from draughts.engines import AlphaBetaEngine
-from draughts.boards.standard import Board as StandardBoard
 
-from test._test_helpers import seeded_range, standard_board_after_random_play
+from draughts.boards.standard import Board as StandardBoard
+from draughts.engines import AlphaBetaEngine
+from test._test_helpers import get_board, seeded_range, standard_board_after_random_play
 
 
 class TestAlphaBetaEngine:
@@ -33,15 +32,15 @@ class TestAlphaBetaEngine:
         # First call should populate the transposition table
         move1 = self.engine.get_best_move(self.board)
         nodes1 = self.engine.inspected_nodes
-        
+
         # Make and undo a move
         self.board.push(move1)
         self.board.pop()
-        
+
         # Second call with same position should use cache
         move2 = self.engine.get_best_move(self.board)
         nodes2 = self.engine.inspected_nodes
-        
+
         # Both moves should be legal
         legal_moves = list(self.board.legal_moves)
         assert move1 in legal_moves
@@ -52,14 +51,14 @@ class TestAlphaBetaEngine:
         # Create a position with both captures and non-captures
         fen = "W:W31,32,33,34,35:B16,17,18,19,20"
         board = get_board("standard", fen)
-        
+
         moves = list(board.legal_moves)
         ordered = self.engine._order_moves(moves)
-        
+
         # Captures should come before non-captures
         captures = [m for m in ordered if m.captured_list]
         non_captures = [m for m in ordered if not m.captured_list]
-        
+
         # If there are both types, captures should be first
         if captures and non_captures:
             first_capture_idx = ordered.index(captures[0])
@@ -70,7 +69,7 @@ class TestAlphaBetaEngine:
         """Test that evaluation function works."""
         eval_score = self.engine.evaluate(self.board)
         assert isinstance(eval_score, (int, float))
-        
+
         # Starting position should be roughly equal
         assert abs(eval_score) < 10
 
@@ -78,7 +77,7 @@ class TestAlphaBetaEngine:
         """Test that engine gives valid results for same position."""
         move1 = self.engine.get_best_move(self.board)
         move2 = self.engine.get_best_move(self.board)
-        
+
         # Both should be legal moves
         legal_moves = list(self.board.legal_moves)
         assert move1 in legal_moves
@@ -159,7 +158,7 @@ def _play_engine_vs_random(board, engine, engine_is_white: bool, seed: int) -> s
     """Play a game: engine vs random. Returns the result string."""
     rng = stdlib_random.Random(seed)
     from draughts.models import Color
-    
+
     while not board.game_over:
         is_engine_turn = (board.turn == Color.WHITE) == engine_is_white
         if is_engine_turn:
@@ -168,7 +167,7 @@ def _play_engine_vs_random(board, engine, engine_is_white: bool, seed: int) -> s
             legal = list(board.legal_moves)
             move = rng.choice(legal)
         board.push(move)
-    
+
     return board.result
 
 
@@ -178,13 +177,19 @@ def test_engine_depth1_beats_random(variant, game_idx):
     """AlphaBeta depth-1 should consistently beat random moves."""
     board = get_board(variant)
     engine = AlphaBetaEngine(depth_limit=1)
-    
+
     # Alternate colors
     engine_is_white = game_idx % 2 == 0
-    result = _play_engine_vs_random(board, engine, engine_is_white, seed=game_idx * 100 + hash(variant))
-    
+    result = _play_engine_vs_random(
+        board, engine, engine_is_white, seed=game_idx * 100 + hash(variant)
+    )
+
     # Engine should win or draw (never lose to random)
     if engine_is_white:
-        assert result in ("1-0"), f"{variant} game {game_idx}: engine (white) got {result}"
+        assert result in ("1-0", "1/2-1/2"), (
+            f"{variant} game {game_idx}: engine (white) got {result}"
+        )
     else:
-        assert result in ("0-1"), f"{variant} game {game_idx}: engine (black) got {result}"
+        assert result in ("0-1", "1/2-1/2"), (
+            f"{variant} game {game_idx}: engine (black) got {result}"
+        )

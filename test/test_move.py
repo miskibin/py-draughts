@@ -1,7 +1,6 @@
 import pytest
 
 from draughts.move import Move
-
 from test._test_helpers import board_after_random_play, seeded_range
 
 

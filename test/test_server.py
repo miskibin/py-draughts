@@ -2,10 +2,10 @@ from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 from fastapi.testclient import TestClient
 
-from test._test_helpers import get_board
 from draughts.engines import AlphaBetaEngine, Engine
-from draughts.server.server import Server
 from draughts.move import Move
+from draughts.server.server import Server
+from test._test_helpers import get_board
 
 
 class _SlowStaleEngine(Engine):
@@ -125,9 +125,7 @@ def test_set_depth_clamps_and_updates_engine():
         Server.APP = _new_test_app()
         board = get_board("standard")
         engine = AlphaBetaEngine(depth_limit=6)
-        server = Server(
-            board=board, white_engine=engine, black_engine=engine
-        )
+        server = Server(board=board, white_engine=engine, black_engine=engine)
         client = TestClient(server.APP)
 
         r = client.get("/set_depth/0")
@@ -173,9 +171,11 @@ def test_overlapping_best_move_requests_do_not_corrupt_board():
 
         t1 = threading.Thread(target=worker)
         t2 = threading.Thread(target=worker)
-        t1.start(); t2.start()
+        t1.start()
+        t2.start()
         barrier.wait()
-        t1.join(); t2.join()
+        t1.join()
+        t2.join()
 
         assert len(results) == 2
         assert all(r.status_code == 200 for r in results)

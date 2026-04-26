@@ -2,9 +2,9 @@ import numpy as np
 import pytest
 
 import draughts.boards.american as SQUARES
+from draughts.boards.american import Board
 from draughts.boards.base import BaseBoard, Color, Figure, Move
 from test._test_helpers import get_board
-from draughts.boards.american import Board
 
 
 class TestBoard:

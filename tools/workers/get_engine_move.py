@@ -9,12 +9,12 @@ import time
 def main():
     fen = sys.argv[1] if len(sys.argv) > 1 and sys.argv[1] else None
     depth = int(sys.argv[2]) if len(sys.argv) > 2 else 3
-    
+
     from draughts import StandardBoard
     from draughts.engines import AlphaBetaEngine
-    
+
     board = StandardBoard.from_fen(fen) if fen else StandardBoard()
-    
+
     if board.game_over:
         result = {
             "move": None,
@@ -29,7 +29,7 @@ def main():
         start = time.perf_counter()
         move = engine.get_best_move(board)
         elapsed_ms = (time.perf_counter() - start) * 1000
-        
+
         if move:
             board.push(move)
             result = {
@@ -49,7 +49,7 @@ def main():
                 "nodes": 0,
                 "time_ms": 0,
             }
-    
+
     print(json.dumps(result))
 
 

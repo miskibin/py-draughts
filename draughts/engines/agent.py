@@ -1,4 +1,5 @@
 """Agent interface for building custom AI players."""
+
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
@@ -20,7 +21,7 @@ class Agent(Protocol):
     with :class:`AgentEngine` and :class:`~draughts.Benchmark`.
     """
 
-    def select_move(self, board: "BaseBoard") -> "Move":
+    def select_move(self, board: BaseBoard) -> Move:
         """Select a move to play."""
         ...
 
@@ -65,7 +66,7 @@ class BaseAgent(ABC):
         self.name = name or self.__class__.__name__
 
     @abstractmethod
-    def select_move(self, board: "BaseBoard") -> "Move":
+    def select_move(self, board: BaseBoard) -> Move:
         """
         Select a move to play.
 
@@ -80,7 +81,7 @@ class BaseAgent(ABC):
     def __repr__(self) -> str:
         return f"{self.__class__.__name__}(name={self.name!r})"
 
-    def as_engine(self) -> "AgentEngine":
+    def as_engine(self) -> AgentEngine:
         """
         Wrap this agent as an Engine for use with Benchmark.
 
@@ -172,8 +173,8 @@ class AgentEngine(Engine):
         self.nodes = value
 
     def get_best_move(
-        self, board: "BaseBoard", with_evaluation: bool = False
-    ) -> "Move | tuple[Move, float]":
+        self, board: BaseBoard, with_evaluation: bool = False
+    ) -> Move | tuple[Move, float]:
         """
         Get best move by delegating to the wrapped agent.
 
@@ -191,4 +192,3 @@ class AgentEngine(Engine):
         if with_evaluation:
             return move, 0.0
         return move
-

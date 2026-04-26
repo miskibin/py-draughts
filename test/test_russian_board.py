@@ -6,14 +6,14 @@ import pytest
 
 import draughts.boards.russian as russian
 from draughts.boards.russian import Board
-from test._test_helpers import get_board
 from draughts.models import Color, Figure
 from draughts.move import Move
+from test._test_helpers import get_board
 
 
 class TestRussianBoard:
     """Tests for Russian draughts variant."""
-    
+
     files_dir = Path(__file__).parent / "games" / "russian"
     random_pdns_file = files_dir / "random_pdns.json"
 
@@ -70,7 +70,7 @@ class TestRussianBoard:
         position = np.zeros(32, dtype=np.int8)
         position[russian.E5] = -1  # White man at E5 (square 14)
         board = Board(position, Color.WHITE)
-        
+
         moves = board.legal_moves
         # Man should only move forward (toward row 0 for white)
         for m in moves:
@@ -84,10 +84,10 @@ class TestRussianBoard:
         # Set up position where white man can only capture backward
         position = np.zeros(32, dtype=np.int8)
         position[russian.E5] = -1  # White man at E5 (square 14)
-        position[russian.F4] = 1   # Black man at F4 (square 18)
+        position[russian.F4] = 1  # Black man at F4 (square 18)
         # Landing square at G3 (square 22) should be empty
         board = Board(position, Color.WHITE)
-        
+
         captures = [m for m in board.legal_moves if m.captured_list]
         # White should be able to capture backward
         assert len(captures) > 0
@@ -104,7 +104,7 @@ class TestRussianFlyingKings:
         position = np.zeros(32, dtype=np.int8)
         position[russian.E5] = -2  # White king at E5 (middle)
         board = Board(position, Color.WHITE)
-        
+
         moves = board.legal_moves
         # Should have many moves (flying king)
         assert len(moves) > 4  # More than just adjacent squares
@@ -113,9 +113,9 @@ class TestRussianFlyingKings:
         """Kings can capture from any distance and land anywhere beyond."""
         position = np.zeros(32, dtype=np.int8)
         position[russian.A1] = -2  # White king at corner
-        position[russian.C3] = 1   # Black man on diagonal
+        position[russian.C3] = 1  # Black man on diagonal
         board = Board(position, Color.WHITE)
-        
+
         captures = [m for m in board.legal_moves if m.captured_list]
         assert len(captures) > 0
         # Should have multiple landing options beyond captured piece
@@ -128,10 +128,10 @@ class TestRussianCaptures:
         """If a capture is available, it must be taken."""
         position = np.zeros(32, dtype=np.int8)
         position[russian.E5] = -1  # White man
-        position[russian.D6] = 1   # Black man (can be captured)
+        position[russian.D6] = 1  # Black man (can be captured)
         position[russian.F4] = -1  # Another white man (can't move if capture available)
         board = Board(position, Color.WHITE)
-        
+
         moves = board.legal_moves
         # All moves should be captures
         for m in moves:
@@ -145,12 +145,12 @@ class TestRussianCaptures:
         # Set up position with multiple capture options of different lengths
         position = np.zeros(32, dtype=np.int8)
         position[russian.A1] = -1  # White man that could capture 1 piece
-        position[russian.B2] = 1   # Black man (short capture)
+        position[russian.B2] = 1  # Black man (short capture)
         position[russian.G1] = -1  # White man that could capture 2 pieces
-        position[russian.F2] = 1   # Black man 1
-        position[russian.D4] = 1   # Black man 2 (for double capture)
+        position[russian.F2] = 1  # Black man 1
+        position[russian.D4] = 1  # Black man 2 (for double capture)
         board = Board(position, Color.WHITE)
-        
+
         captures = board.legal_moves
         # Should have captures of different lengths available
         lengths = set(len(m) for m in captures)
@@ -161,10 +161,10 @@ class TestRussianCaptures:
         """Once a capture chain starts, must continue until no more captures."""
         position = np.zeros(32, dtype=np.int8)
         position[russian.A1] = -1  # White man
-        position[russian.B2] = 1   # Black man 1
-        position[russian.D4] = 1   # Black man 2 (in line for double capture)
+        position[russian.B2] = 1  # Black man 1
+        position[russian.D4] = 1  # Black man 2 (in line for double capture)
         board = Board(position, Color.WHITE)
-        
+
         captures = board.legal_moves
         # If there's a path for double capture, it should be one move
         for cap in captures:
@@ -183,15 +183,15 @@ class TestRussianMidCapturePromotion:
         """
         # White man at B6 (square 8), can jump over black at C7 (square 5)
         # and land on D8 (square 1) which is the promotion rank
-        # Row mapping (0-indexed): 
+        # Row mapping (0-indexed):
         #   row0=B8,D8,F8,H8 (sq 0-3)
-        #   row1=A7,C7,E7,G7 (sq 4-7) 
+        #   row1=A7,C7,E7,G7 (sq 4-7)
         #   row2=B6,D6,F6,H6 (sq 8-11)
         position = np.zeros(32, dtype=np.int8)
-        position[8] = -1   # White man at B6
-        position[5] = 1    # Black man at C7 (diagonal from B6, can be jumped)
+        position[8] = -1  # White man at B6
+        position[5] = 1  # Black man at C7 (diagonal from B6, can be jumped)
         board = Board(position, Color.WHITE)
-        
+
         captures = board.legal_moves
         # Should have captures
         assert any(m.captured_list for m in captures)
@@ -205,11 +205,11 @@ class TestRussianMidCapturePromotion:
         position = np.zeros(32, dtype=np.int8)
         # White man at A7 (square 4), can capture to A8-ish position
         # but we need to trace exact squares
-        position[4] = -1   # White man at row 1 (A7)
-        position[0] = 1    # Black man on back rank to capture
-        position[1] = 1    # Another black piece for king to potentially capture
+        position[4] = -1  # White man at row 1 (A7)
+        position[0] = 1  # Black man on back rank to capture
+        position[1] = 1  # Another black piece for king to potentially capture
         board = Board(position, Color.WHITE)
-        
+
         # Just verify move generation doesn't crash
         moves = board.legal_moves
         assert isinstance(moves, list)
@@ -222,20 +222,20 @@ class TestRussianDrawRules:
         """Same position three times with same player to move = draw."""
         position = np.zeros(32, dtype=np.int8)
         position[russian.A1] = -2  # White king
-        position[russian.H8] = 2   # Black king
+        position[russian.H8] = 2  # Black king
         board = Board(position, Color.WHITE)
-        
+
         # Play moves to create repetition
         # This requires specific moves; test that the property exists
-        assert hasattr(board, 'is_threefold_repetition')
+        assert hasattr(board, "is_threefold_repetition")
 
     def test_15_moves_rule(self):
         """Draw after 15 king moves without captures or man moves."""
         position = np.zeros(32, dtype=np.int8)
         position[russian.A1] = -2  # White king
-        position[russian.H8] = 2   # Black king
+        position[russian.H8] = 2  # Black king
         board = Board(position, Color.WHITE)
-        
+
         assert not board.is_15_moves_rule
         board.halfmove_clock = 30  # 15 moves = 30 half-moves
         assert board.is_15_moves_rule
@@ -246,9 +246,9 @@ class TestRussianDrawRules:
         position[russian.A1] = -2  # White king 1
         position[russian.C1] = -2  # White king 2
         position[russian.E1] = -2  # White king 3
-        position[russian.H8] = 2   # Black king (lone)
+        position[russian.H8] = 2  # Black king (lone)
         board = Board(position, Color.WHITE)
-        
+
         assert not board.is_3_kings_vs_1_rule
         board.halfmove_clock = 30
         assert board.is_3_kings_vs_1_rule
@@ -259,10 +259,10 @@ class TestRussianDrawRules:
         position[russian.A1] = -2  # White king 1
         position[russian.C1] = -2  # White king 2
         position[russian.E1] = -2  # White king 3
-        position[russian.H8] = 2   # Black king
-        position[russian.F8] = 1   # Black man (still has men!)
+        position[russian.H8] = 2  # Black king
+        position[russian.F8] = 1  # Black man (still has men!)
         board = Board(position, Color.WHITE)
-        
+
         board.halfmove_clock = 30
         assert not board.is_3_kings_vs_1_rule  # Rule not triggered due to man
 
@@ -284,7 +284,7 @@ class TestRussianFEN:
         position[0] = -2  # White king
         position[31] = 2  # Black king
         board = Board(position, Color.WHITE)
-        
+
         fen = board.fen
         board2 = Board.from_fen(fen)
         assert np.array_equal(board.position, board2.position)
@@ -298,16 +298,16 @@ class TestRussianPDN:
 
     def test_play_random_pdns(self):
         """Test that we can play through random PDN games from lidraughts."""
-        with open(self.random_pdns_file, "r") as f:
+        with open(self.random_pdns_file) as f:
             data = json.load(f)
-        
+
         played = 0
         errors = []
         for pdn in data["pdn_positions"]:
             # Skip PDNs that are just headers (no moves)
             if "[Event" in pdn and "1." not in pdn:
                 continue
-            
+
             # Extract just the moves part if there are headers
             if "[Event" in pdn:
                 lines = pdn.split("\n")
@@ -319,23 +319,28 @@ class TestRussianPDN:
                 if not moves_part or "1." not in moves_part:
                     continue
                 pdn = moves_part
-            
+
             try:
                 board = Board.from_pdn(pdn)
                 played += 1
             except Exception as e:
                 errors.append(f"PDN: {pdn[:80]}...\nError: {e}")
-        
+
         # Ensure we actually tested some games
         assert played > 0, "No PDN games were tested"
         # Allow some failures (some PDN games may have edge cases)
         success_rate = played / (played + len(errors))
-        assert success_rate >= 0.5, f"Too many failures ({len(errors)}/{played+len(errors)}). First error: {errors[0] if errors else 'none'}"
+        assert success_rate >= 0.5, (
+            f"Too many failures ({len(errors)}/{played + len(errors)}). First error: {errors[0] if errors else 'none'}"
+        )
 
-    @pytest.mark.parametrize("pdn", [
-        "1. c3-d4 b6-c5 2. d4xb6 a7xc5",
-        "1. c3-b4 f6-g5 2. b4-a5 g5-f4 3. g3xe5 d6xf4",
-    ])
+    @pytest.mark.parametrize(
+        "pdn",
+        [
+            "1. c3-d4 b6-c5 2. d4xb6 a7xc5",
+            "1. c3-b4 f6-g5 2. b4-a5 g5-f4 3. g3xe5 d6xf4",
+        ],
+    )
     def test_basic_pdn_parsing(self, pdn):
         """Test basic PDN move parsing."""
         board = Board.from_pdn(pdn)
@@ -353,8 +358,8 @@ class TestRussianSquareNames:
         """Square names should be in format like 'b8', 'a7', etc."""
         for name in Board.SQUARE_NAMES:
             assert len(name) == 2
-            assert name[0] in 'abcdefgh'
-            assert name[1] in '12345678'
+            assert name[0] in "abcdefgh"
+            assert name[1] in "12345678"
 
 
 class TestRussianMoveGeneration:
@@ -367,7 +372,7 @@ class TestRussianMoveGeneration:
         position[russian.A1] = -1
         position[russian.B2] = -1
         board = Board(position, Color.WHITE)
-        
+
         moves = board.legal_moves
         # May have limited moves or none depending on setup
         assert isinstance(moves, list)
@@ -377,7 +382,7 @@ class TestRussianMoveGeneration:
         position = np.zeros(32, dtype=np.int8)
         position[russian.A1] = -1  # Only white has pieces
         board = Board(position, Color.BLACK)
-        
+
         assert board.game_over
         # White wins because black has no moves (1-0 means white wins)
         assert board.result == "1-0"
@@ -386,11 +391,10 @@ class TestRussianMoveGeneration:
         """Test that push/pop correctly restores position."""
         board = Board()
         initial_pos = board.position.copy()
-        
+
         move = board.legal_moves[0]
         board.push(move)
         board.pop()
-        
+
         assert np.array_equal(board.position, initial_pos)
         assert board.turn == Color.WHITE
-

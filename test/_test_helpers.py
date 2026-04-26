@@ -3,9 +3,8 @@ from __future__ import annotations
 import random
 from typing import Iterable
 
-from draughts import StandardBoard, AmericanBoard, FrisianBoard, RussianBoard
+from draughts import AmericanBoard, FrisianBoard, RussianBoard, StandardBoard
 from draughts.boards.base import BaseBoard
-
 
 # Local variant lookup for test compatibility
 BOARDS = {

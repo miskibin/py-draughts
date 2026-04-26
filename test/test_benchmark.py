@@ -1,10 +1,18 @@
 """Tests for the benchmark module."""
 
 import pytest
+
 from draughts import (
-    Benchmark, BenchmarkStats, GameResult, STANDARD_OPENINGS,
-    AlphaBetaEngine, StandardBoard, AmericanBoard, FrisianBoard, RussianBoard,
+    STANDARD_OPENINGS,
+    AlphaBetaEngine,
+    AmericanBoard,
+    Benchmark,
+    BenchmarkStats,
     Color,
+    FrisianBoard,
+    GameResult,
+    RussianBoard,
+    StandardBoard,
 )
 from draughts.benchmark import _engine_label
 
@@ -45,7 +53,7 @@ class TestBenchmarkStats:
             GameResult(game_number=3, winner=None, moves=60, e1_color=Color.BLACK),
         ]
         stats = BenchmarkStats(e1_name="A", e2_name="B", results=results)
-        
+
         assert stats.games == 3
         assert stats.e1_wins == 1  # Game 1: e1=WHITE won
         assert stats.e2_wins == 1  # Game 2: BLACK won, e1=WHITE so e2 wins
@@ -74,7 +82,7 @@ class TestBenchmarkStats:
         results = [GameResult(game_number=1, winner=None, moves=30, e1_color=Color.WHITE)]
         stats = BenchmarkStats(e1_name="E1", e2_name="E2", results=results, total_time=1.5)
         output = str(stats)
-        
+
         assert "BENCHMARK" in output
         assert "E1" in output
         assert "E2" in output
@@ -169,7 +177,7 @@ class TestBenchmarkRun:
         e2 = AlphaBetaEngine(depth_limit=1)
         bench = Benchmark(e1, e2, games=2, max_moves=10)
         stats = bench.run()
-        
+
         assert isinstance(stats, BenchmarkStats)
         assert stats.games == 2
         assert len(stats.results) == 2
@@ -179,7 +187,7 @@ class TestBenchmarkRun:
         e2 = AlphaBetaEngine(depth_limit=1)
         bench = Benchmark(e1, e2, games=4, max_moves=5, swap_colors=True)
         stats = bench.run()
-        
+
         colors = [r.e1_color for r in stats.results]
         assert Color.WHITE in colors
         assert Color.BLACK in colors
@@ -189,7 +197,7 @@ class TestBenchmarkRun:
         e2 = AlphaBetaEngine(depth_limit=1)
         bench = Benchmark(e1, e2, games=3, max_moves=5, swap_colors=False)
         stats = bench.run()
-        
+
         assert all(r.e1_color == Color.WHITE for r in stats.results)
 
     def test_max_moves_respected(self):
@@ -197,7 +205,7 @@ class TestBenchmarkRun:
         e2 = AlphaBetaEngine(depth_limit=1)
         bench = Benchmark(e1, e2, games=1, max_moves=10)
         stats = bench.run()
-        
+
         assert stats.results[0].moves <= 10
 
     def test_game_numbers_sequential(self):
@@ -205,7 +213,7 @@ class TestBenchmarkRun:
         e2 = AlphaBetaEngine(depth_limit=1)
         bench = Benchmark(e1, e2, games=5, max_moves=5)
         stats = bench.run()
-        
+
         numbers = [r.game_number for r in stats.results]
         assert numbers == [1, 2, 3, 4, 5]
 
@@ -219,7 +227,7 @@ class TestBenchmarkBoardVariants:
         e2 = AlphaBetaEngine(depth_limit=1)
         bench = Benchmark(e1, e2, board_class=board_class, games=1, max_moves=10)
         stats = bench.run()
-        
+
         assert stats.games == 1
         assert len(stats.results) == 1
 
@@ -229,7 +237,7 @@ class TestBenchmarkBoardVariants:
         e2 = AlphaBetaEngine(depth_limit=1)
         bench = Benchmark(e1, e2, board_class=FrisianBoard, games=1, max_moves=10)
         stats = bench.run()
-        
+
         assert stats.games == 1
 
 
@@ -241,11 +249,18 @@ class TestBenchmarkOpenings:
         e1 = AlphaBetaEngine(depth_limit=1)
         e2 = AlphaBetaEngine(depth_limit=1)
         # Only 2 custom openings, but 4 games
-        bench = Benchmark(e1, e2, games=4, max_moves=5,
-                          openings=["W:W31,32,33,34,35,36,37,38,39,40,41,42,43,44,45,46,47,48,49,50:B1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20",
-                                    "B:W31,32,33,34,35,36,37,38,39,40,41,42,43,44,45,46,47,48,49,50:B1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20"])
+        bench = Benchmark(
+            e1,
+            e2,
+            games=4,
+            max_moves=5,
+            openings=[
+                "W:W31,32,33,34,35,36,37,38,39,40,41,42,43,44,45,46,47,48,49,50:B1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20",
+                "B:W31,32,33,34,35,36,37,38,39,40,41,42,43,44,45,46,47,48,49,50:B1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20",
+            ],
+        )
         stats = bench.run()
-        
+
         openings = [r.opening for r in stats.results]
         assert openings[0] == "Custom 1"
         assert openings[1] == "Custom 2"
@@ -256,7 +271,7 @@ class TestBenchmarkOpenings:
         """Invalid FEN should raise an error during game."""
         e1 = AlphaBetaEngine(depth_limit=1)
         e2 = AlphaBetaEngine(depth_limit=1)
-        
+
         # This should raise when trying to parse invalid FEN
         with pytest.raises(Exception):
             bench = Benchmark(e1, e2, games=1, openings=["invalid_fen_string"])
@@ -302,7 +317,7 @@ class TestEngineNameParameter:
         e2 = AlphaBetaEngine(depth_limit=5, name="StrongBot")
         bench = Benchmark(e1, e2, games=1, max_moves=5)
         stats = bench.run()
-        
+
         assert stats.e1_name == "FastBot"
         assert stats.e2_name == "StrongBot"
 
@@ -313,20 +328,20 @@ class TestCsvExport:
     def test_to_csv_creates_file(self, tmp_path):
         results = [GameResult(game_number=1, winner=None, moves=30, e1_color=Color.WHITE)]
         stats = BenchmarkStats(e1_name="E1", e2_name="E2", results=results, total_time=1.0)
-        
+
         csv_path = tmp_path / "test.csv"
         returned_path = stats.to_csv(csv_path)
-        
+
         assert csv_path.exists()
         assert returned_path == csv_path
 
     def test_to_csv_has_header(self, tmp_path):
         results = [GameResult(game_number=1, winner=None, moves=30, e1_color=Color.WHITE)]
         stats = BenchmarkStats(e1_name="E1", e2_name="E2", results=results, total_time=1.0)
-        
+
         csv_path = tmp_path / "test.csv"
         stats.to_csv(csv_path)
-        
+
         content = csv_path.read_text()
         assert "timestamp" in content
         assert "engine1" in content
@@ -334,30 +349,30 @@ class TestCsvExport:
 
     def test_to_csv_appends(self, tmp_path):
         csv_path = tmp_path / "test.csv"
-        
+
         # First save
         results1 = [GameResult(game_number=1, winner=None, moves=30, e1_color=Color.WHITE)]
         stats1 = BenchmarkStats(e1_name="A", e2_name="B", results=results1, total_time=1.0)
         stats1.to_csv(csv_path)
-        
+
         # Second save (should append)
         results2 = [GameResult(game_number=1, winner=Color.WHITE, moves=40, e1_color=Color.WHITE)]
         stats2 = BenchmarkStats(e1_name="C", e2_name="D", results=results2, total_time=2.0)
         stats2.to_csv(csv_path)
-        
+
         lines = csv_path.read_text().strip().split("\n")
         assert len(lines) == 3  # Header + 2 data rows
 
     def test_to_csv_no_duplicate_header(self, tmp_path):
         csv_path = tmp_path / "test.csv"
-        
+
         results = [GameResult(game_number=1, winner=None, moves=30, e1_color=Color.WHITE)]
         stats = BenchmarkStats(e1_name="E1", e2_name="E2", results=results, total_time=1.0)
-        
+
         # Save twice
         stats.to_csv(csv_path)
         stats.to_csv(csv_path)
-        
+
         content = csv_path.read_text()
         # Header should appear only once
         assert content.count("timestamp,engine1") == 1
@@ -368,12 +383,11 @@ class TestCsvExport:
             GameResult(game_number=2, winner=None, moves=50, e1_color=Color.BLACK),
         ]
         stats = BenchmarkStats(e1_name="Alpha", e2_name="Beta", results=results, total_time=5.5)
-        
+
         csv_path = tmp_path / "test.csv"
         stats.to_csv(csv_path)
-        
+
         content = csv_path.read_text()
         assert "Alpha" in content
         assert "Beta" in content
         assert ",2," in content  # 2 games
-

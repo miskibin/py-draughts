@@ -42,10 +42,10 @@ def handle_new_game(fen: str | None) -> dict:
 def handle_apply_move(move_str: str) -> dict:
     """Apply opponent's move to our board."""
     global current_board
-    
+
     if current_board is None:
         return {"error": "No game started. Call new_game first."}
-    
+
     try:
         move = Move.from_uci(move_str, current_board.legal_moves)
         current_board.push(move)
@@ -62,10 +62,10 @@ def handle_apply_move(move_str: str) -> dict:
 def handle_move(depth: int) -> dict:
     """Process a single move request using persistent board."""
     global current_board
-    
+
     if current_board is None:
         return {"error": "No game started. Call new_game first."}
-    
+
     if current_board.game_over:
         return {
             "move": None,
@@ -75,12 +75,12 @@ def handle_move(depth: int) -> dict:
             "nodes": 0,
             "time_ms": 0,
         }
-    
+
     engine = AlphaBetaEngine(depth_limit=depth)
     start = time.perf_counter()
     move = engine.get_best_move(current_board)
     elapsed_ms = (time.perf_counter() - start) * 1000
-    
+
     if move:
         move_str = str(move)
         current_board.push(move)
@@ -106,18 +106,18 @@ def handle_move(depth: int) -> dict:
 def main():
     # Signal ready
     print(json.dumps({"status": "ready"}), flush=True)
-    
+
     for line in sys.stdin:
         line = line.strip()
         if not line:
             continue
-        
+
         try:
             cmd = json.loads(line)
         except json.JSONDecodeError:
             print(json.dumps({"error": "invalid json"}), flush=True)
             continue
-        
+
         if cmd.get("cmd") == "quit":
             break
         elif cmd.get("cmd") == "new_game":

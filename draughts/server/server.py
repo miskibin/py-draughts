@@ -6,10 +6,10 @@ Supports human vs engine, or engine vs engine play modes.
 """
 
 import json
+import threading
 from collections import defaultdict
 from pathlib import Path
 from typing import Literal, Optional
-import threading
 
 import uvicorn
 from fastapi import APIRouter, FastAPI, Request
@@ -19,12 +19,12 @@ from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel, Field
 
 from draughts.boards.base import BaseBoard, Color
-from draughts.engines import Engine
-from draughts.engines import HubEngine
+from draughts.engines import Engine, HubEngine
 
 
 class PositionResponse(BaseModel):
     """Response model for board position state."""
+
     position: list = Field(description="Current board position")
     history: list = Field(description="History of moves")
     turn: Literal["white", "black"] = Field(description="Current turn")
@@ -34,6 +34,7 @@ class PositionResponse(BaseModel):
 
 class EngineInfo(BaseModel):
     """Response model for engine information."""
+
     white_engine: Optional[str] = Field(description="White engine name")
     black_engine: Optional[str] = Field(description="Black engine name")
     depth: int = Field(description="Current engine depth")
@@ -42,13 +43,13 @@ class EngineInfo(BaseModel):
 class Server:
     """
     Draughts game server with web UI.
-    
+
     Supports:
     - Human play via web interface
     - Single engine for computer moves
     - Two engines playing against each other (engine vs engine mode)
     """
-    
+
     APP = FastAPI(title="py-draughts")
     static_dir = Path(__file__).parent / "static"
     APP.mount("/static", StaticFiles(directory=static_dir), name="static")
@@ -63,7 +64,7 @@ class Server:
     ):
         """
         Initialize the server.
-        
+
         Args:
             board: The initial board state
             white_engine: Engine to play as white (optional)
@@ -74,42 +75,42 @@ class Server:
         self.black_engine = black_engine
         self._lock = threading.RLock()
         self.engine_depth = 6
-        
+
         # Start any HubEngine instances
         for engine in [self.white_engine, self.black_engine]:
             if isinstance(engine, HubEngine) and not engine._started:
                 engine.start()
-        
+
         self._setup_routes()
 
     def _setup_routes(self) -> None:
         """Configure all API routes."""
         self.router = APIRouter()
-        
+
         # Page routes
         self.router.add_api_route("/", self.index)
         self.router.add_api_route("/set_board/{board_type}", self.set_board, methods=["GET"])
-        
+
         # Game state routes
         self.router.add_api_route("/position", self.get_position, methods=["GET"])
         self.router.add_api_route("/legal_moves", self.get_legal_moves, methods=["GET"])
         self.router.add_api_route("/fen", self.get_fen, methods=["GET"])
         self.router.add_api_route("/pdn", self.get_pdn, methods=["GET"])
         self.router.add_api_route("/engine_info", self.get_engine_info, methods=["GET"])
-        
+
         # Game action routes
         self.router.add_api_route("/move/{source}/{target}", self.move, methods=["POST"])
         self.router.add_api_route("/best_move", self.get_best_move, methods=["GET"])
         self.router.add_api_route("/pop", self.pop, methods=["GET"])
         self.router.add_api_route("/goto/{ply}", self.goto_ply, methods=["GET"])
-        
+
         # Load/save routes
         self.router.add_api_route("/load_pdn", self.load_pdn, methods=["POST"])
         self.router.add_api_route("/load_fen", self.load_fen, methods=["POST"])
-        
+
         # Settings routes
         self.router.add_api_route("/set_depth/{depth}", self.set_depth, methods=["GET"])
-        
+
         self.APP.include_router(self.router)
 
     # =========================================================================
@@ -126,7 +127,7 @@ class Server:
                 history.append([(idx // 2) + 1, str(stack[idx])])
             else:
                 history[-1].append(str(stack[idx]))
-        
+
         return PositionResponse(
             position=self.board.friendly_form.tolist(),
             history=history,
@@ -154,9 +155,9 @@ class Server:
     def index(self, request: Request):
         """Render the main game page."""
         return self.templates.TemplateResponse(
+            request,
             "index.html",
             {
-                "request": request,
                 "size": len(self.board.STARTING_POSITION) * 2,
                 "has_dual_engines": self.has_dual_engines,
                 "white_engine_name": self._get_engine_name(self.white_engine),
@@ -164,20 +165,26 @@ class Server:
             },
         )
 
-    def set_board(self, request: Request, board_type: Literal["standard", "american", "frisian", "russian"]):
+    def set_board(
+        self, request: Request, board_type: Literal["standard", "american", "frisian", "russian"]
+    ):
         """Switch to a different board type."""
         with self._lock:
             if board_type == "standard":
                 from draughts import StandardBoard
+
                 self.board = StandardBoard()
             elif board_type == "american":
                 from draughts import AmericanBoard
+
                 self.board = AmericanBoard()
             elif board_type == "frisian":
                 from draughts import FrisianBoard
+
                 self.board = FrisianBoard()
             elif board_type == "russian":
                 from draughts import RussianBoard
+
                 self.board = RussianBoard()
             return RedirectResponse(url="/")
 
@@ -195,9 +202,7 @@ class Server:
         with self._lock:
             moves_dict: dict[int, list[int]] = defaultdict(list)
             for move in list(self.board.legal_moves):
-                moves_dict[int(move.square_list[0])].extend(
-                    map(int, move.square_list[1:])
-                )
+                moves_dict[int(move.square_list[0])].extend(map(int, move.square_list[1:]))
             return {"legal_moves": json.dumps(moves_dict)}
 
     def get_fen(self) -> dict:
@@ -265,10 +270,10 @@ class Server:
             ply = max(0, int(ply))
             current = len(self.board._moves_stack)
             ply = min(ply, current)
-            
+
             while len(self.board._moves_stack) > ply:
                 self.board.pop()
-            
+
             return self.position_json
 
     # =========================================================================
@@ -298,12 +303,12 @@ class Server:
         depth = max(1, min(10, int(depth)))
         with self._lock:
             self.engine_depth = depth
-            
+
             # Update depth_limit on both engines if they have the attribute
             for engine in [self.white_engine, self.black_engine]:
-                if engine is not None and hasattr(engine, 'depth_limit'):
+                if engine is not None and hasattr(engine, "depth_limit"):
                     engine.depth_limit = depth
-            
+
             return {"depth": self.engine_depth}
 
     # =========================================================================
@@ -323,7 +328,7 @@ class Server:
             uvicorn.run(self.APP, **kwargs)
         finally:
             self._cleanup_engines()
-    
+
     def _cleanup_engines(self) -> None:
         """Quit any HubEngine instances."""
         for engine in [self.white_engine, self.black_engine]:
@@ -335,19 +340,20 @@ class Server:
 
 
 if __name__ == "__main__":
-    from loguru import logger
     import sys
 
+    from loguru import logger
+
     logger.add(sys.stderr, level="DEBUG")
-    
+
+    from draughts import HubEngine, StandardBoard
     from draughts.engines import AlphaBetaEngine
-    from draughts import StandardBoard , HubEngine
 
     # Example: Two engines playing against each other
     white_engine = AlphaBetaEngine(depth_limit=9)
     black_engine = AlphaBetaEngine(depth_limit=9)
     # black_engine = HubEngine('./scan_engine/scan.exe', depth_limit=6)
-    
+
     board = StandardBoard()
     server = Server(
         board=board,

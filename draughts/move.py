@@ -1,4 +1,5 @@
 """Move representation for draughts."""
+
 from __future__ import annotations
 
 from typing import Iterable
@@ -24,8 +25,16 @@ class Move:
         >>> print(move.square_list)  # [30, 26] (0-indexed)
     """
 
-    __slots__ = ('square_list', 'captured_list', 'captured_entities', 'is_promotion',
-                 'halfmove_clock', '_len', '_value', '_is_king_move')
+    __slots__ = (
+        "square_list",
+        "captured_list",
+        "captured_entities",
+        "is_promotion",
+        "halfmove_clock",
+        "_len",
+        "_value",
+        "_is_king_move",
+    )
 
     # Singleton empty list to avoid creating new empty lists for simple moves
     _EMPTY_LIST: list = []
@@ -113,7 +122,7 @@ class Move:
         return hash((self.square_list[0], self.square_list[-1]))
 
     @classmethod
-    def from_uci(cls, move: str, legal_moves: Iterable["Move"]) -> "Move":
+    def from_uci(cls, move: str, legal_moves: Iterable[Move]) -> Move:
         """
         Parse a move from UCI notation.
 

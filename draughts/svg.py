@@ -13,7 +13,7 @@ from __future__ import annotations
 
 import math
 import xml.etree.ElementTree as ET
-from typing import Dict, Iterable, List, Optional, Tuple, Union
+from typing import Dict, Iterable, Optional, Tuple, Union
 
 from draughts.models import Color, Figure
 from draughts.move import Move
@@ -254,7 +254,7 @@ def piece(
     piece_value: Union[int, Figure],
     *,
     size: Optional[int] = None,
-    colors: Dict[str, str] = {},
+    colors: Optional[Dict[str, str]] = None,
 ) -> str:
     """
     Renders a single draughts piece as an SVG image.
@@ -276,6 +276,9 @@ def piece(
     if isinstance(piece_value, Figure):
         piece_value = piece_value.value
 
+    if colors is None:
+        colors = {}
+
     svg = _svg(SQUARE_SIZE, size)
     _render_piece(svg, piece_value, SQUARE_SIZE / 2, SQUARE_SIZE / 2, colors)
 
@@ -287,10 +290,10 @@ def board(
     *,
     size: Optional[int] = None,
     coordinates: bool = True,
-    colors: Dict[str, str] = {},
+    colors: Optional[Dict[str, str]] = None,
     lastmove: Optional[Move] = None,
-    arrows: Iterable[Union[Arrow, Tuple[int, int]]] = [],
-    fill: Dict[int, str] = {},
+    arrows: Iterable[Union[Arrow, Tuple[int, int]]] = (),
+    fill: Optional[Dict[int, str]] = None,
     squares: Optional[Iterable[int]] = None,
     orientation: Color = Color.WHITE,
     legend: bool = True,
@@ -327,6 +330,11 @@ def board(
         >>> board = draughts.StandardBoard()
         >>> draughts.svg.board(board, size=400)
     """
+    if colors is None:
+        colors = {}
+    if fill is None:
+        fill = {}
+
     # Determine board dimensions
     if board is not None:
         board_size = board.shape[0]
@@ -507,18 +515,14 @@ def board(
     if position is not None:
         for sq_idx, piece_value in enumerate(position):
             if piece_value != 0:
-                cx, cy = _get_square_center(
-                    sq_idx, board_size, orientation, board_offset
-                )
+                cx, cy = _get_square_center(sq_idx, board_size, orientation, board_offset)
                 _render_piece(svg, piece_value, cx, cy, colors)
 
     # Draw X markers on selected squares
     if squares:
         for sq_idx in squares:
             if 0 <= sq_idx < num_playable_squares:
-                cx, cy = _get_square_center(
-                    sq_idx, board_size, orientation, board_offset
-                )
+                cx, cy = _get_square_center(sq_idx, board_size, orientation, board_offset)
                 # Draw an X
                 size_half = SQUARE_SIZE * 0.3
                 ET.SubElement(

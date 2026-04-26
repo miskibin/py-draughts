@@ -1,4 +1,5 @@
 """Base class for draughts engines."""
+
 from abc import ABC, abstractmethod
 from typing import Optional
 
