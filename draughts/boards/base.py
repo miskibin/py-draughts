@@ -440,21 +440,23 @@ class BaseBoard(ABC):
         if prefix:
             fen = fen.replace(prefix.group(0), prefix.group(0)[2:])
 
-        turn_m, white_m, black_m = (
-            re.search(r"[WB]:", fen),
-            re.search(r"W[0-9K,]+", fen),
-            re.search(r"B[0-9K,]+", fen),
-        )
+        turn_m = re.search(r"[WB]:", fen)
+        # Piece lists are always preceded by the field-separating colon, so we
+        # anchor on ``:W``/``:B`` to avoid matching the leading turn token. The
+        # ``*`` quantifier allows an empty list (e.g. a side with no pieces left,
+        # which ``fen`` can legitimately emit for a finished game).
+        white_m = re.search(r":W([0-9K,]*)", fen)
+        black_m = re.search(r":B([0-9K,]*)", fen)
         if not turn_m or not white_m or not black_m:
             raise ValueError(f"Invalid FEN: {fen}")
 
         position = np.zeros(cls.SQUARES_COUNT, dtype=np.int8)
-        for sq_str in white_m.group(0)[1:].split(","):
+        for sq_str in white_m.group(1).split(","):
             if sq_str.isdigit():
                 position[int(sq_str) - 1] = -1
             elif sq_str.startswith("K"):
                 position[int(sq_str[1:]) - 1] = -2
-        for sq_str in black_m.group(0)[1:].split(","):
+        for sq_str in black_m.group(1).split(","):
             if sq_str.isdigit():
                 position[int(sq_str) - 1] = 1
             elif sq_str.startswith("K"):
