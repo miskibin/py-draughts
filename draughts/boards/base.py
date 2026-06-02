@@ -242,17 +242,23 @@ class BaseBoard(ABC):
             self.black_kings = (self.black_kings & ~src_bit) | tgt_bit
 
         if is_finished:
-            # Promotion
-            if piece == -1 and (self.PROMO_WHITE & tgt_bit):
+            # Promotion. ``move.is_promotion`` may already be set by variants with
+            # mid-capture promotion (e.g. Russian), where a man crowns part-way
+            # through a capture and finishes on a square off the promotion rank.
+            promoted = False
+            if piece == -1 and ((self.PROMO_WHITE & tgt_bit) or move.is_promotion):
                 self.white_men &= ~tgt_bit
                 self.white_kings |= tgt_bit
                 move.is_promotion = True
-            elif piece == 1 and (self.PROMO_BLACK & tgt_bit):
+                promoted = True
+            elif piece == 1 and ((self.PROMO_BLACK & tgt_bit) or move.is_promotion):
                 self.black_men &= ~tgt_bit
                 self.black_kings |= tgt_bit
                 move.is_promotion = True
-            # Halfmove clock
-            elif abs(piece) == 2 and not move.captured_list:
+                promoted = True
+            # Halfmove clock: only quiet king moves advance it; promotions,
+            # captures and man moves are irreversible progress and reset it.
+            if not promoted and abs(piece) == 2 and not move.captured_list:
                 self.halfmove_clock += 1
             else:
                 self.halfmove_clock = 0
@@ -434,21 +440,23 @@ class BaseBoard(ABC):
         if prefix:
             fen = fen.replace(prefix.group(0), prefix.group(0)[2:])
 
-        turn_m, white_m, black_m = (
-            re.search(r"[WB]:", fen),
-            re.search(r"W[0-9K,]+", fen),
-            re.search(r"B[0-9K,]+", fen),
-        )
+        turn_m = re.search(r"[WB]:", fen)
+        # Piece lists are always preceded by the field-separating colon, so we
+        # anchor on ``:W``/``:B`` to avoid matching the leading turn token. The
+        # ``*`` quantifier allows an empty list (e.g. a side with no pieces left,
+        # which ``fen`` can legitimately emit for a finished game).
+        white_m = re.search(r":W([0-9K,]*)", fen)
+        black_m = re.search(r":B([0-9K,]*)", fen)
         if not turn_m or not white_m or not black_m:
             raise ValueError(f"Invalid FEN: {fen}")
 
         position = np.zeros(cls.SQUARES_COUNT, dtype=np.int8)
-        for sq_str in white_m.group(0)[1:].split(","):
+        for sq_str in white_m.group(1).split(","):
             if sq_str.isdigit():
                 position[int(sq_str) - 1] = -1
             elif sq_str.startswith("K"):
                 position[int(sq_str[1:]) - 1] = -2
-        for sq_str in black_m.group(0)[1:].split(","):
+        for sq_str in black_m.group(1).split(","):
             if sq_str.isdigit():
                 position[int(sq_str) - 1] = 1
             elif sq_str.startswith("K"):

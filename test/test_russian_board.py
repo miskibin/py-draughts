@@ -199,6 +199,53 @@ class TestRussianMidCapturePromotion:
         promoted_captures = [m for m in captures if m.is_promotion]
         assert len(promoted_captures) > 0, "Should have promotion captures"
 
+    def test_mid_promotion_piece_is_king_after_push(self):
+        """
+        After a man promotes mid-capture and continues, ``push`` must leave a
+        KING (not a man) on the final landing square, even though that square
+        is off the promotion rank.
+        """
+        # White man at F6 (sq 10) jumps E7 (sq 6) -> D8 (sq 1, promotes), then
+        # as a king jumps C7 (sq 5) -> B6 (sq 8), which is NOT on the promo rank.
+        position = np.zeros(32, dtype=np.int8)
+        position[10] = -1  # White man F6
+        position[6] = 1  # Black man E7
+        position[5] = 1  # Black man C7
+        board = Board(position, Color.WHITE)
+
+        move = next(m for m in board.legal_moves if m.square_list[-1] == 8)
+        assert move.is_promotion
+        board.push(move)
+
+        assert board.white_kings & (1 << 8), "Promoted piece must be a king"
+        assert not (board.white_men & (1 << 8)), "Promoted piece must not stay a man"
+
+        # And undo must restore the original man.
+        board.pop()
+        assert board.white_men & (1 << 10)
+        assert board.white_kings == 0
+
+    def test_mid_promotion_on_later_jump_is_king_after_push(self):
+        """
+        Promotion can occur on a *non-first* jump of a capture chain. The
+        combined move must still be flagged as a promotion (Move.__add__ ORs
+        the flag) and push must crown the piece.
+        """
+        # White man idx17 jumps idx13 -> idx8, jumps idx5 -> idx1 (promo row 0,
+        # crowns), then as king jumps idx6 -> idx10 (off the promo rank).
+        position = np.zeros(32, dtype=np.int8)
+        position[17] = -1
+        position[13] = 1
+        position[5] = 1
+        position[6] = 1
+        board = Board(position, Color.WHITE)
+
+        move = next(m for m in board.legal_moves if m.square_list == [17, 8, 1, 10])
+        assert move.is_promotion, "Promotion on a later jump must set is_promotion"
+        board.push(move)
+        assert board.white_kings & (1 << 10), "Piece must be a king after push"
+        assert not (board.white_men & (1 << 10))
+
     def test_mid_promotion_continues_as_king(self):
         """After mid-capture promotion, piece moves as flying king."""
         # This is a complex scenario requiring specific setup

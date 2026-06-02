@@ -112,7 +112,9 @@ class Move:
             self.square_list + other.square_list[1:],
             new_captured,
             self.captured_entities + other.captured_entities,
-            self.is_promotion,
+            # A combined capture promotes if *any* segment crowns the piece
+            # (e.g. Russian mid-capture promotion on a non-first jump).
+            self.is_promotion or other.is_promotion,
         )
         move._len = len(new_captured) + 1
         return move

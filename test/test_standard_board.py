@@ -33,6 +33,17 @@ class TestBoard:
             assert np.array_equal(board1.position, board2.position)
             assert board1.turn == board2.turn
 
+    def test_fen_roundtrip_with_empty_side(self):
+        """A board where one side has no pieces must round-trip through its own FEN."""
+        for pos in (
+            # Empty black side (white about to win) - fen emits an empty "B" list.
+            np.array([-1 if i in (30, 31) else 0 for i in range(50)], dtype=np.int8),
+            # Empty white side - fen emits an empty "W" list.
+            np.array([1 if i in (0, 1) else 0 for i in range(50)], dtype=np.int8),
+        ):
+            board = Board(pos)
+            assert np.array_equal(Board.from_fen(board.fen).position, board.position)
+
     def test_legal_moves(self):
         with open(self.legal_mvs_file) as f:
             legal_moves_len = json.load(f)
