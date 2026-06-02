@@ -242,17 +242,23 @@ class BaseBoard(ABC):
             self.black_kings = (self.black_kings & ~src_bit) | tgt_bit
 
         if is_finished:
-            # Promotion
-            if piece == -1 and (self.PROMO_WHITE & tgt_bit):
+            # Promotion. ``move.is_promotion`` may already be set by variants with
+            # mid-capture promotion (e.g. Russian), where a man crowns part-way
+            # through a capture and finishes on a square off the promotion rank.
+            promoted = False
+            if piece == -1 and ((self.PROMO_WHITE & tgt_bit) or move.is_promotion):
                 self.white_men &= ~tgt_bit
                 self.white_kings |= tgt_bit
                 move.is_promotion = True
-            elif piece == 1 and (self.PROMO_BLACK & tgt_bit):
+                promoted = True
+            elif piece == 1 and ((self.PROMO_BLACK & tgt_bit) or move.is_promotion):
                 self.black_men &= ~tgt_bit
                 self.black_kings |= tgt_bit
                 move.is_promotion = True
-            # Halfmove clock
-            elif abs(piece) == 2 and not move.captured_list:
+                promoted = True
+            # Halfmove clock: only quiet king moves advance it; promotions,
+            # captures and man moves are irreversible progress and reset it.
+            if not promoted and abs(piece) == 2 and not move.captured_list:
                 self.halfmove_clock += 1
             else:
                 self.halfmove_clock = 0
