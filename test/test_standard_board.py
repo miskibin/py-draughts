@@ -84,15 +84,16 @@ class TestBoard:
     @pytest.mark.parametrize(
         "fen,valid_moves,invalid_moves",
         [
-            # King multi-capture: can capture three pieces in sequence (44, 28, 31)
-            ('[FEN "W:B:WK2,28,31,44:B20,K50"]', ["50x36"], []),
+            # King multi-capture: can capture three pieces ending on 36.
+            # Capture notation spells out the full path (issue #29).
+            ('[FEN "W:B:WK2,28,31,44:B20,K50"]', ["50x39x22x36"], []),
             # King cannot jump adjacent pieces (28 and 33 have no empty square between)
             ('[FEN "W:B:W7,28,31,33:B20,30,K50"]', [], ["50x50"]),
             # King cannot hop over same piece twice during capture sequence
             # Black king on 49 should capture 38, 28, 24 (path: 49->32->19->30/35)
             # It should NOT capture 41 because to reach it after capturing 38,
             # and then continue to 28, would require crossing 41's square twice
-            ('[FEN "W:B:W6,24,28,38,41:B13,K49"]', ["49x30", "49x35"], []),
+            ('[FEN "W:B:W6,24,28,38,41:B13,K49"]', ["49x32x19x30", "49x32x19x35"], []),
         ],
     )
     def test_king_capture_edge_cases(self, fen, valid_moves, invalid_moves):
@@ -140,6 +141,24 @@ class TestBoard:
         assert test_board.position[40] == -1, "White piece on square 41 was incorrectly captured"
         # Square 6 (0-indexed: 5) should still have a white piece
         assert test_board.position[5] == -1, "White piece on square 6 was incorrectly captured"
+
+    def test_ambiguous_captures_are_disambiguated(self):
+        """Captures sharing start/end must be distinguishable by their path (issue #29)."""
+        board = Board.from_fen("W:WK4:B13,32,37,20")
+        capture_strs = [str(m) for m in board.legal_moves if m.captured_list]
+        # Both routes from 4 to 15 must be present with distinct full paths.
+        assert sorted(capture_strs) == ["4x27x38x15", "4x31x42x15"]
+
+        # The bare endpoint form is ambiguous and must be rejected, not
+        # silently resolved to an arbitrary path.
+        with pytest.raises(ValueError, match="ambiguous"):
+            board.push_uci("4x15")
+
+        # The full path selects exactly the intended capture: 4x31x42x15
+        # removes the pieces on 13, 37 and 20, leaving the one on 32.
+        board.push_uci("4x31x42x15")
+        assert board._get(31) == 1  # piece on square 32 survives (0-indexed 31)
+        assert board._get(12) == board._get(36) == board._get(19) == 0
 
     def test_push_rejects_move_with_empty_source(self):
         """Re-pushing a spent move must not corrupt the board (issue #27)."""
