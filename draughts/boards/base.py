@@ -221,14 +221,30 @@ class BaseBoard(ABC):
             is_finished: If True, switches turn after the move. Set to False
                 during internal move generation.
 
+        Raises:
+            ValueError: If the move does not start from a square occupied by a
+                piece of the side to move (e.g. an empty square or an opponent
+                piece). This guards against applying a stale or foreign
+                :class:`Move` that would silently corrupt the position.
+
         Example:
             >>> board = Board()
             >>> move = board.legal_moves[0]
             >>> board.push(move)
         """
-        move.halfmove_clock = self.halfmove_clock
         src, tgt = move.square_list[0], move.square_list[-1]
         piece = self._get(src)
+        # Reject moves whose source holds no piece of the side to move. White
+        # pieces are negative, black positive; an empty square is 0. Without
+        # this, pushing such a move falls through to the black-king branch and
+        # corrupts the board (see issue #27).
+        if piece == 0 or (piece < 0) != (self.turn == Color.WHITE):
+            raise ValueError(
+                f"Illegal move {move}: square {src + 1} holds no "
+                f"{'white' if self.turn == Color.WHITE else 'black'} piece to move."
+            )
+
+        move.halfmove_clock = self.halfmove_clock
         src_bit, tgt_bit = 1 << src, 1 << tgt
 
         # Move piece

@@ -111,3 +111,22 @@ class TestBoard:
         assert test_board.position[40] == -1, "White piece on square 41 was incorrectly captured"
         # Square 6 (0-indexed: 5) should still have a white piece
         assert test_board.position[5] == -1, "White piece on square 6 was incorrectly captured"
+
+    def test_push_rejects_move_with_empty_source(self):
+        """Re-pushing a spent move must not corrupt the board (issue #27)."""
+        board = Board.from_fen("W:WK2,25:B14,15,16")
+        move = board.legal_moves[0]
+        board.push(move)  # 25-20, now Black to move; square 25 is empty
+        before = board.position.copy()
+        with pytest.raises(ValueError):
+            board.push(move)
+        # Position must be untouched by the rejected push.
+        assert np.array_equal(board.position, before)
+
+    def test_push_rejects_opponent_piece(self):
+        """Pushing a move for a square holding an opponent piece is rejected."""
+        board = Board.from_fen("W:W31:B20")  # White to move
+        # Fabricate a move that starts on the black piece at square 20.
+        black_move = Move([19, 14])
+        with pytest.raises(ValueError):
+            board.push(black_move)
