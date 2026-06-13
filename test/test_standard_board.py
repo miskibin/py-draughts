@@ -44,6 +44,35 @@ class TestBoard:
             board = Board(pos)
             assert np.array_equal(Board.from_fen(board.fen).position, board.position)
 
+    def test_fen_has_single_side_to_move_token(self):
+        """``board.fen`` must carry the side to move exactly once (issue #26).
+
+        The canonical FEN layout is ``<turn>:W<white>:B<black>``; older output
+        duplicated the token (``W:W:...`` / ``W:B:...``).
+        """
+        white_to_move = Board()
+        assert white_to_move.fen.startswith('[FEN "W:W')
+        assert ":W:" not in white_to_move.fen
+
+        black_to_move = Board.from_fen("B:W31:B1")
+        assert black_to_move.fen.startswith('[FEN "B:W')
+        assert ":B:" not in black_to_move.fen
+
+    def test_from_fen_accepts_one_sided_position(self):
+        """A FEN with one empty side must be accepted (issue #28)."""
+        board = Board.from_fen("B:W50:B")
+        assert board.turn == Color.BLACK
+        assert board._get(49) == -1  # white man on square 50
+        assert board.white_men.bit_count() == 1
+        assert board.black_men == board.black_kings == 0
+
+    def test_from_fen_accepts_legacy_doubled_prefix(self):
+        """Legacy FENs with a duplicated side-to-move token still parse."""
+        legacy = Board.from_fen('[FEN "W:B:W50:B"]')
+        canonical = Board.from_fen('[FEN "B:W50:B"]')
+        assert legacy.turn == canonical.turn == Color.BLACK
+        assert np.array_equal(legacy.position, canonical.position)
+
     def test_legal_moves(self):
         with open(self.legal_mvs_file) as f:
             legal_moves_len = json.load(f)
@@ -130,3 +159,22 @@ class TestBoard:
         board.push_uci("4x31x42x15")
         assert board._get(31) == 1  # piece on square 32 survives (0-indexed 31)
         assert board._get(12) == board._get(36) == board._get(19) == 0
+
+    def test_push_rejects_move_with_empty_source(self):
+        """Re-pushing a spent move must not corrupt the board (issue #27)."""
+        board = Board.from_fen("W:WK2,25:B14,15,16")
+        move = board.legal_moves[0]
+        board.push(move)  # 25-20, now Black to move; square 25 is empty
+        before = board.position.copy()
+        with pytest.raises(ValueError):
+            board.push(move)
+        # Position must be untouched by the rejected push.
+        assert np.array_equal(board.position, before)
+
+    def test_push_rejects_opponent_piece(self):
+        """Pushing a move for a square holding an opponent piece is rejected."""
+        board = Board.from_fen("W:W31:B20")  # White to move
+        # Fabricate a move that starts on the black piece at square 20.
+        black_move = Move([19, 14])
+        with pytest.raises(ValueError):
+            board.push(black_move)

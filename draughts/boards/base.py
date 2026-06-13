@@ -221,14 +221,30 @@ class BaseBoard(ABC):
             is_finished: If True, switches turn after the move. Set to False
                 during internal move generation.
 
+        Raises:
+            ValueError: If the move does not start from a square occupied by a
+                piece of the side to move (e.g. an empty square or an opponent
+                piece). This guards against applying a stale or foreign
+                :class:`Move` that would silently corrupt the position.
+
         Example:
             >>> board = Board()
             >>> move = board.legal_moves[0]
             >>> board.push(move)
         """
-        move.halfmove_clock = self.halfmove_clock
         src, tgt = move.square_list[0], move.square_list[-1]
         piece = self._get(src)
+        # Reject moves whose source holds no piece of the side to move. White
+        # pieces are negative, black positive; an empty square is 0. Without
+        # this, pushing such a move falls through to the black-king branch and
+        # corrupts the board (see issue #27).
+        if piece == 0 or (piece < 0) != (self.turn == Color.WHITE):
+            raise ValueError(
+                f"Illegal move {move}: square {src + 1} holds no "
+                f"{'white' if self.turn == Color.WHITE else 'black'} piece to move."
+            )
+
+        move.halfmove_clock = self.halfmove_clock
         src_bit, tgt_bit = 1 << src, 1 << tgt
 
         # Move piece
@@ -414,7 +430,7 @@ class BaseBoard(ABC):
                 black_sq.append(str(sq + 1))
             elif self.black_kings & bit:
                 black_sq.append(f"K{sq + 1}")
-        return f'[FEN "W:{turn_s}:W{",".join(white_sq)}:B{",".join(black_sq)}"]'
+        return f'[FEN "{turn_s}:W{",".join(white_sq)}:B{",".join(black_sq)}"]'
 
     @classmethod
     def from_fen(cls, fen: str) -> BaseBoard:
@@ -436,9 +452,23 @@ class BaseBoard(ABC):
         logger.debug(f"Initializing from FEN: {fen}")
         fen = fen.upper()
         fen = re.sub(r"(G[0-9]+|P[0-9]+)(,|)", "", fen)
-        prefix = re.search(r"[WB]:[WB]:[WB]", fen)
-        if prefix:
-            fen = fen.replace(prefix.group(0), prefix.group(0)[2:])
+        # Unwrap the optional ``[FEN "..."]`` container so the colon-separated
+        # fields can be counted reliably below.
+        wrap = re.search(r'\[FEN\s*"([^"]*)"\]', fen)
+        if wrap:
+            fen = wrap.group(1)
+        # Older versions emitted a redundant leading side-to-move token, e.g.
+        # ``W:B:W...:B...`` instead of the canonical ``B:W...:B...``. A canonical
+        # FEN has exactly three colon-separated fields (turn, white list, black
+        # list); the legacy form has four, with a bare extra turn letter in
+        # front. Drop that leading token so both forms parse identically.
+        # Counting fields (rather than a ``[WB]:[WB]:[WB]`` regex) avoids
+        # misreading a one-sided position such as ``B:W:B1`` (empty white side)
+        # as if it carried a legacy prefix.
+        fields = fen.split(":")
+        if len(fields) == 4 and fields[0] in ("W", "B"):
+            del fields[0]
+            fen = ":".join(fields)
 
         turn_m = re.search(r"[WB]:", fen)
         # Piece lists are always preceded by the field-separating colon, so we

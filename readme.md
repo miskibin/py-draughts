@@ -115,7 +115,7 @@ False
 
 ```python
 >>> board.fen
-'[FEN "W:W:W31,32,33,...:B1,2,3,..."]'
+'[FEN "W:W31,32,33,...:B1,2,3,..."]'
 
 >>> board = draughts.Board.from_fen("W:WK10,K20:BK35,K45")
 >>> board
