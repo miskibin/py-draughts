@@ -65,9 +65,16 @@ class Move:
         self._is_king_move = False
 
     def __str__(self) -> str:
-        """Return UCI notation, e.g. '31-27' or '26x17'."""
-        separator = "x" if self.captured_list else "-"
-        return f"{self.square_list[0] + 1}{separator}{self.square_list[-1] + 1}"
+        """Return UCI notation, e.g. ``'31-27'`` or ``'4x27x38x15'``.
+
+        Captures spell out every visited square, not just the start and end.
+        Two capture sequences can share the same start and end square while
+        taking different routes (e.g. ``4x27x38x15`` vs ``4x31x42x15``); always
+        including the full path keeps such moves distinguishable (issue #29).
+        """
+        if not self.captured_list:
+            return f"{self.square_list[0] + 1}-{self.square_list[-1] + 1}"
+        return "x".join(str(sq + 1) for sq in self.square_list)
 
     def __repr__(self) -> str:
         visited_squares = [str(s + 1) for s in self.square_list]
@@ -155,10 +162,23 @@ class Move:
             raise ValueError(f"Invalid move format: {move}")
 
         move_obj = Move([int(step) - 1 for step in steps])
-        for legal_move in legal_moves:
-            if legal_move == move_obj:
-                return legal_move
+        legal_moves = list(legal_moves)
+        matches = [legal_move for legal_move in legal_moves if legal_move == move_obj]
+        if len(matches) == 1:
+            return matches[0]
+        if not matches:
+            raise ValueError(
+                f"{str(move_obj)} is correct format, but not legal in this position.\n"
+                f"Legal moves: {list(map(str, legal_moves))}"
+            )
+        # Several legal moves share this start/end square. This happens when a
+        # capture is given by its endpoints only but multiple routes exist
+        # (issue #29). Require the exact intermediate path to disambiguate.
+        exact = [m for m in matches if m.square_list == move_obj.square_list]
+        if len(exact) == 1:
+            return exact[0]
         raise ValueError(
-            f"{str(move_obj)} is correct format, but not legal in this position.\n"
-            f"Legal moves: {list(map(str, legal_moves))}"
+            f"{move} is ambiguous: it matches multiple capture paths "
+            f"{list(map(str, matches))}. Specify the full path including the "
+            f"intermediate squares."
         )
