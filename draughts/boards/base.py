@@ -414,7 +414,7 @@ class BaseBoard(ABC):
                 black_sq.append(str(sq + 1))
             elif self.black_kings & bit:
                 black_sq.append(f"K{sq + 1}")
-        return f'[FEN "W:{turn_s}:W{",".join(white_sq)}:B{",".join(black_sq)}"]'
+        return f'[FEN "{turn_s}:W{",".join(white_sq)}:B{",".join(black_sq)}"]'
 
     @classmethod
     def from_fen(cls, fen: str) -> BaseBoard:
@@ -436,9 +436,23 @@ class BaseBoard(ABC):
         logger.debug(f"Initializing from FEN: {fen}")
         fen = fen.upper()
         fen = re.sub(r"(G[0-9]+|P[0-9]+)(,|)", "", fen)
-        prefix = re.search(r"[WB]:[WB]:[WB]", fen)
-        if prefix:
-            fen = fen.replace(prefix.group(0), prefix.group(0)[2:])
+        # Unwrap the optional ``[FEN "..."]`` container so the colon-separated
+        # fields can be counted reliably below.
+        wrap = re.search(r'\[FEN\s*"([^"]*)"\]', fen)
+        if wrap:
+            fen = wrap.group(1)
+        # Older versions emitted a redundant leading side-to-move token, e.g.
+        # ``W:B:W...:B...`` instead of the canonical ``B:W...:B...``. A canonical
+        # FEN has exactly three colon-separated fields (turn, white list, black
+        # list); the legacy form has four, with a bare extra turn letter in
+        # front. Drop that leading token so both forms parse identically.
+        # Counting fields (rather than a ``[WB]:[WB]:[WB]`` regex) avoids
+        # misreading a one-sided position such as ``B:W:B1`` (empty white side)
+        # as if it carried a legacy prefix.
+        fields = fen.split(":")
+        if len(fields) == 4 and fields[0] in ("W", "B"):
+            del fields[0]
+            fen = ":".join(fields)
 
         turn_m = re.search(r"[WB]:", fen)
         # Piece lists are always preceded by the field-separating colon, so we
