@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "py-draughts"
-version = "1.8.2"
+version = "1.8.3"
 description = "Fastest Python draughts / checkers library (import: draughts). Bitboard move generation ~200x faster than pydraughts. PDN/FEN, alpha-beta engine, HUB protocol, web UI. 8 variants: International, American, Frisian, Russian, Brazilian, Antidraughts, Breakthrough, Frysk!"
 readme = "readme.md"
 license = {file = "LICENSE"}
