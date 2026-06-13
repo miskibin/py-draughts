@@ -97,7 +97,7 @@ FEN represents board positions. Format: ``[Turn]:[White pieces]:[Black pieces]``
 
     # Get FEN
     print(board.fen)
-    # '[FEN "W:W:W31,32,...,50:B1,2,...,20"]'
+    # '[FEN "W:W31,32,...,50:B1,2,...,20"]'
 
     # Create from FEN (kings prefixed with K)
     board = Board.from_fen("W:WK10,K20:BK35,K45")

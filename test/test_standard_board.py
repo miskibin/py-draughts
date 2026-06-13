@@ -44,6 +44,35 @@ class TestBoard:
             board = Board(pos)
             assert np.array_equal(Board.from_fen(board.fen).position, board.position)
 
+    def test_fen_has_single_side_to_move_token(self):
+        """``board.fen`` must carry the side to move exactly once (issue #26).
+
+        The canonical FEN layout is ``<turn>:W<white>:B<black>``; older output
+        duplicated the token (``W:W:...`` / ``W:B:...``).
+        """
+        white_to_move = Board()
+        assert white_to_move.fen.startswith('[FEN "W:W')
+        assert ":W:" not in white_to_move.fen
+
+        black_to_move = Board.from_fen("B:W31:B1")
+        assert black_to_move.fen.startswith('[FEN "B:W')
+        assert ":B:" not in black_to_move.fen
+
+    def test_from_fen_accepts_one_sided_position(self):
+        """A FEN with one empty side must be accepted (issue #28)."""
+        board = Board.from_fen("B:W50:B")
+        assert board.turn == Color.BLACK
+        assert board._get(49) == -1  # white man on square 50
+        assert board.white_men.bit_count() == 1
+        assert board.black_men == board.black_kings == 0
+
+    def test_from_fen_accepts_legacy_doubled_prefix(self):
+        """Legacy FENs with a duplicated side-to-move token still parse."""
+        legacy = Board.from_fen('[FEN "W:B:W50:B"]')
+        canonical = Board.from_fen('[FEN "B:W50:B"]')
+        assert legacy.turn == canonical.turn == Color.BLACK
+        assert np.array_equal(legacy.position, canonical.position)
+
     def test_legal_moves(self):
         with open(self.legal_mvs_file) as f:
             legal_moves_len = json.load(f)
