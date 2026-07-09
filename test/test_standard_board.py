@@ -183,7 +183,9 @@ class TestBoard:
         """A dash denotes an inclusive range of squares (issue #33)."""
         ranged = Board.from_fen("W:W31-50:B1-20")
         listed = Board.from_fen(
-            "W:W" + ",".join(str(s) for s in range(31, 51)) + ":B"
+            "W:W"
+            + ",".join(str(s) for s in range(31, 51))
+            + ":B"
             + ",".join(str(s) for s in range(1, 21))
         )
         assert np.array_equal(ranged.position, listed.position)
