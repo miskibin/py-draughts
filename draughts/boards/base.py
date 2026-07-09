@@ -448,6 +448,7 @@ class BaseBoard(ABC):
 
         Example:
             >>> board = Board.from_fen("W:WK10,K20:BK35,K45")
+            >>> board = Board.from_fen("W:W31-50:B1-20")  # ranges (issue #33)
         """
         logger.debug(f"Initializing from FEN: {fen}")
         fen = fen.upper()
@@ -470,29 +471,65 @@ class BaseBoard(ABC):
             del fields[0]
             fen = ":".join(fields)
 
-        turn_m = re.search(r"[WB]:", fen)
-        # Piece lists are always preceded by the field-separating colon, so we
-        # anchor on ``:W``/``:B`` to avoid matching the leading turn token. The
-        # ``*`` quantifier allows an empty list (e.g. a side with no pieces left,
-        # which ``fen`` can legitimately emit for a finished game).
-        white_m = re.search(r":W([0-9K,]*)", fen)
-        black_m = re.search(r":B([0-9K,]*)", fen)
-        if not turn_m or not white_m or not black_m:
+        # A canonical FEN starts with three fields: ``<turn>:W<list>:B<list>``.
+        # Anchoring the start (``^``) and requiring each list to be a contiguous
+        # run of ``[-0-9K,]`` rejects a stray piece character such as the ``W`` in
+        # ``W:WK4,WK5,55:B4`` (the class cannot cross it to reach ``:B``) instead
+        # of silently truncating the list. The end is left unanchored so optional
+        # trailing counter fields (e.g. ``:H0:F2``) are tolerated. ``[-0-9K,]*``
+        # permits an empty list (a side with no pieces left, which ``fen``
+        # legitimately emits) and the ``-`` needed for square ranges (issue #33).
+        if not (r := re.match(r"^([BW]):W([-0-9K,]*):B([-0-9K,]*)", fen)):
             raise ValueError(f"Invalid FEN: {fen}")
 
         position = np.zeros(cls.SQUARES_COUNT, dtype=np.int8)
-        for sq_str in white_m.group(1).split(","):
-            if sq_str.isdigit():
-                position[int(sq_str) - 1] = -1
-            elif sq_str.startswith("K"):
-                position[int(sq_str[1:]) - 1] = -2
-        for sq_str in black_m.group(1).split(","):
-            if sq_str.isdigit():
-                position[int(sq_str) - 1] = 1
-            elif sq_str.startswith("K"):
-                position[int(sq_str[1:]) - 1] = 2
+        for group, king_val, man_val in ((r.group(2), -2, -1), (r.group(3), 2, 1)):
+            if not group:
+                continue
+            for sq_str in group.split(","):
+                for piece in cls.parse_square(sq_str, cls.SQUARES_COUNT):
+                    idx = piece["square"] - 1
+                    if position[idx] != 0:
+                        raise ValueError(f"Duplicate square in FEN: {piece['square']}")
+                    position[idx] = king_val if piece["king"] else man_val
 
-        return cls(position, Color.WHITE if turn_m.group(0)[0] == "W" else Color.BLACK)
+        return cls(position, Color.WHITE if r.group(1) == "W" else Color.BLACK)
+
+    @staticmethod
+    def parse_square(sq: str, max_square: int) -> list[dict[str, int | bool]]:
+        """
+        Parse one square token from a FEN piece list.
+
+        A token is a single square (``"4"``), a king square (``"K4"``), or a
+        range covering several consecutive squares (``"31-50"`` / ``"K31-50"``).
+        Ranges expand to one entry per square (issue #33).
+
+        Args:
+            sq: Square token, e.g. ``"4"``, ``"K20"`` or ``"31-50"``.
+            max_square: Highest legal square number for the variant.
+
+        Returns:
+            List of ``{"king": bool, "square": int}`` dicts, one per square.
+
+        Raises:
+            ValueError: If the token is malformed or references a square outside
+                the legal range ``1..max_square``.
+
+        Example:
+            >>> BaseBoard.parse_square("K4-6", 50)
+            [{'king': True, 'square': 4}, {'king': True, 'square': 5}, {'king': True, 'square': 6}]
+        """
+        if not (m := re.match(r"^(K?)([0-9]{1,2})(?:-([0-9]{1,2}))?$", sq)):
+            raise ValueError(f"Invalid square in FEN: {sq}")
+        is_king, start, end = m.group(1) == "K", int(m.group(2)), m.group(3)
+        if end is None:
+            if not 1 <= start <= max_square:
+                raise ValueError(f"Invalid square in FEN: {sq}")
+            return [{"king": is_king, "square": start}]
+        stop = int(end)
+        if not 1 <= start < stop <= max_square:
+            raise ValueError(f"Invalid square range in FEN: {sq}")
+        return [{"king": is_king, "square": i} for i in range(start, stop + 1)]
 
     @property
     def pdn(self) -> str:
