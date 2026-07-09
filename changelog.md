@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.8.4
+
+Bug fixes:
+
+- **FEN validation** (#33): `Board.from_fen` now rejects illegal FENs (stray characters in a piece list, squares outside `1..SQUARES_COUNT`, and duplicate squares) instead of silently building a corrupt board.
+- **FEN square ranges** (#33): piece lists accept dash ranges, e.g. the international start position `W:W31-50:B1-20` (and `K`-prefixed ranges like `WK4-6`).
+- **Windmill duplicate captures** (#34): a king capture that reaches the same square capturing the same pieces via different orders is now offered once instead of once per order (standard and Brazilian). Distinct routes capturing different pieces are unaffected.
+
 ## 1.8.3
 
 Bug fixes:
