@@ -179,6 +179,42 @@ class TestBoard:
         with pytest.raises(ValueError):
             board.push(black_move)
 
+    def test_from_fen_supports_square_ranges(self):
+        """A dash denotes an inclusive range of squares (issue #33)."""
+        ranged = Board.from_fen("W:W31-50:B1-20")
+        listed = Board.from_fen(
+            "W:W"
+            + ",".join(str(s) for s in range(31, 51))
+            + ":B"
+            + ",".join(str(s) for s in range(1, 21))
+        )
+        assert np.array_equal(ranged.position, listed.position)
+        assert np.array_equal(ranged.position, Board.STARTING_POSITION)
+
+    def test_from_fen_supports_king_range(self):
+        """A leading K applies to every square in the range (issue #33)."""
+        board = Board.from_fen("W:WK4-6:B")
+        assert board._get(3) == board._get(4) == board._get(5) == -2  # three white kings
+        assert board.white_kings.bit_count() == 3
+        assert board.white_men == 0
+
+    @pytest.mark.parametrize(
+        "fen",
+        [
+            "W:WK4,WK5,55:B4",  # stray 'W' char + out-of-range 55
+            "W:W4,4:B10",  # duplicate square
+            "W:W4:B4",  # same square claimed by both sides
+            "W:W55:B4",  # square 55 above the 50-square board
+            "W:W0:B4",  # square 0 below the legal range
+            "W:W50-31:B1",  # reversed range
+            "W:W31-31:B1",  # empty/degenerate range
+        ],
+    )
+    def test_from_fen_rejects_illegal_positions(self, fen):
+        """Illegal FENs must raise rather than silently produce a bad board (issue #33)."""
+        with pytest.raises(ValueError):
+            Board.from_fen(fen)
+
     def test_windmill_capture_has_no_duplicate(self):
         """A windmill king capture must be offered once, not once per order (issue #34)."""
         board = Board.from_fen("W:WK2:B7,8,17,18")
