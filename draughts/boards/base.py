@@ -405,6 +405,41 @@ class BaseBoard(ABC):
         """
         return bool(move.captured_list)
 
+    @staticmethod
+    def _dedupe_captures(captures: list[Move]) -> list[Move]:
+        """
+        Drop capture sequences that are indistinguishable outcomes.
+
+        A "windmill" king capture can reach the same landing square while
+        capturing the same set of pieces via more than one visiting order
+        (e.g. ``2x13x22x11x2`` and ``2x11x22x13x2`` on ``W:WK2:B7,8,17,18``).
+        Those leave a byte-identical position, so only the first is kept
+        (issue #34). Moves that differ in start square, landing square, the
+        set of captured squares, or promotion outcome are all preserved, so
+        genuinely distinct routes (issue #29) are untouched.
+
+        Args:
+            captures: Candidate capture moves, already filtered to the ones
+                that are legal for the variant.
+
+        Returns:
+            The input list with duplicate-outcome moves removed, order kept.
+        """
+        seen: set[tuple] = set()
+        unique: list[Move] = []
+        for move in captures:
+            key = (
+                move.square_list[0],
+                move.square_list[-1],
+                tuple(sorted(move.captured_list)),
+                move.is_promotion,
+            )
+            if key in seen:
+                continue
+            seen.add(key)
+            unique.append(move)
+        return unique
+
     @property
     def fen(self) -> str:
         """

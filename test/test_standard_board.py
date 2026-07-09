@@ -214,3 +214,20 @@ class TestBoard:
         """Illegal FENs must raise rather than silently produce a bad board (issue #33)."""
         with pytest.raises(ValueError):
             Board.from_fen(fen)
+
+    def test_windmill_capture_has_no_duplicate(self):
+        """A windmill king capture must be offered once, not once per order (issue #34)."""
+        board = Board.from_fen("W:WK2:B7,8,17,18")
+        moves = [m for m in board.legal_moves if m.captured_list]
+        # Every path here starts and ends on 2 and captures the same four pieces,
+        # so exactly one representative move must remain.
+        assert len(moves) == 1
+        move = moves[0]
+        assert move.square_list[0] == move.square_list[-1] == 1  # square 2, 0-indexed
+        assert sorted(c + 1 for c in move.captured_list) == [7, 8, 17, 18]
+
+    def test_dedupe_keeps_distinct_capture_routes(self):
+        """Routes capturing different piece sets must both survive (issue #29 vs #34)."""
+        board = Board.from_fen("W:WK4:B13,32,37,20")
+        capture_strs = sorted(str(m) for m in board.legal_moves if m.captured_list)
+        assert capture_strs == ["4x27x38x15", "4x31x42x15"]
