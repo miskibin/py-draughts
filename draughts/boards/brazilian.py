@@ -35,7 +35,7 @@ class Board(RussianBoard):
         captures = self._gen_captures()
         if captures:
             max_len = max(m._len for m in captures)
-            return [m for m in captures if m._len == max_len]
+            return self._dedupe_captures([m for m in captures if m._len == max_len])
         return self._gen_simple()
 
     def _man_captures(
