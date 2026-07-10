@@ -289,6 +289,60 @@ Build custom agents with neural networks, MCTS, or any algorithm:
 >>> clone = board.copy()     # Fast cloning for tree search
 ```
 
+### Example: a neural net that learns to play
+
+[`examples/train_value_net.py`](examples/train_value_net.py) trains a small
+network (~99K parameters) end to end in about two minutes on a laptop CPU — no
+GPU required. The recipe is deliberately simple:
+
+1. Let the built-in `AlphaBetaEngine` play games and record how good it thinks
+   each position is (`board.to_tensor()` → engine score).
+2. Train a tiny MLP to predict that score — plain supervised regression.
+3. Play by looking a few moves ahead (negamax + alpha-beta) and scoring the
+   leaf positions with the network instead of a hand-written evaluation.
+
+The result is a **learned evaluation function** that, paired with a 3-ply
+search, matches the classic engine at equal depth:
+
+| Opponent (100/50 games) | Result (W–L–D) | Verdict |
+|-------------------------|:--------------:|---------|
+| Random player           | **98–0–2**     | crushes it |
+| `AlphaBeta(depth=2)`    | **24–0–26**    | undefeated |
+| `AlphaBeta(depth=3)`    | 3–19–28        | holds many draws |
+
+```python
+import torch
+import torch.nn as nn
+from draughts.boards.american import Board
+
+# The whole model — a tiny MLP (~99K params). Load the trained weights:
+net = nn.Sequential(
+    nn.Flatten(),
+    nn.Linear(4 * 32, 256), nn.ReLU(),
+    nn.Linear(256, 256), nn.ReLU(),
+    nn.Linear(256, 1), nn.Tanh(),
+)
+net.load_state_dict(torch.load("examples/value_net_american.pt"))
+net.eval()
+
+@torch.no_grad()
+def score(board):                          # how good is this position to move in?
+    return float(net(torch.from_numpy(board.to_tensor()).unsqueeze(0)))
+
+def after(board, move):
+    nxt = board.copy(); nxt.push(move); return nxt
+
+board = Board()
+# One-move lookahead: play the reply the opponent will score lowest.
+best = min(board.legal_moves, key=lambda m: score(after(board, m)))
+board.push(best)
+```
+
+The [example script](examples/train_value_net.py) wraps this in a `ValueAgent`
+(a normal `BaseAgent`) with deeper search and a `Benchmark` harness. Retrain —
+or switch to `draughts.boards.standard` for the 10x10 game — with:
+`python examples/train_value_net.py`
+
 ## [Server](https://miskibin.github.io/py-draughts/server.html)
 
 Interactive web interface for playing and engine testing:
