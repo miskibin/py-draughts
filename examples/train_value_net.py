@@ -10,8 +10,13 @@ this example is that **data quality matters far more than network size**:
    result, and we **deduplicate** them.
 2. **Target.** Blend the squashed engine eval with the game result into a single
    WDL-style label in ``[-1, 1]``.
-3. **Train** a small MLP to regress that label, with early stopping.
-4. **Play** with a negamax + alpha-beta search that has **quiescence**: it never
+3. **Features.** Give the small MLP a few hand-picked scalars it cannot easily
+   recover from raw bits — material balance and parity ("the move") — alongside the
+   board planes. This is the biggest lever at a fixed model size.
+4. **Augment + train.** Double the data with the 180-degree board rotation (a valid
+   symmetry), weight decisive positions more, and regress the label with early
+   stopping.
+5. **Play** with a negamax + alpha-beta search that has **quiescence**: it never
    stops on a position with a pending capture, so leaves are always quiet — exactly
    the distribution the network was trained on. This single trick is worth several
    plies of strength.
@@ -23,9 +28,9 @@ back to the built-in :class:`AlphaBetaEngine` (a weaker teacher, but it still ru
 
 Note on augmentation: unlike chess, a 10x10 draughts board has **no** left-right
 mirror symmetry on its playable squares (reflecting the columns flips square colour,
-landing pieces on non-playable squares). The only board symmetry is a 180° rotation,
-which the side-to-move-relative board tensor already captures — so there is no free
-spatial data augmentation to exploit here.
+landing pieces on non-playable squares). The one usable symmetry is the 180-degree
+rotation — which is NOT automatically respected by the network, so we augment with
+it explicitly (see ``ROT180``).
 
 Run:  python examples/train_value_net.py
 """
@@ -61,20 +66,47 @@ torch.manual_seed(SEED)
 MODEL_PATH = Path(__file__).resolve().parent / "value_net_standard.pt"
 
 
-class ValueNet(nn.Sequential):
-    """A small MLP: board tensor in, one number out (how good for the side to move)."""
+def board_features(x: torch.Tensor) -> torch.Tensor:
+    """Cheap, hand-picked scalars appended to the raw board planes.
+
+    A small flat MLP struggles to recover two things from 200 raw bits: the
+    *material* balance (a sum over many inputs) and *parity* / "the move" (a
+    mod-2 count — the classic hard case for MLPs, and decisive in draughts
+    endgames). We hand them over directly. All features are invariant under the
+    180-degree board symmetry, so they play nicely with the augmentation below.
+
+    Input ``x``: ``(N, 4, 50)`` planes = own men, own kings, opp men, opp kings.
+    """
+    c = x.sum(dim=2)                                   # (N, 4) piece counts
+    own_men, own_kings, opp_men, opp_kings = c[:, 0], c[:, 1], c[:, 2], c[:, 3]
+    total = c.sum(1)
+    material = own_men + 3 * own_kings - opp_men - 3 * opp_kings
+    return torch.stack([
+        own_men / 15, own_kings / 5, opp_men / 15, opp_kings / 5,
+        material / 15, (own_kings - opp_kings) / 5, total / 40,
+        torch.remainder(total, 2), torch.remainder(own_men + own_kings, 2),
+        torch.remainder(own_men, 2), torch.remainder(opp_men, 2),
+    ], dim=1)                                          # (N, 11)
+
+
+N_FEATURES = 11
+
+
+class ValueNet(nn.Module):
+    """A small MLP over the raw board planes plus a few engineered features."""
 
     def __init__(self, hidden: int = HIDDEN):
-        super().__init__(
-            nn.Flatten(),                        # (4, 50) -> (200,)
-            nn.Linear(4 * 50, hidden), nn.ReLU(), nn.Dropout(0.3),
+        super().__init__()
+        self.body = nn.Sequential(
+            nn.Linear(4 * 50 + N_FEATURES, hidden), nn.ReLU(), nn.Dropout(0.3),
             nn.Linear(hidden, hidden), nn.ReLU(), nn.Dropout(0.3),
             nn.Linear(hidden, hidden), nn.ReLU(),
-            nn.Linear(hidden, 1), nn.Tanh(),     # squashed to (-1, 1)
+            nn.Linear(hidden, 1), nn.Tanh(),           # squashed to (-1, 1)
         )
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        return super().forward(x).squeeze(-1)
+        flat = x.reshape(x.shape[0], -1)               # (N, 200)
+        return self.body(torch.cat([flat, board_features(x)], dim=1)).squeeze(-1)
 
 
 def make_teacher():
@@ -132,16 +164,30 @@ def collect_data(teacher) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     return states, scores, result
 
 
+# Square permutation for a 180-degree board rotation. A 10x10 draughts board has
+# NO left-right mirror symmetry on its playable squares (that flips square colour),
+# but a 180-degree rotation maps playable squares to playable squares and preserves
+# the value — so it is the one valid, free data augmentation. In the side-to-move
+# tensor it is simply this reversal of the 50-square axis.
+ROT180 = np.array([49 - i for i in range(50)])
+
+
 def train(net: ValueNet, states: np.ndarray, scores: np.ndarray, result: np.ndarray) -> None:
-    """Regress the WDL-style target with early stopping on a held-out split."""
+    """Regress the WDL-style target, with symmetry augmentation and early stopping."""
     target = (RESULT_WEIGHT * result + (1 - RESULT_WEIGHT) * np.tanh(scores / EVAL_SCALE)).astype(
         np.float32
     )
-    X, y = torch.from_numpy(states), torch.from_numpy(target)
+    # Double the data with the 180-degree rotation (same target).
+    states = np.concatenate([states, states[:, :, ROT180]], axis=0)
+    target = np.concatenate([target, target], axis=0)
+    # Weight decisive positions more — those are the ones move ranking hinges on.
+    weight = (1.0 + 2.0 * np.abs(target)).astype(np.float32)
+
+    X, y, w = torch.from_numpy(states), torch.from_numpy(target), torch.from_numpy(weight)
     perm = torch.randperm(len(X))
-    X, y = X[perm], y[perm]
+    X, y, w = X[perm], y[perm], w[perm]
     n_val = max(3000, len(X) // 10)
-    Xtr, ytr, Xva, yva = X[:-n_val], y[:-n_val], X[-n_val:], y[-n_val:]
+    Xtr, ytr, wtr, Xva, yva = X[:-n_val], y[:-n_val], w[:-n_val], X[-n_val:], y[-n_val:]
 
     opt = torch.optim.Adam(net.parameters(), lr=1e-3, weight_decay=2e-4)
     sched = torch.optim.lr_scheduler.ReduceLROnPlateau(opt, factor=0.5, patience=3)
@@ -151,7 +197,7 @@ def train(net: ValueNet, states: np.ndarray, scores: np.ndarray, result: np.ndar
         order = torch.randperm(len(Xtr))
         for i in range(0, len(Xtr), 512):
             idx = order[i : i + 512]
-            loss = F.mse_loss(net(Xtr[idx]), ytr[idx])
+            loss = (wtr[idx] * (net(Xtr[idx]) - ytr[idx]) ** 2).mean()
             opt.zero_grad(); loss.backward(); opt.step()
         net.eval()
         with torch.no_grad():
