@@ -292,56 +292,87 @@ Build custom agents with neural networks, MCTS, or any algorithm:
 ### Example: a neural net that learns to play
 
 [`examples/train_value_net.py`](examples/train_value_net.py) trains a small
-network (~99K parameters) end to end in about two minutes on a laptop CPU — no
-GPU required. The recipe is deliberately simple:
+evaluation network (~630K parameters) for **10x10 International draughts** on a
+laptop CPU — no GPU. It is taught by the world-class [Scan](https://hjetten.home.xs4all.nl/scan/scan.html)
+engine over the Hub protocol, using the same data recipe as chess **NNUE** nets:
 
-1. Let the built-in `AlphaBetaEngine` play games and record how good it thinks
-   each position is (`board.to_tensor()` → engine score).
-2. Train a tiny MLP to predict that score — plain supervised regression.
-3. Play by looking a few moves ahead (negamax + alpha-beta) and scoring the
-   leaf positions with the network instead of a hand-written evaluation.
+1. **Data.** Scan plays games from random openings; we keep only **quiet**
+   positions (no capture pending), each with Scan's evaluation and the game's
+   result, and **deduplicate** them.
+2. **Target.** Blend the squashed engine eval with the game result — a WDL label.
+3. **Train** a small MLP to regress it, with early stopping.
+4. **Play** with a negamax + alpha-beta search that has **quiescence**: it never
+   evaluates a position with a pending capture, so every leaf is quiet — the
+   distribution the net was trained on.
 
-The result is a **learned evaluation function** that, paired with a 3-ply
-search, matches the classic engine at equal depth:
+**The lesson: data quality beats network size.** A first attempt trained on raw
+engine scores (tactical positions included, no dedup) *lost* to `AlphaBeta(depth=2)`.
+Cleaning the data — quiet positions only, deduplicated, WDL targets — plus
+quiescence at play time turned the *same size* network into this (30 games each):
 
-| Opponent (100/50 games) | Result (W–L–D) | Verdict |
-|-------------------------|:--------------:|---------|
-| Random player           | **98–0–2**     | crushes it |
-| `AlphaBeta(depth=2)`    | **24–0–26**    | undefeated |
-| `AlphaBeta(depth=3)`    | 3–19–28        | holds many draws |
+| Opponent | Result (W–L–D) | Verdict |
+|----------|:--------------:|---------|
+| `AlphaBeta(depth=2)` | **26–1–3**  | dominates |
+| `AlphaBeta(depth=4)` | **15–3–12** | clearly ahead |
+| `AlphaBeta(depth=6)` | 6–7–7       | roughly even |
+
+…while thinking only ~0.2 s per move. Load the trained weights and play:
 
 ```python
 import torch
 import torch.nn as nn
-from draughts.boards.american import Board
+from draughts.boards.standard import Board  # 10x10 International
 
-# The whole model — a tiny MLP (~99K params). Load the trained weights:
-net = nn.Sequential(
+net = nn.Sequential(                          # the whole model (~630K params)
     nn.Flatten(),
-    nn.Linear(4 * 32, 256), nn.ReLU(),
-    nn.Linear(256, 256), nn.ReLU(),
-    nn.Linear(256, 1), nn.Tanh(),
+    nn.Linear(4 * 50, 512), nn.ReLU(), nn.Dropout(0.3),
+    nn.Linear(512, 512), nn.ReLU(), nn.Dropout(0.3),
+    nn.Linear(512, 512), nn.ReLU(),
+    nn.Linear(512, 1), nn.Tanh(),
 )
-net.load_state_dict(torch.load("examples/value_net_american.pt"))
+net.load_state_dict(torch.load("examples/value_net_standard.pt"))
 net.eval()
 
 @torch.no_grad()
-def score(board):                          # how good is this position to move in?
-    return float(net(torch.from_numpy(board.to_tensor()).unsqueeze(0)))
+def evaluate(board):                          # score for the side to move
+    return float(net(torch.from_numpy(board.to_tensor()).unsqueeze(0)).squeeze())
+
+@torch.no_grad()
+def search(board, depth, alpha=-1e9, beta=1e9):
+    moves = board.legal_moves
+    if not moves:
+        return -1.0                           # side to move has lost
+    quiet = not moves[0].captured_list
+    if depth <= 0 and quiet:
+        return evaluate(board)                # only ever score quiet leaves
+    depth = depth if not quiet else depth - 1  # quiescence: captures are "free"
+    best = -2.0
+    for m in moves:
+        child = board.copy(); child.push(m)
+        best = max(best, -search(child, depth, -beta, -alpha))
+        alpha = max(alpha, best)
+        if alpha >= beta:
+            break
+    return best
 
 def after(board, move):
-    nxt = board.copy(); nxt.push(move); return nxt
+    child = board.copy(); child.push(move); return child
 
 board = Board()
-# One-move lookahead: play the reply the opponent will score lowest.
-best = min(board.legal_moves, key=lambda m: score(after(board, m)))
+# 3-ply search: play the move that leaves the opponent worst off.
+best = max(board.legal_moves, key=lambda m: -search(after(board, m), 2))
 board.push(best)
 ```
 
-The [example script](examples/train_value_net.py) wraps this in a `ValueAgent`
-(a normal `BaseAgent`) with deeper search and a `Benchmark` harness. Retrain —
-or switch to `draughts.boards.standard` for the 10x10 game — with:
-`python examples/train_value_net.py`
+The [example script](examples/train_value_net.py) packages this as a `ValueAgent`
+(a normal `BaseAgent`) and a `Benchmark` harness. To retrain, download Scan
+(`SCAN_EXE=/path/to/scan.exe`) and run `python examples/train_value_net.py`; without
+Scan it falls back to the built-in engine as a weaker teacher.
+
+> Aside: unlike chess, a 10x10 draughts board has **no** left-right mirror symmetry
+> on its playable squares (reflecting columns flips square colour), so there is no
+> free spatial data augmentation — the only board symmetry is a 180° rotation, which
+> the side-to-move-relative tensor already encodes.
 
 ## [Server](https://miskibin.github.io/py-draughts/server.html)
 
