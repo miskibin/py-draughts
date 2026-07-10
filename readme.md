@@ -300,42 +300,57 @@ engine over the Hub protocol, using the same data recipe as chess **NNUE** nets:
    positions (no capture pending), each with Scan's evaluation and the game's
    result, and **deduplicate** them.
 2. **Target.** Blend the squashed engine eval with the game result — a WDL label.
-3. **Train** a small MLP to regress it, with early stopping.
-4. **Play** with a negamax + alpha-beta search that has **quiescence**: it never
+3. **Features.** Hand the small MLP a few scalars it can't extract from raw bits —
+   material balance and parity ("the move") — next to the board planes.
+4. **Augment + train.** Double the data with the board's 180° rotation (a valid
+   symmetry), weight decisive positions more, and regress with early stopping.
+5. **Play** with a negamax + alpha-beta search that has **quiescence**: it never
    evaluates a position with a pending capture, so every leaf is quiet — the
    distribution the net was trained on.
 
-**The lesson: data quality beats network size.** A first attempt trained on raw
-engine scores (tactical positions included, no dedup) *lost* to `AlphaBeta(depth=2)`.
-Cleaning the data — quiet positions only, deduplicated, WDL targets — plus
-quiescence at play time turned the *same size* network into this (30 games each):
+**The lesson: representation beats optimisation.** Once the data was clean, the net
+plateaued — more data and training tricks (EMA, LR schedules) barely moved it. The
+jump at *fixed size and speed* came from **what the net sees**: adding material and
+parity features (a flat MLP can't recover a sum or a mod‑2 count from 200 raw bits)
+plus the 180° augmentation. Same ~630K params, ~0.2 s/move (25–40 games each):
 
 | Opponent | Result (W–L–D) | Verdict |
 |----------|:--------------:|---------|
-| `AlphaBeta(depth=2)` | **26–1–3**  | dominates |
-| `AlphaBeta(depth=4)` | **15–3–12** | clearly ahead |
-| `AlphaBeta(depth=6)` | 6–7–7       | roughly even |
+| `AlphaBeta(depth=2)` | **22–2–1**   | dominates |
+| `AlphaBeta(depth=4)` | **27–2–11**  | dominates (was 15–3–12 without features) |
+| `AlphaBeta(depth=6)` | **11–9–5**   | now ahead of a depth‑6 search |
 
-…while thinking only ~0.2 s per move. Load the trained weights and play:
+Load the trained weights and play:
 
 ```python
 import torch
 import torch.nn as nn
 from draughts.boards.standard import Board  # 10x10 International
 
-net = nn.Sequential(                          # the whole model (~630K params)
-    nn.Flatten(),
-    nn.Linear(4 * 50, 512), nn.ReLU(), nn.Dropout(0.3),
-    nn.Linear(512, 512), nn.ReLU(), nn.Dropout(0.3),
-    nn.Linear(512, 512), nn.ReLU(),
-    nn.Linear(512, 1), nn.Tanh(),
-)
-net.load_state_dict(torch.load("examples/value_net_standard.pt"))
-net.eval()
+def board_features(x):   # material + parity — what a flat MLP can't see in raw bits
+    c = x.sum(2); om, ok, pm, pk = c[:, 0], c[:, 1], c[:, 2], c[:, 3]; total = c.sum(1)
+    return torch.stack([om/15, ok/5, pm/15, pk/5, (om + 3*ok - pm - 3*pk)/15,
+                        (ok - pk)/5, total/40, total % 2, (om + ok) % 2,
+                        om % 2, pm % 2], dim=1)
+
+class ValueNet(nn.Module):                    # ~630K params
+    def __init__(self, h=512):
+        super().__init__()
+        self.body = nn.Sequential(
+            nn.Linear(4*50 + 11, h), nn.ReLU(), nn.Dropout(0.3),
+            nn.Linear(h, h), nn.ReLU(), nn.Dropout(0.3),
+            nn.Linear(h, h), nn.ReLU(),
+            nn.Linear(h, 1), nn.Tanh(),
+        )
+    def forward(self, x):
+        flat = x.reshape(x.shape[0], -1)
+        return self.body(torch.cat([flat, board_features(x)], dim=1)).squeeze(-1)
+
+net = ValueNet(); net.load_state_dict(torch.load("examples/value_net_standard.pt")); net.eval()
 
 @torch.no_grad()
 def evaluate(board):                          # score for the side to move
-    return float(net(torch.from_numpy(board.to_tensor()).unsqueeze(0)).squeeze())
+    return float(net(torch.from_numpy(board.to_tensor()).unsqueeze(0)))
 
 @torch.no_grad()
 def search(board, depth, alpha=-1e9, beta=1e9):
