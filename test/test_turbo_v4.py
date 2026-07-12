@@ -57,3 +57,29 @@ def test_packed_eval_matches_v3_with_kings():
     for wm, wk, bm, bk, wtm in positions:
         assert turbo._evaluate(wm, wk, bm, bk, wtm) == \
             turbo_v3._evaluate(wm, wk, bm, bk, wtm)
+
+
+# --- Task 3: tall 2x4 patterns (must be a zero-weight no-op) ----------------
+
+def test_tall_pattern_indices_match_bruteforce():
+    rng = random.Random(3)
+    for _ in range(200):
+        wm = bm = 0
+        for s in rng.sample(range(50), rng.randint(4, 30)):
+            if rng.random() < 0.5:
+                wm |= turbo.BIT[s]
+            else:
+                bm |= turbo.BIT[s]
+        idxs = turbo.pattern_indices(wm, bm)
+        assert len(idxs) == turbo.N_PATTERNS_ALL
+        for p, squares in enumerate(turbo.PATTERNS_H + turbo.PATTERNS_T):
+            want = sum(
+                (1 if wm & turbo.BIT[sq] else 2 if bm & turbo.BIT[sq] else 0) * 3 ** i
+                for i, sq in enumerate(squares))
+            assert idxs[p] == want, (p, squares)
+
+
+def test_untrained_tall_patterns_are_noop():
+    # with shipped TPW1 (11-pattern) weights, tall weights are zero:
+    # scores must still equal v3 exactly (reuses the Task 2 check).
+    test_packed_eval_matches_v3_exactly()

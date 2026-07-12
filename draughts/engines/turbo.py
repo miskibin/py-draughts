@@ -214,46 +214,92 @@ def _build_patterns() -> tuple[tuple[int, ...], ...]:
     return tuple(pats)
 
 
-PATTERNS = _build_patterns()
-N_PATTERNS = len(PATTERNS)
+PATTERNS_H = _build_patterns()
+PATTERNS = PATTERNS_H  # backward-compat alias (offline tooling imports this)
+N_PATTERNS = len(PATTERNS_H)
+
+# Six "tall" 2-wide x 4-tall men patterns, closed under 180-degree rotation.
+# Complement the horizontal blocks with vertical structure (files) that the
+# 4x2 horizontal patterns can't see. Zero-weight (no-op) until a trained
+# TPW2 weights file supplies them (see Task 4).
+TALL_DEFS = ((1, 0), (1, 2), (5, 1), (5, 3), (3, 1), (3, 2))  # (r0, k)
 
 
-def _build_pattern_tables():
-    """Precompute per-pattern (shift, window-mask, white-table, black-table).
+def _tall_squares(r0: int, k: int) -> tuple[int, ...]:
+    """Strip ``k`` covers squares ``{r*5+k, r*5+k+1}`` for four consecutive
+    rows ``r0..r0+3``, listed row-major (low row first) -- this is also the
+    trit order used to index the pattern's weight table."""
+    return tuple(sq for r in range(r0, r0 + 4) for sq in (r * 5 + k, r * 5 + k + 1))
+
+
+PATTERNS_T = tuple(_tall_squares(*d) for d in TALL_DEFS)
+N_PATTERNS_T = len(PATTERNS_T)
+N_PATTERNS_ALL = N_PATTERNS + N_PATTERNS_T  # 17: trainer + weight-layout contract
+N_PACKED = 36 + N_PATTERNS_ALL  # 9 chunks x 4 tables + one packed add per pattern
+
+
+def _chunk_table(
+    squares: tuple[int, ...], offset: int
+) -> tuple[int, int, tuple[int, ...], tuple[int, ...]]:
+    """Build ``(shift, window-mask, white-table, black-table)`` for a list of
+    board squares whose trit place values start at ``3 ** offset``.
 
     ``TW[v]`` / ``TB[v]`` map a masked men-bitboard window straight to the
     partial base-3 index contributed by the white / black men it contains;
-    bits outside the eight pattern squares contribute nothing, so no runtime
-    masking of stray bits is needed."""
+    bits outside the pattern squares contribute nothing, so no runtime
+    masking of stray bits is needed. Shared by the horizontal builder (one
+    chunk covering all 8 squares, offset 0) and the tall builder (two 4-square
+    chunks, offsets 0 and 4)."""
+    bits = [S2B[s] for s in squares]
+    sh = min(bits)
+    width = max(bits) - sh + 1
+    wmask = (1 << width) - 1
+    local = [(b - sh, _POW3[offset + i]) for i, b in enumerate(bits)]
+    size = 1 << width
+    tw = [0] * size
+    tb = [0] * size
+    for lb, w in local:
+        step = 1 << lb
+        # every window value whose bit lb is set gains this trit
+        for v in range(size):
+            if v & step:
+                tw[v] += w
+                tb[v] += 2 * w
+    return sh, wmask, tuple(tw), tuple(tb)
+
+
+def _build_pattern_tables(patterns: tuple[tuple[int, ...], ...]):
+    """Precompute per-pattern (shift, window-mask, white-table, black-table)
+    for 8-square patterns that fit in a single chunk (horizontal blocks span
+    only two rows, so their internal-bit window stays small)."""
     shifts: list[int] = []
     wmasks: list[int] = []
     tws: list[tuple[int, ...]] = []
     tbs: list[tuple[int, ...]] = []
-    for pat in PATTERNS:
-        bits = [S2B[s] for s in pat]
-        sh = min(bits)
-        width = max(bits) - sh + 1
-        wmask = (1 << width) - 1
-        # local bit position -> trit weight
-        local = [(b - sh, _POW3[i]) for i, b in enumerate(bits)]
-        size = 1 << width
-        tw = [0] * size
-        tb = [0] * size
-        for lb, w in local:
-            step = 1 << lb
-            # every window value whose bit lb is set gains this trit
-            for v in range(size):
-                if v & step:
-                    tw[v] += w
-                    tb[v] += 2 * w
+    for pat in patterns:
+        sh, wmask, tw, tb = _chunk_table(pat, 0)
         shifts.append(sh)
         wmasks.append(wmask)
-        tws.append(tuple(tw))
-        tbs.append(tuple(tb))
+        tws.append(tw)
+        tbs.append(tb)
     return tuple(shifts), tuple(wmasks), tuple(tws), tuple(tbs)
 
 
-_PAT_SH, _PAT_WM, _PAT_TW, _PAT_TB = _build_pattern_tables()
+def _build_tall_tables(patterns: tuple[tuple[int, ...], ...]):
+    """Tall 2x4 patterns span four rows -- too wide for one lookup table --
+    so each is split into two 4-square chunks (top two rows / bottom two
+    rows), with the trit place values (3**0..3**3 / 3**4..3**7) baked into
+    each chunk's own table."""
+    out = []
+    for pat in patterns:
+        shA, mA, twA, tbA = _chunk_table(pat[:4], 0)
+        shB, mB, twB, tbB = _chunk_table(pat[4:], 4)
+        out.append((shA, mA, twA, tbA, shB, mB, twB, tbB))
+    return tuple(out)
+
+
+_PAT_SH, _PAT_WM, _PAT_TW, _PAT_TB = _build_pattern_tables(PATTERNS_H)
+_TALL = _build_tall_tables(PATTERNS_T)
 
 WEIGHTS_FILE = os.path.join(os.path.dirname(__file__), "turbo_weights.bin")
 _PAT_MAGIC = b"TPW1"
@@ -288,14 +334,30 @@ def _load_pattern_weights() -> tuple[tuple[int, ...], ...]:
 PAT_W = _load_pattern_weights()
 PAT_ACTIVE = any(any(row) for row in PAT_W)
 
+# Tall-pattern weights: the current TPW1 format only carries the 11
+# horizontal patterns, so these stay all-zero (packed) until Task 4's TPW2
+# loader lands -- a strict no-op added to keep the pattern term's shape
+# (N_PATTERNS_ALL) stable for the trainer.
+PAT_WT: tuple[tuple[int, ...], ...] = tuple(
+    (pack(0, 0),) * PAT_ENTRIES for _ in range(N_PATTERNS_T)
+)
+
 
 def pattern_indices(wm: int, bm: int) -> list[int]:
-    """Base-3 pattern indices for a position (used by the offline trainer)."""
+    """Base-3 pattern indices for a position, horizontal then tall (used by
+    the offline trainer; length == N_PATTERNS_ALL)."""
     out = []
     for p in range(N_PATTERNS):
         sh = _PAT_SH[p]
         wm_ = _PAT_WM[p]
         out.append(_PAT_TW[p][(wm >> sh) & wm_] + _PAT_TB[p][(bm >> sh) & wm_])
+    for shA, mA, twA, tbA, shB, mB, twB, tbB in _TALL:
+        out.append(
+            twA[(wm >> shA) & mA]
+            + tbA[(bm >> shA) & mA]
+            + twB[(wm >> shB) & mB]
+            + tbB[(bm >> shB) & mB]
+        )
     return out
 
 
@@ -327,7 +389,16 @@ def _evaluate(wm: int, wk: int, bm: int, bk: int, white_to_move: bool) -> int:
             s = _PAT_SH[p]
             m = _PAT_WM[p]
             acc += PAT_W[p][_PAT_TW[p][(wm >> s) & m] + _PAT_TB[p][(bm >> s) & m]]
-        n_packed = 36 + N_PATTERNS
+        for p in range(N_PATTERNS_T):
+            shA, mA, twA, tbA, shB, mB, twB, tbB = _TALL[p]
+            idx = (
+                twA[(wm >> shA) & mA]
+                + tbA[(bm >> shA) & mA]
+                + twB[(wm >> shB) & mB]
+                + tbB[(bm >> shB) & mB]
+            )
+            acc += PAT_WT[p][idx]
+        n_packed = N_PACKED
     else:
         n_packed = 36
     eg = (acc & 0xFFFFFFFF) - n_packed * PACK_K
