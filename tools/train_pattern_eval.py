@@ -154,7 +154,7 @@ def _gen_games_scan(args):
                 mv, sc = eng.get_best_move(board, with_evaluation=True)
                 if quiet:
                     sw = sc if white else -sc
-                    game_positions.append((wm, wk, bm, bk, sw))
+                    game_positions.append((wm, wk, bm, bk, sw, plies))
                 board.push(mv)
                 plies += 1
 
@@ -167,8 +167,8 @@ def _gen_games_scan(args):
 
             if len(game_positions) > cap:
                 game_positions = rng.sample(game_positions, cap)
-            for wm, wk, bm, bk, sw in game_positions:
-                samples.append((wm, wk, bm, bk, sw, res))
+            for wm, wk, bm, bk, sw, ply in game_positions:
+                samples.append((wm, wk, bm, bk, sw, res, ply))
     return samples
 
 
@@ -229,6 +229,68 @@ def generate(n_games, workers, depth, max_plies, min_open, max_open, cap, seed0)
 
 
 # ---------------------------------------------------------------------------
+# Texel-style position hygiene
+# ---------------------------------------------------------------------------
+
+def clean_samples(samples, max_abs=600.0, skip_plies=4, bucket_cap_mult=2.0,
+                  a=1.0, seed=0):
+    """Clean up Scan-labelled rollout samples before feature building.
+
+    ``samples`` are 7-tuples ``(wm, wk, bm, bk, sw, res, ply)`` as produced
+    by ``_gen_games_scan``.  Applied in order:
+
+      1. drop samples from the first ``skip_plies`` rollout plies (still
+         close to the random opening, not representative quiet positions).
+      2. drop samples where ``|a * sw| > max_abs`` (blown-out Scan scores --
+         near-certain wins/losses/mate scores carry little Texel signal and
+         can dominate the loss).
+      3. de-duplicate by board key ``(wm, wk, bm, bk)``, keeping the first
+         occurrence (the same position recurs across rollouts/games via
+         transpositions and would otherwise be over-weighted).
+      4. phase-balance: bucket the remaining samples by total man count
+         (``bit_count(wm) + bit_count(bm)``), cap each bucket at
+         ``int(bucket_cap_mult * median_nonempty_bucket_size)``, and
+         randomly (``random.Random(seed)``) down-sample buckets above the
+         cap.  Relative order is otherwise preserved.
+    """
+    out = [smp for smp in samples if smp[6] >= skip_plies]
+    out = [smp for smp in out if abs(a * smp[4]) <= max_abs]
+
+    seen = set()
+    deduped = []
+    for smp in out:
+        key = smp[0], smp[1], smp[2], smp[3]
+        if key in seen:
+            continue
+        seen.add(key)
+        deduped.append(smp)
+    out = deduped
+
+    buckets: dict = {}
+    for i, smp in enumerate(out):
+        wm, bm = smp[0], smp[2]
+        men_total = bin(wm).count("1") + bin(bm).count("1")
+        buckets.setdefault(men_total, []).append(i)
+
+    sizes = sorted(len(idxs) for idxs in buckets.values() if idxs)
+    if not sizes:
+        return out
+    mid = len(sizes) // 2
+    median = (sizes[mid] if len(sizes) % 2
+              else (sizes[mid - 1] + sizes[mid]) / 2.0)
+    cap = int(bucket_cap_mult * median)
+
+    rng = random.Random(seed)
+    keep = set()
+    for idxs in buckets.values():
+        if len(idxs) > cap:
+            keep.update(rng.sample(idxs, cap))
+        else:
+            keep.update(idxs)
+    return [smp for i, smp in enumerate(out) if i in keep]
+
+
+# ---------------------------------------------------------------------------
 # Feature extraction + 180-degree augmentation
 # ---------------------------------------------------------------------------
 
@@ -282,8 +344,11 @@ def _base_white(v2, wm, wk, bm, bk, mode):
 def build_features(samples, mode="full"):
     """Return (base, cells, result, scan) numpy arrays incl. augmented mirrors.
 
-    Samples may be 5-tuples (wm,wk,bm,bk,result) or 6-tuples
-    (wm,wk,bm,bk,scan_white,result).  ``scan`` is NaN when unavailable.
+    Samples may be 5-tuples (wm,wk,bm,bk,result), 6-tuples
+    (wm,wk,bm,bk,scan_white,result), or 7-tuples
+    (wm,wk,bm,bk,scan_white,result,ply) -- the trailing ``ply`` (rollout
+    position, used by ``clean_samples`` for hygiene) is ignored here.
+    ``scan`` is NaN when unavailable.
     """
     import numpy as np
     import turbo_v2 as v2
@@ -304,8 +369,8 @@ def build_features(samples, mode="full"):
 
     i = 0
     for s in samples:
-        if len(s) == 6:
-            wm, wk, bm, bk, sw, res = s
+        if len(s) >= 6:
+            wm, wk, bm, bk, sw, res = s[0], s[1], s[2], s[3], s[4], s[5]
         else:
             wm, wk, bm, bk, res = s
             sw = float("nan")
@@ -472,7 +537,7 @@ def write_weights(path, w, n_pat, n_ent):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--games", type=int, default=6000)
+    ap.add_argument("--games", type=int, default=10000)
     ap.add_argument("--workers", type=int, default=10)
     ap.add_argument("--depth", type=int, default=4)
     ap.add_argument("--max-plies", type=int, default=180)
@@ -491,8 +556,8 @@ def main():
                     help="data generator: v2 self-play vs Scan self-play")
     ap.add_argument("--scan-exe", default=os.path.join(
         REPO, "scan_engine", "scan_31", "scan.exe"))
-    ap.add_argument("--move-time", type=float, default=0.05)
-    ap.add_argument("--roll-plies", type=int, default=30)
+    ap.add_argument("--move-time", type=float, default=0.15)
+    ap.add_argument("--roll-plies", type=int, default=40)
     ap.add_argument("--feat-cache", default=None,
                     help="npz cache for computed features")
     ap.add_argument("--samples-in", default=None, help="reuse pickled samples")
