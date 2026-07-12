@@ -11,9 +11,15 @@ import argparse
 import importlib
 import sys
 import time
+from pathlib import Path
 from typing import Optional
 
-from draughts import Board
+# Add project root to path (mirrors tools/generate_benchmark_charts.py) so
+# `tools.checkpoints.*` is importable and the repo's `draughts` package wins
+# over any foreign copy in site-packages.
+sys.path.insert(0, str(Path(__file__).parent.parent))
+
+from draughts import Board  # noqa: E402
 
 
 # Test positions: opening, midgame, endgame-with-kings, complex
