@@ -393,6 +393,178 @@ def build_features(samples, mode="full"):
 
 
 # ---------------------------------------------------------------------------
+# v4: sparse COO features (phase-tapered patterns + king PST) + fixed base
+#
+# The v4 weight vector is one flat array laid out as (see
+# .superpowers/sdd/v4-shared-constants.md):
+#
+#   cols 0 .. KBASE-1 : men patterns, col = (p*6561 + idx)*2 + (0=mg | 1=eg)
+#                       with global pattern index p in 0..16 (11 horizontal
+#                       then 6 tall, matching turbo.pattern_indices' order).
+#   KBASE = 17*6561*2 : white-king PST, col = KBASE + sq*2 + (0=mg | 1=eg).
+#
+# Every emitted feature is phase-scaled: mg cols carry ``ph`` and eg cols
+# carry ``1-ph`` (ph = min(men, 40)/40, kings excluded), so a fitted weight
+# pair (wmg, weg) reproduces turbo's ``(mg*men + eg*(40-men))/40`` blend.
+# A black king on square s mirrors the white table at square 49-s, negated
+# (val = -ph / -(1-ph)), exactly as turbo's BK table mirrors WK.
+# ---------------------------------------------------------------------------
+
+def _rot_map_turbo():
+    """Internal-bit 180-degree remap (square s -> 49-s) using the live
+    turbo layout, so v4 augmentation doesn't depend on the ephemeral
+    ``turbo_v2`` checkpoint being importable."""
+    from draughts.engines.turbo import S2B
+    return {S2B[s]: S2B[49 - s] for s in range(50)}
+
+
+def _v3_king_sq_val(v3, sq):
+    """v3's per-square hand king value (white perspective), reproducing the
+    ``k = KING_VALUE + KING_CENTER_BONUS*(min(row,9-row)+min(f,9-f))//2``
+    folded into v3's WK_T/BK_T tables (wk_pst[sq] == bk_pst[sq] there)."""
+    row = sq // 5
+    f = v3._file_of(sq)
+    return v3.KING_VALUE + v3.KING_CENTER_BONUS * (
+        min(row, 9 - row) + min(f, 9 - f)
+    ) // 2
+
+
+def _king_pst_sum_v3(v3, wk, bk):
+    """v3's white-perspective hand king-PST contribution: sum of per-square
+    king values for white kings minus black kings (matches the WK_T/BK_T
+    terms inside ``v3._evaluate``)."""
+    from draughts.engines.turbo import B2S
+    s = 0
+    b = wk
+    while b:
+        lsb = b & -b
+        s += _v3_king_sq_val(v3, B2S[lsb.bit_length() - 1])
+        b ^= lsb
+    b = bk
+    while b:
+        lsb = b & -b
+        s -= _v3_king_sq_val(v3, B2S[lsb.bit_length() - 1])
+        b ^= lsb
+    return s
+
+
+def _base_white_v4(v3, wm, wk, bm, bk):
+    """v4 fixed base eval (white perspective).
+
+    Takes the frozen v3 hand+pattern eval, *removes* the hand king positional
+    PST (both the flat KING_VALUE material and the center bonus folded into
+    it), and adds back flat ``KING_VALUE * (n_wk - n_bk)`` material. The king
+    positional value is then re-learned by the trainable king PST features;
+    ``turbo._build_eval_tables(king_pst)`` scores white square s as
+    ``pack(KING_VALUE + kmg[s], KING_VALUE + keg[s])``, so the learned weight
+    is a delta over this flat KING_VALUE.
+    """
+    from draughts.engines.turbo import KING_VALUE
+    full = v3._evaluate(wm, wk, bm, bk, True)
+    kps = _king_pst_sum_v3(v3, wk, bk)
+    n_wk = wk.bit_count()
+    n_bk = bk.bit_count()
+    return float(full - kps + KING_VALUE * (n_wk - n_bk))
+
+
+def _base_scan_arrays(samples):
+    """(base, scan) numpy arrays over the *raw* (un-augmented) samples, used
+    to fit the Scan->engine-cp scale ``a`` before cleaning/feature building."""
+    import numpy as np
+    from tools.checkpoints import turbo_v3 as v3
+
+    n = len(samples)
+    base = np.empty(n, dtype=np.float64)
+    scan = np.empty(n, dtype=np.float64)
+    for i, smp in enumerate(samples):
+        base[i] = _base_white_v4(v3, smp[0], smp[1], smp[2], smp[3])
+        scan[i] = smp[4] if len(smp) >= 5 else float("nan")
+    return base, scan
+
+
+def build_features_coo(samples, a=1.0):
+    """Sparse COO features for the v4 regression, with 180-degree mirrors.
+
+    Returns ``(base, rows, cols, vals, target)`` where ``base`` and
+    ``target`` are per-row (length ``2*len(samples)`` incl. mirrors) and
+    ``rows/cols/vals`` are parallel COO arrays. The regression eval is
+    ``E = base + bincount(rows, w[cols]*vals)`` and ``target = a * scan``
+    (mirror rows negate the Scan label, as in ``build_features``).
+    """
+    import numpy as np
+    from tools.checkpoints import turbo_v3 as v3
+    from draughts.engines.turbo import (
+        pattern_indices,
+        N_PATTERNS_ALL,
+        PAT_ENTRIES,
+        B2S,
+    )
+
+    KBASE = N_PATTERNS_ALL * PAT_ENTRIES * 2
+    remap = _rot_map_turbo()
+
+    N = len(samples) * 2
+    base = np.empty(N, dtype=np.float64)
+    target = np.empty(N, dtype=np.float64)
+    rows: list[int] = []
+    cols: list[int] = []
+    vals: list[float] = []
+
+    def emit(r, wm, wk, bm, bk):
+        men = bin(wm).count("1") + bin(bm).count("1")
+        if men > 40:
+            men = 40
+        ph = men / 40.0
+        eg = 1.0 - ph
+        for p, idx in enumerate(pattern_indices(wm, bm)):
+            c = (p * PAT_ENTRIES + idx) * 2
+            rows.append(r); cols.append(c); vals.append(ph)
+            rows.append(r); cols.append(c + 1); vals.append(eg)
+        b = wk
+        while b:
+            lsb = b & -b
+            s = B2S[lsb.bit_length() - 1]
+            c = KBASE + s * 2
+            rows.append(r); cols.append(c); vals.append(ph)
+            rows.append(r); cols.append(c + 1); vals.append(eg)
+            b ^= lsb
+        b = bk
+        while b:
+            lsb = b & -b
+            s = B2S[lsb.bit_length() - 1]
+            c = KBASE + (49 - s) * 2
+            rows.append(r); cols.append(c); vals.append(-ph)
+            rows.append(r); cols.append(c + 1); vals.append(-eg)
+            b ^= lsb
+
+    i = 0
+    for smp in samples:
+        wm, wk, bm, bk = smp[0], smp[1], smp[2], smp[3]
+        sw = smp[4] if len(smp) >= 5 else 0.0
+        base[i] = _base_white_v4(v3, wm, wk, bm, bk)
+        target[i] = a * sw
+        emit(i, wm, wk, bm, bk)
+        i += 1
+        # 180-degree rotate + colour swap; Scan label negates.
+        rwm = _rot_bb(bm, remap)
+        rbm = _rot_bb(wm, remap)
+        rwk = _rot_bb(bk, remap)
+        rbk = _rot_bb(wk, remap)
+        base[i] = _base_white_v4(v3, rwm, rwk, rbm, rbk)
+        target[i] = a * (-sw)
+        emit(i, rwm, rwk, rbm, rbk)
+        i += 1
+
+    return (
+        base,
+        np.asarray(rows, dtype=np.int64),
+        np.asarray(cols, dtype=np.int64),
+        np.asarray(vals, dtype=np.float64),
+        target,
+    )
+
+
+# ---------------------------------------------------------------------------
 # Texel fit (Adam gradient descent, full batch)
 # ---------------------------------------------------------------------------
 
@@ -522,6 +694,73 @@ def fit_regression(base, cells, target, n_weights, lam, iters, lr,
             float(np.sqrt(np.mean(rv ** 2))), base_val_rmse)
 
 
+def fit_regression_coo(base, rows, cols, vals, target, n_weights, lam, iters,
+                       lr, val_frac=0.1, seed=0):
+    """Least-squares fit of sparse COO features toward ``target`` (Adam).
+
+    ``E = base + bincount(rows, w[cols]*vals)`` per row; the gradient is
+    ``gw = bincount(cols, (2/Ntr)*resid[rows]*vals) + 2*lam*w`` with the
+    residuals of the held-out validation rows masked to zero so the split is
+    leak-free while keeping the brief's single-bincount form. Returns
+    ``(w, train_rmse, val_rmse, base_val_rmse)``.
+    """
+    import numpy as np
+    base = np.asarray(base, dtype=np.float64)
+    target = np.asarray(target, dtype=np.float64)
+    rows = np.asarray(rows, dtype=np.int64)
+    cols = np.asarray(cols, dtype=np.int64)
+    vals = np.asarray(vals, dtype=np.float64)
+
+    N = len(base)
+    rng = np.random.default_rng(seed)
+    perm = rng.permutation(N)
+    n_val = int(N * val_frac)
+    is_val = np.zeros(N, dtype=bool)
+    is_val[perm[:n_val]] = True
+    tr_mask = ~is_val
+    Ntr = int(tr_mask.sum())
+
+    base_val_rmse = (
+        float(np.sqrt(np.mean((base[is_val] - target[is_val]) ** 2)))
+        if n_val else float("nan")
+    )
+
+    w = np.zeros(n_weights, dtype=np.float64)
+    mw = np.zeros_like(w)
+    vw = np.zeros_like(w)
+    b1, b2, eps = 0.9, 0.999, 1e-8
+
+    for t in range(1, iters + 1):
+        E = base + np.bincount(rows, weights=w[cols] * vals, minlength=N)
+        resid = E - target
+        g_resid = resid.copy()
+        g_resid[is_val] = 0.0  # leak-free: val rows contribute no gradient
+        gw = np.bincount(
+            cols, weights=(2.0 / Ntr) * g_resid[rows] * vals,
+            minlength=n_weights,
+        )
+        gw += 2.0 * lam * w
+        mw = b1 * mw + (1 - b1) * gw
+        vw = b2 * vw + (1 - b2) * gw * gw
+        w -= lr * (mw / (1 - b1 ** t)) / (np.sqrt(vw / (1 - b2 ** t)) + eps)
+
+        if t % 50 == 0 or t == iters:
+            tr_rmse = float(np.sqrt(np.mean(resid[tr_mask] ** 2)))
+            v_rmse = (float(np.sqrt(np.mean(resid[is_val] ** 2)))
+                      if n_val else float("nan"))
+            print(f"  iter {t:4d}  train_rmse={tr_rmse:.2f}  "
+                  f"val_rmse={v_rmse:.2f}  (base {base_val_rmse:.2f})  "
+                  f"|w|max={np.abs(w).max():.1f}  "
+                  f"nz={int(np.count_nonzero(np.abs(w) > 0.5))}", flush=True)
+
+    E = base + np.bincount(rows, weights=w[cols] * vals, minlength=N)
+    resid = E - target
+    tr_rmse = float(np.sqrt(np.mean(resid[tr_mask] ** 2)))
+    v_rmse = (float(np.sqrt(np.mean(resid[is_val] ** 2)))
+              if n_val else float("nan"))
+    return w, tr_rmse, v_rmse, base_val_rmse
+
+
 def write_weights(path, w, n_pat, n_ent):
     import numpy as np
     wi = np.clip(np.round(w), -32000, 32000).astype("<i2")
@@ -533,7 +772,98 @@ def write_weights(path, w, n_pat, n_ent):
           f"nonzero={int(np.count_nonzero(wi))}/{len(wi)})")
 
 
+def write_weights_tpw2(path, w):
+    """Write the flat v4 weight vector as a TPW2 file, exactly as
+    ``turbo._load_weights_file`` reads it: ``TPW2`` magic, ``<HHHH`` header
+    (nH, nT, entries, n_king), then int16 men weights (mg/eg interleaved,
+    ``(nH+nT)*6561*2`` of them) followed by int16 king weights (``50*2``,
+    mg/eg interleaved). The men block is ``w[:KBASE]`` verbatim and the king
+    block is ``w[KBASE:KBASE+100]`` verbatim -- the trainer layout and the
+    file layout share one index formula, so no reshuffle is needed.
+    """
+    import numpy as np
+    from draughts.engines.turbo import N_PATTERNS, N_PATTERNS_T, PAT_ENTRIES
+
+    KBASE = (N_PATTERNS + N_PATTERNS_T) * PAT_ENTRIES * 2
+    w = np.asarray(w, dtype=np.float64)
+    men = np.clip(np.round(w[:KBASE]), -32000, 32000).astype("<i2")
+    king = np.clip(np.round(w[KBASE:KBASE + 100]), -32000, 32000).astype("<i2")
+    with open(path, "wb") as f:
+        f.write(b"TPW2")
+        f.write(struct.pack("<HHHH", N_PATTERNS, N_PATTERNS_T, PAT_ENTRIES, 50))
+        f.write(men.tobytes())
+        f.write(king.tobytes())
+    print(f"wrote {path} ({os.path.getsize(path)} bytes, TPW2, "
+          f"men_nz={int(np.count_nonzero(men))}/{len(men)}  "
+          f"king_nz={int(np.count_nonzero(king))}/{len(king)})")
+
+
 # ---------------------------------------------------------------------------
+
+def _load_or_generate_samples(args):
+    """Reuse pickled ``--samples-in`` if present, else self-play generate.
+    Scan-labelled rollouts (7-tuples) when ``--label scan``, else v2 self-play
+    5-tuples. Shared by ``--gen-only`` and the ``--v4`` training path."""
+    if args.samples_in and os.path.exists(args.samples_in):
+        print(f"loading samples from {args.samples_in}")
+        with open(args.samples_in, "rb") as f:
+            samples = pickle.load(f)
+        print(f"  {len(samples)} samples")
+        return samples
+    if args.label == "scan":
+        return generate_scan(
+            args.games, args.workers, args.scan_exe, args.move_time,
+            args.roll_plies, args.min_open, args.max_open, args.cap, args.seed,
+        )
+    return generate(
+        args.games, args.workers, args.depth, args.max_plies,
+        args.min_open, args.max_open, args.cap, args.seed,
+    )
+
+
+def _train_v4(args):
+    """v4 training pipeline: generate -> fit Scan/engine scale a -> clean ->
+    COO features -> least-squares fit -> TPW2 weights.
+
+    Ordering note: ``a`` is fit on the RAW base/scan of ALL generated samples
+    first, so ``clean_samples``' ``max_abs`` (default 600) filters in engine-cp
+    units; only then are the surviving samples turned into COO features with
+    the same ``a`` applied to the target (target = a * scan)."""
+    import numpy as np
+    from draughts.engines.turbo import N_PATTERNS_ALL, PAT_ENTRIES
+
+    samples = _load_or_generate_samples(args)
+    if args.samples_out:
+        with open(args.samples_out, "wb") as f:
+            pickle.dump(samples, f)
+        print(f"saved {len(samples)} samples -> {args.samples_out}")
+
+    # Fit Scan -> engine-cp scale on raw samples (before any hygiene).
+    base_all, scan_all = _base_scan_arrays(samples)
+    denom = float(np.sum(scan_all * scan_all))
+    a = float(np.sum(base_all * scan_all) / denom) if denom else 1.0
+    print(f"scan->engine-cp scale a={a:.4f}  "
+          f"(base std={base_all.std():.1f}cp, "
+          f"scan std={scan_all.std():.1f})")
+
+    cleaned = clean_samples(samples, max_abs=600.0, a=a, seed=args.seed)
+    print(f"clean_samples: {len(samples)} -> {len(cleaned)} samples")
+
+    base, rows, cols, vals, target = build_features_coo(cleaned, a=a)
+    KBASE = N_PATTERNS_ALL * PAT_ENTRIES * 2
+    n_weights = KBASE + 100
+    print(f"  COO features: N={len(base)} rows (incl. mirrors)  "
+          f"nnz={len(rows)}  n_weights={n_weights}")
+
+    w, tr_rmse, val_rmse, base_rmse = fit_regression_coo(
+        base, rows, cols, vals, target, n_weights,
+        args.lam, args.iters, args.lr,
+    )
+    gap = (100 * (base_rmse - val_rmse) / base_rmse) if base_rmse else 0.0
+    print(f"trained: train_rmse={tr_rmse:.2f}  val_rmse={val_rmse:.2f}  "
+          f"(base {base_rmse:.2f})  gap_closed={gap:.1f}%")
+    write_weights_tpw2(args.out, w)
+
 
 def main():
     ap = argparse.ArgumentParser()
@@ -566,9 +896,29 @@ def main():
         "--out",
         default=os.path.join(REPO, "draughts", "engines", "turbo_weights.bin"),
     )
+    ap.add_argument("--v4", action="store_true",
+                    help="v4 path: COO tapered patterns + king PST -> TPW2")
+    ap.add_argument("--gen-only", action="store_true",
+                    help="generate + save samples (--samples-out) then exit")
     args = ap.parse_args()
 
     import numpy as np
+
+    if args.gen_only:
+        samples = _load_or_generate_samples(args)
+        if args.samples_out:
+            with open(args.samples_out, "wb") as f:
+                pickle.dump(samples, f)
+            print(f"saved {len(samples)} samples -> {args.samples_out}")
+        else:
+            print(f"generated {len(samples)} samples "
+                  "(no --samples-out; nothing written)")
+        return
+
+    if args.v4:
+        _train_v4(args)
+        return
+
     if args.feat_cache and os.path.exists(args.feat_cache):
         print(f"loading feature cache {args.feat_cache}")
         d = np.load(args.feat_cache)
