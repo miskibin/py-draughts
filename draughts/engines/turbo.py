@@ -97,9 +97,30 @@ def _file_of(sq: int) -> int:
     return 2 * col + 1 if row % 2 == 0 else 2 * col
 
 
+# ---------------------------------------------------------------------------
+# Tapered (mg/eg) packed-score infrastructure (v4).
+#
+# Each chunk-table / pattern-table entry packs a middlegame and endgame
+# score into one Python int so the hot per-chunk loop does a single add
+# instead of two. White tables store pack(mg, eg); black tables store the
+# *negated* pack(-mg, -eg) so the hot loop only ever adds (never subtracts).
+# The accumulator is unpacked once per node with a fixed, compile-time
+# constant for the number of packed adds it received (N_PACKED).
+# ---------------------------------------------------------------------------
+
+PACK_SHIFT = 32
+PACK_K = 1 << 15  # per-entry offset so packed fields stay non-negative
+PHASE_MAX = 40  # total men at game start
+
+
+def pack(mg: int, eg: int) -> int:
+    return ((mg + PACK_K) << PACK_SHIFT) | (eg + PACK_K)
+
+
 def _build_eval_tables():
     """Per-square scores folded (material + PST), then chunked into
-    9 lookup tables of 128 entries per bitboard type for O(9) evaluation."""
+    9 lookup tables of 128 entries per bitboard type for O(9) evaluation.
+    Entries are packed (mg, eg) scores; black tables store negated packs."""
     wm_pst = [0] * 50
     bm_pst = [0] * 50
     wk_pst = [0] * 50
@@ -122,7 +143,7 @@ def _build_eval_tables():
         wk_pst[sq] = k
         bk_pst[sq] = k
 
-    def chunk(pst: list[int]) -> tuple[tuple[int, ...], ...]:
+    def chunk(pst: list[int], negate: bool) -> tuple[tuple[int, ...], ...]:
         tables = []
         for c in range(9):
             lo = c * 7
@@ -137,11 +158,16 @@ def _build_eval_tables():
                     if sq is not None:
                         s += pst[sq]
                     bits ^= lsb
-                t[v] = s
+                t[v] = pack(-s, -s) if negate else pack(s, s)
             tables.append(tuple(t))
         return tuple(tables)
 
-    return chunk(wm_pst), chunk(wk_pst), chunk(bm_pst), chunk(bk_pst)
+    return (
+        chunk(wm_pst, False),
+        chunk(wk_pst, False),
+        chunk(bm_pst, True),
+        chunk(bk_pst, True),
+    )
 
 
 WM_T, WK_T, BM_T, BK_T = _build_eval_tables()
@@ -235,7 +261,10 @@ _PAT_MAGIC = b"TPW1"
 
 def _load_pattern_weights() -> tuple[tuple[int, ...], ...]:
     """Load trained int16 pattern weights, or fall back to all-zeros (which
-    makes the pattern term a no-op, i.e. identical to the v2 hand eval)."""
+    makes the pattern term a no-op, i.e. identical to the v2 hand eval).
+    Loaded weights are packed pack(w, w) (mg == eg until v4 training lands);
+    the all-zeros fallback stays a plain-int no-op, never touched by
+    _evaluate while PAT_ACTIVE is False."""
     zeros = tuple((0,) * PAT_ENTRIES for _ in range(N_PATTERNS))
     try:
         with open(WEIGHTS_FILE, "rb") as f:
@@ -249,7 +278,8 @@ def _load_pattern_weights() -> tuple[tuple[int, ...], ...]:
             "<%dh" % (n_pat * n_ent), data, 8
         )
         return tuple(
-            tuple(vals[p * n_ent : (p + 1) * n_ent]) for p in range(n_pat)
+            tuple(pack(w, w) for w in vals[p * n_ent : (p + 1) * n_ent])
+            for p in range(n_pat)
         )
     except (OSError, struct.error):
         return zeros
@@ -275,25 +305,46 @@ RIGHT_MASK = sum(BIT[s] for s in range(50) if _file_of(s) >= 6)
 
 
 def _evaluate(wm: int, wk: int, bm: int, bk: int, white_to_move: bool) -> int:
-    """Static evaluation, side-to-move relative. No allocations."""
-    score = 0
+    """Static evaluation, side-to-move relative. No allocations.
+
+    The chunk/pattern tables hold packed (mg, eg) scores (black tables
+    negated), so the hot per-chunk loop is a single accumulating add; mg
+    and eg are unpacked once and phase-blended by man count. Until v4
+    training lands, every table has mg == eg, so the blend is an identity
+    and this is byte-identical to the v3 scalar eval (see
+    test/test_turbo_v4.py)."""
+    acc = 0
     for c in range(9):
         sh = c * 7
-        score += (
+        acc += (
             WM_T[c][(wm >> sh) & 127]
             + WK_T[c][(wk >> sh) & 127]
-            - BM_T[c][(bm >> sh) & 127]
-            - BK_T[c][(bk >> sh) & 127]
+            + BM_T[c][(bm >> sh) & 127]
+            + BK_T[c][(bk >> sh) & 127]
         )
+    if PAT_ACTIVE:
+        for p in range(N_PATTERNS):
+            s = _PAT_SH[p]
+            m = _PAT_WM[p]
+            acc += PAT_W[p][_PAT_TW[p][(wm >> s) & m] + _PAT_TB[p][(bm >> s) & m]]
+        n_packed = 36 + N_PATTERNS
+    else:
+        n_packed = 36
+    eg = (acc & 0xFFFFFFFF) - n_packed * PACK_K
+    mg = (acc >> PACK_SHIFT) - n_packed * PACK_K
+    men = wm.bit_count() + bm.bit_count()
+    if men > PHASE_MAX:
+        men = PHASE_MAX
+    score = (mg * men + eg * (PHASE_MAX - men)) // PHASE_MAX
+    # Mobility + left/right balance stay plain ints, added after the blend
+    # (hand terms with no mg/eg split).
     empty = SQ_MASK ^ (wm | wk | bm | bk)
-    # Cheap mobility: quiet man moves (kings excluded - rarely material).
     score += MOBILITY_WEIGHT * (
         ((wm >> 6) & empty).bit_count()
         + ((wm >> 7) & empty).bit_count()
         - ((bm << 6) & empty).bit_count()
         - ((bm << 7) & empty).bit_count()
     )
-    # Left/right balance: lopsided formations are weak.
     w_all = wm | wk
     b_all = bm | bk
     score -= SKEW_WEIGHT * abs(
@@ -302,20 +353,6 @@ def _evaluate(wm: int, wk: int, bm: int, bk: int, white_to_move: bool) -> int:
     score += SKEW_WEIGHT * abs(
         (b_all & LEFT_MASK).bit_count() - (b_all & RIGHT_MASK).bit_count()
     )
-    # Trained pattern correction over MEN (white-perspective). Skipped when
-    # weights are all zero so a missing weights file costs nothing.
-    if PAT_ACTIVE:
-        sh = _PAT_SH
-        wmk = _PAT_WM
-        tw = _PAT_TW
-        tb = _PAT_TB
-        pw = PAT_W
-        pscore = 0
-        for p in range(N_PATTERNS):
-            s = sh[p]
-            m = wmk[p]
-            pscore += pw[p][tw[p][(wm >> s) & m] + tb[p][(bm >> s) & m]]
-        score += pscore
     return score if white_to_move else -score
 
 
