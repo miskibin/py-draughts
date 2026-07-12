@@ -464,6 +464,10 @@ class TurboEngine(Engine):
         self.nodes = 0
         self._deadline: Optional[float] = None
         self._path: set = set()
+        # Best fully-resolved root move of the current (possibly aborted) ID
+        # iteration, so a timed-out iteration's work is not wasted.
+        self._partial_mv: Optional[tuple[int, int, int]] = None
+        self._partial_score = -INF
 
     # -- public API ---------------------------------------------------------
 
@@ -514,6 +518,10 @@ class TurboEngine(Engine):
         score = 0
         try:
             for depth in range(1, max_depth + 1):
+                # Reset per-depth partial tracker: if this iteration is aborted
+                # by the deadline, we still adopt the best move it resolved.
+                self._partial_mv = None
+                self._partial_score = -INF
                 alpha, beta = -INF, INF
                 if depth >= 4:
                     margin = 15
@@ -535,7 +543,10 @@ class TurboEngine(Engine):
                 if abs(score) > MATE - 256:
                     break
         except _Timeout:
-            pass
+            # Salvage the aborted iteration: if it resolved at least one root
+            # move (searched deeper than the last completed iteration), play it.
+            if self._partial_mv is not None:
+                best_mv, best_score = self._partial_mv, self._partial_score
         return best_mv, best_score if best_score != -INF else score
 
     def _root_iter(
@@ -573,6 +584,11 @@ class TurboEngine(Engine):
                         )
                 if sc > best:
                     best, best_mv = sc, mv
+                    # Record for deadline salvage: best root move resolved at
+                    # this depth so far (across aspiration re-searches).
+                    if sc > self._partial_score:
+                        self._partial_score = sc
+                        self._partial_mv = mv
                 if sc > alpha:
                     alpha = sc
                 if alpha >= beta:
@@ -704,7 +720,7 @@ class TurboEngine(Engine):
 
                 red = 0
                 if not captures and depth >= 3 and i >= 3 and best > -INF:
-                    red = 1 if i < 6 else 2
+                    red = 1
 
                 if i == 0:
                     sc = -self._negamax(
@@ -747,7 +763,12 @@ class TurboEngine(Engine):
 
         if flag == TT_FLAG_EXACT and best <= orig_alpha:
             flag = TT_FLAG_UPPER
-        tt[key] = (depth, flag, best, best_move)
+        # Depth-preferred replacement: don't let shallow searches (e.g. the
+        # forward-pruning verification) clobber deeper analysis; always keep
+        # exact PV entries.
+        cur = tt.get(key)
+        if cur is None or depth >= cur[0] or flag == TT_FLAG_EXACT:
+            tt[key] = (depth, flag, best, best_move)
         return best
 
     def _qs_quiet(
