@@ -14,6 +14,12 @@ pure Python:
   one-ply threat extension at the horizon (anti-horizon-effect, as in Scan).
 - Integer evaluation computed straight from the bitboards via chunked
   lookup tables (9 x 7-bit chunks per bitboard).
+- Trained pattern evaluation (v3): eleven overlapping 4x2 blocks of men
+  squares indexed in base 3 (empty/white/black), weights learned by
+  regressing the hand eval + patterns toward the Scan 3.1 engine's search
+  score on ~294k quiet self-play positions (see tools/train_pattern_eval.py).
+  Weights load from ``turbo_weights.bin``; if the file is missing the
+  pattern term is zero and the eval falls back to the v2 hand eval.
 
 The engine only supports the standard international board
 (``SQUARES_COUNT == 50``); it converts the public board to its internal
@@ -22,6 +28,8 @@ layout at the root and maps the chosen move back onto ``board.legal_moves``.
 
 from __future__ import annotations
 
+import os
+import struct
 import time
 from typing import Optional
 
@@ -138,6 +146,129 @@ def _build_eval_tables():
 
 WM_T, WK_T, BM_T, BK_T = _build_eval_tables()
 
+# ---------------------------------------------------------------------------
+# Trained pattern evaluation (v3)
+#
+# Scan/Kingsrow's decisive structural lever: overlapping local MEN patterns
+# whose weights are learned from game outcomes (Texel tuning), added as a
+# correction on top of the frozen v2 hand eval.  Kings stay scalar (rare).
+#
+# Each pattern is a 4-wide x 2-tall block of board squares (a diamond cluster
+# of mutually-diagonal men in real draughts geometry).  Every square is
+# encoded as a base-3 trit (0 empty / 1 white man / 2 black man), giving a
+# 3^8 = 6561-entry weight table per pattern.  The trit index is extracted with
+# two shifts + two masks + two table lookups per pattern (no per-square loop):
+# each block spans <= 12 internal bits, so a 2^12 lookup table maps the men
+# bitboard window straight to its partial base-3 index.
+# ---------------------------------------------------------------------------
+
+PAT_TRITS = 8
+PAT_ENTRIES = 3 ** PAT_TRITS  # 6561
+_POW3 = tuple(3 ** i for i in range(PAT_TRITS))
+
+
+def _build_patterns() -> tuple[tuple[int, ...], ...]:
+    """Board-square membership (8 squares each) of the overlapping men
+    patterns.  Deterministic; shared verbatim by the offline trainer."""
+
+    def block(r: int, c0: int) -> tuple[int, ...]:
+        return tuple(
+            [r * 5 + c for c in range(c0, c0 + 4)]
+            + [(r + 1) * 5 + c for c in range(c0, c0 + 4)]
+        )
+
+    pats: list[tuple[int, ...]] = []
+    # Nine overlapping row-pairs, alternating horizontal window so every file
+    # is covered; plus a second window on the top and bottom bands so the two
+    # corner squares (4 and 49) are covered too.
+    for r in range(9):
+        pats.append(block(r, 0 if r % 2 == 0 else 1))
+    pats.append(block(0, 1))
+    pats.append(block(8, 1))
+    return tuple(pats)
+
+
+PATTERNS = _build_patterns()
+N_PATTERNS = len(PATTERNS)
+
+
+def _build_pattern_tables():
+    """Precompute per-pattern (shift, window-mask, white-table, black-table).
+
+    ``TW[v]`` / ``TB[v]`` map a masked men-bitboard window straight to the
+    partial base-3 index contributed by the white / black men it contains;
+    bits outside the eight pattern squares contribute nothing, so no runtime
+    masking of stray bits is needed."""
+    shifts: list[int] = []
+    wmasks: list[int] = []
+    tws: list[tuple[int, ...]] = []
+    tbs: list[tuple[int, ...]] = []
+    for pat in PATTERNS:
+        bits = [S2B[s] for s in pat]
+        sh = min(bits)
+        width = max(bits) - sh + 1
+        wmask = (1 << width) - 1
+        # local bit position -> trit weight
+        local = [(b - sh, _POW3[i]) for i, b in enumerate(bits)]
+        size = 1 << width
+        tw = [0] * size
+        tb = [0] * size
+        for lb, w in local:
+            step = 1 << lb
+            # every window value whose bit lb is set gains this trit
+            for v in range(size):
+                if v & step:
+                    tw[v] += w
+                    tb[v] += 2 * w
+        shifts.append(sh)
+        wmasks.append(wmask)
+        tws.append(tuple(tw))
+        tbs.append(tuple(tb))
+    return tuple(shifts), tuple(wmasks), tuple(tws), tuple(tbs)
+
+
+_PAT_SH, _PAT_WM, _PAT_TW, _PAT_TB = _build_pattern_tables()
+
+WEIGHTS_FILE = os.path.join(os.path.dirname(__file__), "turbo_weights.bin")
+_PAT_MAGIC = b"TPW1"
+
+
+def _load_pattern_weights() -> tuple[tuple[int, ...], ...]:
+    """Load trained int16 pattern weights, or fall back to all-zeros (which
+    makes the pattern term a no-op, i.e. identical to the v2 hand eval)."""
+    zeros = tuple((0,) * PAT_ENTRIES for _ in range(N_PATTERNS))
+    try:
+        with open(WEIGHTS_FILE, "rb") as f:
+            data = f.read()
+        if data[:4] != _PAT_MAGIC:
+            return zeros
+        n_pat, n_ent = struct.unpack_from("<HH", data, 4)
+        if n_pat != N_PATTERNS or n_ent != PAT_ENTRIES:
+            return zeros
+        vals = struct.unpack_from(
+            "<%dh" % (n_pat * n_ent), data, 8
+        )
+        return tuple(
+            tuple(vals[p * n_ent : (p + 1) * n_ent]) for p in range(n_pat)
+        )
+    except (OSError, struct.error):
+        return zeros
+
+
+PAT_W = _load_pattern_weights()
+PAT_ACTIVE = any(any(row) for row in PAT_W)
+
+
+def pattern_indices(wm: int, bm: int) -> list[int]:
+    """Base-3 pattern indices for a position (used by the offline trainer)."""
+    out = []
+    for p in range(N_PATTERNS):
+        sh = _PAT_SH[p]
+        wm_ = _PAT_WM[p]
+        out.append(_PAT_TW[p][(wm >> sh) & wm_] + _PAT_TB[p][(bm >> sh) & wm_])
+    return out
+
+
 # Left/right board halves (files 0-3 vs 6-9) for the balance term.
 LEFT_MASK = sum(BIT[s] for s in range(50) if _file_of(s) <= 3)
 RIGHT_MASK = sum(BIT[s] for s in range(50) if _file_of(s) >= 6)
@@ -171,6 +302,20 @@ def _evaluate(wm: int, wk: int, bm: int, bk: int, white_to_move: bool) -> int:
     score += SKEW_WEIGHT * abs(
         (b_all & LEFT_MASK).bit_count() - (b_all & RIGHT_MASK).bit_count()
     )
+    # Trained pattern correction over MEN (white-perspective). Skipped when
+    # weights are all zero so a missing weights file costs nothing.
+    if PAT_ACTIVE:
+        sh = _PAT_SH
+        wmk = _PAT_WM
+        tw = _PAT_TW
+        tb = _PAT_TB
+        pw = PAT_W
+        pscore = 0
+        for p in range(N_PATTERNS):
+            s = sh[p]
+            m = wmk[p]
+            pscore += pw[p][tw[p][(wm >> s) & m] + tb[p][(bm >> s) & m]]
+        score += pscore
     return score if white_to_move else -score
 
 

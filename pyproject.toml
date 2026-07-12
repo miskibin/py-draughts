@@ -90,6 +90,7 @@ draughts = [
     "server/static/js/*",
     "server/static/css/*",
     "server/templates/*",
+    "engines/*.bin",
     "py.typed",
 ]
 
