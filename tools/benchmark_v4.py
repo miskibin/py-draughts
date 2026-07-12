@@ -52,7 +52,11 @@ CONFIGS: dict[str, dict] = {
     "slow": {"time_limit": 0.3, "games": 100, "gated": False},
 }
 
-CSV_PATH = "benchmark_results.csv"
+# Distinct, untracked results path. Deliberately NOT "benchmark_results.csv":
+# that filename is a tracked file owned by tools/compare_versions.py with a
+# different schema, and BenchmarkStats.to_csv only writes a header when the file
+# is absent -- appending here would corrupt that file. Overridable via --csv.
+DEFAULT_CSV_PATH = "benchmark_v4_results.csv"
 
 
 def _v4_scores(stats: BenchmarkStats) -> list[float]:
@@ -93,6 +97,7 @@ def run_config(
     games: int,
     workers: int,
     gated: bool,
+    csv_path: str,
 ) -> dict:
     """Run one config, append to CSV, print a per-config report, return summary."""
     print("=" * 60)
@@ -114,7 +119,7 @@ def run_config(
         workers=workers,
     )
     stats = bench.run()
-    stats.to_csv(CSV_PATH)
+    stats.to_csv(csv_path)
 
     scores = _v4_scores(stats)
     se_elo, _p = _se_elo(scores)
@@ -198,6 +203,15 @@ def main() -> None:
         "--workers", type=int, default=6, help="Parallel worker processes (default: 6)."
     )
     parser.add_argument(
+        "--csv",
+        default=DEFAULT_CSV_PATH,
+        help=(
+            "Results CSV path (default: %(default)s). NEVER point this at the "
+            "tracked benchmark_results.csv (different schema, owned by "
+            "tools/compare_versions.py) -- appending would corrupt it."
+        ),
+    )
+    parser.add_argument(
         "--smoke",
         action="store_true",
         help="Quick end-to-end check: 1 config, games=4, time=0.05, workers=2.",
@@ -235,11 +249,12 @@ def main() -> None:
                 games=games,
                 workers=workers,
                 gated=cfg["gated"],
+                csv_path=args.csv,
             )
         )
 
     ship = print_markdown_summary(results, full_gate=full_gate)
-    print(f"\nCSV appended to: {Path(CSV_PATH).resolve()}")
+    print(f"\nCSV appended to: {Path(args.csv).resolve()}")
 
     # Exit code reflects the gate on a full run so CI / callers can branch on it.
     if full_gate:
