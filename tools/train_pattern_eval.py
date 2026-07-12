@@ -451,16 +451,33 @@ def _king_pst_sum_v3(v3, wk, bk):
 def _base_white_v4(v3, wm, wk, bm, bk):
     """v4 fixed base eval (white perspective).
 
-    Takes the frozen v3 hand+pattern eval, *removes* the hand king positional
-    PST (both the flat KING_VALUE material and the center bonus folded into
-    it), and adds back flat ``KING_VALUE * (n_wk - n_bk)`` material. The king
-    positional value is then re-learned by the trainable king PST features;
-    ``turbo._build_eval_tables(king_pst)`` scores white square s as
-    ``pack(KING_VALUE + kmg[s], KING_VALUE + keg[s])``, so the learned weight
-    is a delta over this flat KING_VALUE.
+    The base is the FIXED v2 hand eval (material + men PST + mobility + skew),
+    with the hand king positional PST removed (both the flat KING_VALUE
+    material and the center bonus folded into it) and flat
+    ``KING_VALUE * (n_wk - n_bk)`` material added back. The king positional
+    value and ALL men-pattern value are then (re-)learned by the trainable v4
+    weights: ``turbo._build_eval_tables(king_pst)`` scores a white king as
+    ``pack(KING_VALUE + kmg[s], KING_VALUE + keg[s])`` (learned weight = delta
+    over flat KING_VALUE), and the men-pattern term at inference is 100% the
+    trainer's TPW2 output.
+
+    Critically the base must EXCLUDE men patterns: the frozen v3 module ships
+    trained TPW1 pattern weights (``v3.PAT_ACTIVE`` True), and v3's hand eval
+    equals v2's (v3 only added patterns on top of v2). We therefore evaluate
+    with v3's men patterns disabled. The flag is flipped with save/restore
+    rather than a bare ``v3.PAT_ACTIVE = False`` because
+    ``tools.checkpoints.turbo_v3`` is a singleton in ``sys.modules`` shared
+    with other importers (e.g. test_turbo_v4's v3-equivalence tests, which run
+    later in the same pytest session and require v3 patterns active); a bare
+    flip would leak and break them.
     """
     from draughts.engines.turbo import KING_VALUE
-    full = v3._evaluate(wm, wk, bm, bk, True)
+    saved = v3.PAT_ACTIVE
+    v3.PAT_ACTIVE = False  # base excludes learned men-patterns (trainer output)
+    try:
+        full = v3._evaluate(wm, wk, bm, bk, True)
+    finally:
+        v3.PAT_ACTIVE = saved
     kps = _king_pst_sum_v3(v3, wk, bk)
     n_wk = wk.bit_count()
     n_bk = bk.bit_count()

@@ -81,6 +81,43 @@ def test_build_features_accepts_7_tuples(monkeypatch):
 
 # --- Task 6: COO features (phase + kings) + TPW2 writer ---------------------
 
+def test_base_white_v4_excludes_men_patterns(monkeypatch):
+    """The v4 fixed base must EXCLUDE men patterns: at inference the men
+    pattern term is 100% the trainer's learned TPW2 output, not part of the
+    base. Prove ``_base_white_v4`` is invariant to the frozen v3 checkpoint's
+    pattern weights, and (non-vacuously) that those weights actually move v3's
+    own eval for this position -- so the invariance is meaningful.
+    """
+    from draughts.engines.turbo import BIT
+    from tools.checkpoints import turbo_v3 as v3
+    from tools.train_pattern_eval import _base_white_v4
+
+    # A men-only position (no kings, so base == patterns-off hand eval exactly)
+    # chosen so v3's trained patterns give a nonzero contribution (delta 12).
+    rng = random.Random(0)
+    wm = bm = 0
+    for s in rng.sample(range(50), 24):
+        if rng.random() < 0.5:
+            wm |= BIT[s]
+        else:
+            bm |= BIT[s]
+
+    assert v3.PAT_ACTIVE, "frozen v3 checkpoint is expected to ship patterns on"
+    with_pat = v3._evaluate(wm, 0, bm, 0, True)  # v3's own eval, patterns ON
+
+    base = _base_white_v4(v3, wm, 0, bm, 0)
+    # save/restore inside _base_white_v4 must leave the shared module untouched.
+    assert v3.PAT_ACTIVE, "PAT_ACTIVE leaked -- base flip was not restored"
+    # Non-vacuous: v3's patterns genuinely contribute here, yet base excludes
+    # them (with no kings, base is exactly the patterns-off hand eval).
+    assert with_pat != base, "position must exercise v3 patterns"
+
+    # Invariant to the checkpoint's pattern weights: zero them, base unchanged.
+    zero_pw = tuple((0,) * v3.PAT_ENTRIES for _ in range(v3.N_PATTERNS))
+    monkeypatch.setattr(v3, "PAT_W", zero_pw)
+    assert _base_white_v4(v3, wm, 0, bm, 0) == base
+
+
 def test_coo_fit_recovers_planted_king_weight(tmp_path, monkeypatch):
     """Synthetic planted-signal recovery + writer/loader round-trip.
 
