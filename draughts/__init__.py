@@ -62,6 +62,7 @@ from draughts.engines.engine import Engine
 
 # Engines
 from draughts.engines.hub import HubEngine
+from draughts.engines.turbo import TurboEngine
 from draughts.models import Color, Figure
 from draughts.move import Move
 from draughts.server.server import Server
@@ -81,6 +82,7 @@ __all__ = [
     # Engines
     "Engine",
     "AlphaBetaEngine",
+    "TurboEngine",
     "HubEngine",
     # Agents (AI interface)
     "Agent",

@@ -55,6 +55,26 @@ Depth         Avg Time      Avg Nodes
    :alt: Engine Benchmark
    :width: 500px
 
+TurboEngine
+-----------
+
+The strongest built-in engine, for the standard international (10x10) board
+only. It uses Scan's 63-bit bitboard layout, a PVS search with transposition
+table, and a machine-learned pattern evaluation trained on Scan self-play.
+At equal time per move it beats :class:`~draughts.AlphaBetaEngine` by several
+hundred Elo while using less time.
+
+.. code-block:: python
+
+    from draughts import Board, TurboEngine
+
+    board = Board()
+    engine = TurboEngine(time_limit=0.5)   # or depth_limit=...
+    move, score = engine.get_best_move(board, with_evaluation=True)
+
+.. autoclass:: draughts.TurboEngine
+    :members: __init__, get_best_move
+
 HubEngine
 ---------
 

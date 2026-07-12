@@ -219,6 +219,20 @@ Move: 32->28
 0.15
 ```
 
+### TurboEngine (strongest built-in)
+
+For the standard international (10x10) board, `TurboEngine` combines Scan's
+63-bit bitboard layout, a PVS search, and a machine-learned pattern evaluation
+trained on Scan self-play. At equal time per move it beats `AlphaBetaEngine`
+by several hundred Elo while using less time:
+
+```python
+>>> from draughts import Board, TurboEngine
+
+>>> engine = TurboEngine(time_limit=0.5)  # or depth_limit=...
+>>> move, score = engine.get_best_move(Board(), with_evaluation=True)
+```
+
 ### External Engines (Hub Protocol)
 
 Use external engines like [Scan](https://hjetten.home.xs4all.nl/scan/scan.html) via the Hub protocol:
