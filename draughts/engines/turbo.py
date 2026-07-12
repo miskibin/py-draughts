@@ -117,14 +117,19 @@ def pack(mg: int, eg: int) -> int:
     return ((mg + PACK_K) << PACK_SHIFT) | (eg + PACK_K)
 
 
-def _build_eval_tables():
+def _build_eval_tables(king_pst=None):
     """Per-square scores folded (material + PST), then chunked into
     9 lookup tables of 128 entries per bitboard type for O(9) evaluation.
-    Entries are packed (mg, eg) scores; black tables store negated packs."""
+    Entries are packed (mg, eg) scores; black tables store negated packs.
+
+    ``king_pst``, when given, is a 50-entry tuple of ``(kmg, keg)`` learned
+    deltas (white-perspective square index, from a TPW2 weights file) that
+    REPLACES the hand-crafted king center-bonus PST entirely: white square
+    ``s`` scores ``pack(KING_VALUE + kmg[s], KING_VALUE + keg[s])``; black at
+    ``s`` mirrors square ``49 - s``, negated. ``None`` (the default, and the
+    only option for TPW1 files) keeps the hand-crafted PST with mg == eg."""
     wm_pst = [0] * 50
     bm_pst = [0] * 50
-    wk_pst = [0] * 50
-    bk_pst = [0] * 50
     for sq in range(50):
         row = sq // 5
         f = _file_of(sq)
@@ -139,34 +144,51 @@ def _build_eval_tables():
         bm_pst[sq] = MAN_VALUE + ADV_BONUS[max(0, min(8, adv_b))] + center
         if row == 0:
             bm_pst[sq] += BACK_RANK_BONUS
-        k = KING_VALUE + KING_CENTER_BONUS * (min(row, 9 - row) + min(f, 9 - f)) // 2
-        wk_pst[sq] = k
-        bk_pst[sq] = k
 
-    def chunk(pst: list[int], negate: bool) -> tuple[tuple[int, ...], ...]:
+    if king_pst is None:
+        kmg = keg = [
+            KING_VALUE
+            + KING_CENTER_BONUS
+            * (min(sq // 5, 9 - sq // 5) + min(_file_of(sq), 9 - _file_of(sq)))
+            // 2
+            for sq in range(50)
+        ]
+    else:
+        kmg = [KING_VALUE + king_pst[s][0] for s in range(50)]
+        keg = [KING_VALUE + king_pst[s][1] for s in range(50)]
+    # Black king at square s uses the white table at square 49 - s, negated
+    # (kept as un-negated raw values here; chunk()'s negate flag applies the
+    # sign, mirroring how the black-man table below is built).
+    bk_mg_raw = [kmg[49 - s] for s in range(50)]
+    bk_eg_raw = [keg[49 - s] for s in range(50)]
+
+    def chunk(
+        mg_list: list[int], eg_list: list[int], negate: bool
+    ) -> tuple[tuple[int, ...], ...]:
         tables = []
         for c in range(9):
             lo = c * 7
             t = [0] * 128
             for v in range(128):
-                s = 0
+                mg_s = eg_s = 0
                 bits = v
                 while bits:
                     lsb = bits & -bits
                     b = lo + lsb.bit_length() - 1
                     sq = B2S.get(b)
                     if sq is not None:
-                        s += pst[sq]
+                        mg_s += mg_list[sq]
+                        eg_s += eg_list[sq]
                     bits ^= lsb
-                t[v] = pack(-s, -s) if negate else pack(s, s)
+                t[v] = pack(-mg_s, -eg_s) if negate else pack(mg_s, eg_s)
             tables.append(tuple(t))
         return tuple(tables)
 
     return (
-        chunk(wm_pst, False),
-        chunk(wk_pst, False),
-        chunk(bm_pst, True),
-        chunk(bk_pst, True),
+        chunk(wm_pst, wm_pst, False),
+        chunk(kmg, keg, False),
+        chunk(bm_pst, bm_pst, True),
+        chunk(bk_mg_raw, bk_eg_raw, True),
     )
 
 
@@ -302,45 +324,128 @@ _PAT_SH, _PAT_WM, _PAT_TW, _PAT_TB = _build_pattern_tables(PATTERNS_H)
 _TALL = _build_tall_tables(PATTERNS_T)
 
 WEIGHTS_FILE = os.path.join(os.path.dirname(__file__), "turbo_weights.bin")
-_PAT_MAGIC = b"TPW1"
+_PAT_MAGIC_V1 = b"TPW1"
+_PAT_MAGIC_V2 = b"TPW2"
 
 
-def _load_pattern_weights() -> tuple[tuple[int, ...], ...]:
-    """Load trained int16 pattern weights, or fall back to all-zeros (which
-    makes the pattern term a no-op, i.e. identical to the v2 hand eval).
-    Loaded weights are packed pack(w, w) (mg == eg until v4 training lands);
-    the all-zeros fallback stays a plain-int no-op, never touched by
-    _evaluate while PAT_ACTIVE is False."""
-    zeros = tuple((0,) * PAT_ENTRIES for _ in range(N_PATTERNS))
+def _load_weights_file():
+    """Read + parse ``WEIGHTS_FILE`` (TPW1 or TPW2 magic). Pure: touches no
+    module state, so tests can call it directly against a monkeypatched
+    ``WEIGHTS_FILE`` (see test/test_turbo_v4.py's TPW2 round-trip test).
+
+    Returns ``(pat_h, pat_t, king_pst)`` on success:
+
+    - ``pat_h``: ``N_PATTERNS`` tuples of ``PAT_ENTRIES`` packed
+      ``pack(mg, eg)`` ints (horizontal men patterns).
+    - ``pat_t``: ``N_PATTERNS_T`` tuples likewise (tall men patterns); all
+      ``pack(0, 0)`` no-ops for TPW1 files, which don't carry tall weights.
+    - ``king_pst``: ``None`` for TPW1 (caller keeps the hand king PST), or a
+      50-entry tuple of raw ``(kmg, keg)`` int pairs for TPW2
+      (white-perspective square index; caller rebuilds the king chunk
+      tables via ``_build_eval_tables(king_pst)``).
+
+    Returns ``None`` on any failure -- missing file, unrecognized magic, a
+    pattern/entry/king count mismatch against this build's layout, or
+    truncated/corrupt data -- so the caller can fall back to all-zeros
+    patterns / the hand king PST, same contract as v3.
+    """
     try:
         with open(WEIGHTS_FILE, "rb") as f:
             data = f.read()
-        if data[:4] != _PAT_MAGIC:
-            return zeros
-        n_pat, n_ent = struct.unpack_from("<HH", data, 4)
-        if n_pat != N_PATTERNS or n_ent != PAT_ENTRIES:
-            return zeros
-        vals = struct.unpack_from(
-            "<%dh" % (n_pat * n_ent), data, 8
-        )
-        return tuple(
-            tuple(pack(w, w) for w in vals[p * n_ent : (p + 1) * n_ent])
-            for p in range(n_pat)
-        )
-    except (OSError, struct.error):
-        return zeros
+    except OSError:
+        return None
+    magic = data[:4]
+    try:
+        if magic == _PAT_MAGIC_V1:
+            n_pat, n_ent = struct.unpack_from("<HH", data, 4)
+            if n_pat != N_PATTERNS or n_ent != PAT_ENTRIES:
+                return None
+            vals = struct.unpack_from("<%dh" % (n_pat * n_ent), data, 8)
+            pat_h = tuple(
+                tuple(pack(w, w) for w in vals[p * n_ent : (p + 1) * n_ent])
+                for p in range(n_pat)
+            )
+            pat_t = tuple(
+                (pack(0, 0),) * PAT_ENTRIES for _ in range(N_PATTERNS_T)
+            )
+            return pat_h, pat_t, None
+
+        if magic == _PAT_MAGIC_V2:
+            n_pat_h, n_pat_t, n_ent, n_king = struct.unpack_from("<HHHH", data, 4)
+            if (
+                n_pat_h != N_PATTERNS
+                or n_pat_t != N_PATTERNS_T
+                or n_ent != PAT_ENTRIES
+                or n_king != 50
+            ):
+                return None
+            n_cells = (n_pat_h + n_pat_t) * n_ent
+            men_vals = struct.unpack_from("<%dh" % (n_cells * 2), data, 12)
+            king_vals = struct.unpack_from(
+                "<%dh" % (n_king * 2), data, 12 + n_cells * 4
+            )
+
+            def patset(base: int, count: int) -> tuple[tuple[int, ...], ...]:
+                out = []
+                for p in range(count):
+                    idx0 = (base + p) * n_ent
+                    out.append(
+                        tuple(
+                            pack(
+                                men_vals[(idx0 + i) * 2],
+                                men_vals[(idx0 + i) * 2 + 1],
+                            )
+                            for i in range(n_ent)
+                        )
+                    )
+                return tuple(out)
+
+            pat_h = patset(0, n_pat_h)
+            pat_t = patset(n_pat_h, n_pat_t)
+            king_pst = tuple(
+                (king_vals[s * 2], king_vals[s * 2 + 1]) for s in range(n_king)
+            )
+            return pat_h, pat_t, king_pst
+    except struct.error:
+        return None
+    return None  # unrecognized magic
 
 
-PAT_W = _load_pattern_weights()
-PAT_ACTIVE = any(any(row) for row in PAT_W)
+def _apply_weights_file() -> None:
+    """Module-level apply step: load ``WEIGHTS_FILE`` and install its
+    pattern/king tables as the live globals used by ``_evaluate``. Kept
+    separate from ``_load_weights_file`` so the loader stays a pure,
+    independently-testable function.
 
-# Tall-pattern weights: the current TPW1 format only carries the 11
-# horizontal patterns, so these stay all-zero (packed) until Task 4's TPW2
-# loader lands -- a strict no-op added to keep the pattern term's shape
-# (N_PATTERNS_ALL) stable for the trainer.
-PAT_WT: tuple[tuple[int, ...], ...] = tuple(
-    (pack(0, 0),) * PAT_ENTRIES for _ in range(N_PATTERNS_T)
-)
+    On any load failure, falls back to the v3 no-op contract: ``PAT_W`` raw
+    zeros (plain ints, not packed), ``PAT_WT`` a packed no-op, and the hand
+    king PST already built into ``WM_T``/``WK_T``/``BM_T``/``BK_T`` above is
+    left untouched.
+
+    ``PAT_ACTIVE`` is set from whether the load *succeeded*, never from
+    truthiness of packed table contents: ``pack(0, 0)`` is a nonzero int, so
+    checking ``any(row)`` over a packed all-zero table (e.g. PAT_WT) would
+    wrongly read as active.
+    """
+    global PAT_W, PAT_WT, PAT_ACTIVE, WM_T, WK_T, BM_T, BK_T
+    result = _load_weights_file()
+    if result is None:
+        PAT_W = tuple((0,) * PAT_ENTRIES for _ in range(N_PATTERNS))
+        PAT_WT = tuple((pack(0, 0),) * PAT_ENTRIES for _ in range(N_PATTERNS_T))
+        PAT_ACTIVE = False
+        return
+    pat_h, pat_t, king_pst = result
+    PAT_W = pat_h
+    PAT_WT = pat_t
+    PAT_ACTIVE = True
+    if king_pst is not None:
+        WM_T, WK_T, BM_T, BK_T = _build_eval_tables(king_pst)
+
+
+PAT_W: tuple = ()
+PAT_WT: tuple = ()
+PAT_ACTIVE: bool = False
+_apply_weights_file()
 
 
 def pattern_indices(wm: int, bm: int) -> list[int]:

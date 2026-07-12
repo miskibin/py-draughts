@@ -83,3 +83,84 @@ def test_untrained_tall_patterns_are_noop():
     # with shipped TPW1 (11-pattern) weights, tall weights are zero:
     # scores must still equal v3 exactly (reuses the Task 2 check).
     test_packed_eval_matches_v3_exactly()
+
+
+# --- Task 4: TPW2 weights format + learned king PST -------------------------
+
+def test_tpw2_roundtrip(tmp_path, monkeypatch):
+    import struct as st
+    from draughts.engines import turbo
+    nH, nT, E = 11, 6, 6561
+    rng = random.Random(1)
+    men = [rng.randint(-500, 500) for _ in range(2 * (nH + nT) * E)]
+    king = [rng.randint(-200, 200) for _ in range(100)]
+    p = tmp_path / "w.bin"
+    p.write_bytes(b"TPW2" + st.pack("<HHHH", nH, nT, E, 50)
+                  + st.pack(f"<{len(men)}h", *men)
+                  + st.pack(f"<{len(king)}h", *king))
+    monkeypatch.setattr(turbo, "WEIGHTS_FILE", str(p))
+    pat_h, pat_t, kpst = turbo._load_weights_file()
+    # spot-check packing: pattern 0 cell 0
+    assert pat_h[0][0] == turbo.pack(men[0], men[1])
+    assert kpst[0] == (king[0], king[1])
+
+
+def test_king_pst_override_replaces_hand_pst():
+    """_build_eval_tables(king_pst) is pure -- exercise it directly (no
+    monkeypatching / global mutation) to pin down the exact king semantics
+    from the brief: white square s -> pack(KING_VALUE + kmg[s],
+    KING_VALUE + keg[s]); black at s mirrors 49 - s, negated."""
+    rng = random.Random(5)
+    king_pst = tuple((rng.randint(-200, 200), rng.randint(-200, 200)) for _ in range(50))
+    _, wk_t, _, bk_t = turbo._build_eval_tables(king_pst)
+    for s in range(50):
+        b = turbo.S2B[s]
+        c, local = divmod(b, 7)
+        window = 1 << local
+        mg, eg = king_pst[s]
+        assert wk_t[c][window] == turbo.pack(turbo.KING_VALUE + mg, turbo.KING_VALUE + eg)
+        mirror = 49 - s
+        mmg, meg = king_pst[mirror]
+        assert bk_t[c][window] == turbo.pack(
+            -(turbo.KING_VALUE + mmg), -(turbo.KING_VALUE + meg)
+        )
+
+
+def test_king_pst_none_matches_hand_pst_default():
+    # Default (king_pst=None) must reproduce the module's own live tables
+    # byte-for-byte: the shipped weights file is TPW1, so _apply_weights_file
+    # never rebuilds the king chunk tables, and the hand PST stays in force.
+    assert turbo._build_eval_tables(None) == (turbo.WM_T, turbo.WK_T, turbo.BM_T, turbo.BK_T)
+
+
+def test_load_weights_file_real_tpw1_has_noop_king():
+    # The shipped weights file is TPW1: king_pst must be None (hand king PST
+    # stays in force) and the tall-pattern block must be an all pack(0, 0)
+    # no-op (TPW1 doesn't carry tall weights).
+    pat_h, pat_t, king_pst = turbo._load_weights_file()
+    assert king_pst is None
+    assert len(pat_h) == turbo.N_PATTERNS
+    assert len(pat_t) == turbo.N_PATTERNS_T
+    zero = turbo.pack(0, 0)
+    assert all(v == zero for row in pat_t for v in row)
+
+
+def test_load_weights_file_tpw2_count_mismatch_is_none(tmp_path, monkeypatch):
+    import struct as st
+    # Wrong n_king (49 instead of 50) must be rejected -> None (fallback).
+    p = tmp_path / "bad.bin"
+    p.write_bytes(b"TPW2" + st.pack("<HHHH", 11, 6, 6561, 49))
+    monkeypatch.setattr(turbo, "WEIGHTS_FILE", str(p))
+    assert turbo._load_weights_file() is None
+
+
+def test_load_weights_file_missing_file_is_none(tmp_path, monkeypatch):
+    monkeypatch.setattr(turbo, "WEIGHTS_FILE", str(tmp_path / "does_not_exist.bin"))
+    assert turbo._load_weights_file() is None
+
+
+def test_load_weights_file_bad_magic_is_none(tmp_path, monkeypatch):
+    p = tmp_path / "bad_magic.bin"
+    p.write_bytes(b"NOPE" + b"\x00" * 20)
+    monkeypatch.setattr(turbo, "WEIGHTS_FILE", str(p))
+    assert turbo._load_weights_file() is None
