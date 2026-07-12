@@ -75,6 +75,43 @@ hundred Elo while using less time.
 .. autoclass:: draughts.TurboEngine
     :members: __init__, get_best_move
 
+Training the pattern evaluation
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The search is hand-written, but the leaf evaluation is partly *learned*. On top
+of a fixed hand-crafted base eval (material, advancement, centre, mobility),
+TurboEngine adds a **pattern term**: eleven overlapping 4×2 blocks of men
+squares, each square encoded as a base-3 trit (empty / white man / black man),
+giving a small learned weight per block configuration. Those weights live in
+``turbo_weights.bin`` and are trained offline by ``tools/train_pattern_eval.py``.
+
+.. image:: _static/turbo_training_pipeline.png
+   :alt: TurboEngine pattern-evaluation training pipeline
+   :width: 640px
+
+The pipeline, end to end:
+
+1. **Self-play.** The `Scan <https://hjetten.home.xs4all.nl/scan/scan.html>`_
+   3.1 engine plays short rollouts from randomised openings, so the sampled
+   positions are diverse rather than clustered around the main lines.
+2. **Label.** Every fully-quiet position (no capture pending for either side)
+   is recorded and tagged with Scan's own search score, from White's
+   perspective — the search already runs to pick the move, so the label is
+   essentially free.
+3. **Features.** Each position expands to its eleven pattern indices, and the
+   dataset is doubled by a 180° colour-swapped mirror of every position, which
+   removes side-to-move bias.
+4. **Fit.** The hand eval is held as a *fixed* offset; only the pattern weights
+   are trained, as a residual correction that teaches ``base + patterns`` toward
+   Scan's judgment (Adam gradient descent with L2 regularisation, since most of
+   the ``3⁸`` cells per pattern are rare).
+5. **Export.** The trained weights are quantised to ``int16`` and written to
+   ``turbo_weights.bin``. If that file is missing the pattern term is simply
+   zero and the engine falls back to the pure hand eval.
+
+Reproduce the figure with ``python tools/generate_turbo_training_chart.py``, or
+retrain the weights (needs a Scan executable) via ``tools/train_pattern_eval.py``.
+
 HubEngine
 ---------
 

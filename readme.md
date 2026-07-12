@@ -233,6 +233,14 @@ by several hundred Elo while using less time:
 >>> move, score = engine.get_best_move(Board(), with_evaluation=True)
 ```
 
+The pattern evaluation is trained offline: Scan self-play labels quiet positions
+with Scan's own search score, and only the pattern weights (eleven overlapping
+4×2 men blocks) are fit as a residual on top of a fixed hand eval, then shipped
+as `turbo_weights.bin`. See the [engine docs](https://py-draughts.readthedocs.io/en/latest/engine.html#training-the-pattern-evaluation)
+for the full pipeline, or `tools/train_pattern_eval.py` to retrain.
+
+![TurboEngine pattern-evaluation training pipeline](docs/source/_static/turbo_training_pipeline.png)
+
 ### External Engines (Hub Protocol)
 
 Use external engines like [Scan](https://hjetten.home.xs4all.nl/scan/scan.html) via the Hub protocol:
