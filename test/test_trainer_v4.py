@@ -161,7 +161,7 @@ def test_coo_fit_recovers_planted_king_weight(tmp_path, monkeypatch):
         # 7-tuple (wm,wk,bm,bk,sw,res,ply); sw/res unused (target overridden).
         samples.append((wm, wk, bm, bk, 0.0, 0.5, 10))
 
-    base, rows, cols, vals, _ = build_features_coo(samples)
+    base, rows, cols, vals, _, _ = build_features_coo(samples)
 
     # Plant the ground-truth weights and synthesise the target through the
     # same E = base + bincount(rows, w[cols]*vals) forward model the fit uses.
@@ -206,3 +206,42 @@ def test_coo_fit_recovers_planted_king_weight(tmp_path, monkeypatch):
         int(round(w[(16 * PAT_ENTRIES) * 2])),
         int(round(w[(16 * PAT_ENTRIES) * 2 + 1])),
     )
+
+
+# --- Result-blend (Texel-style) target ------------------------------------
+
+def test_blend_target_math():
+    """blend_target mixes scan-cp target with a result-derived cp pull.
+
+    result {0,0.5,1} -> centered {-1,0,+1}; a white win (result=1) pulls the
+    target UP by beta*res_cp, a black win (result=0) pulls it DOWN the same.
+    """
+    import numpy as np
+
+    from tools.train_pattern_eval import blend_target
+
+    scan_target = np.array([100.0, -50.0])
+    result = np.array([1.0, 0.0])
+    out = blend_target(scan_target, result, beta=0.5, res_cp=200.0)
+    # [(0.5*100 + 0.5*200), (0.5*-50 + 0.5*-200)] = [150, -125]
+    assert np.allclose(out, [150.0, -125.0])
+
+
+def test_build_features_coo_result_and_mirror():
+    """build_features_coo returns a per-row result array; the 180-deg mirror
+    row flips a white win (res=1.0) into a black win (1.0-res=0.0), matching
+    the Scan-label sign flip on the mirror."""
+    from draughts.engines.turbo import BIT
+    from tools.train_pattern_eval import build_features_coo
+
+    wm = BIT[15] | BIT[16]
+    bm = BIT[33] | BIT[34]
+    # 7-tuple (wm,wk,bm,bk,sw,res,ply): white win, scan +42.
+    sample7 = (wm, 0, bm, 0, 42.0, 1.0, 10)
+    base, rows, cols, vals, target, result = build_features_coo([sample7])
+
+    assert result[0] == 1.0          # white win
+    assert result[1] == 0.0          # mirror -> black win
+    # existing Scan target mirror still negates the label.
+    assert target[0] == 42.0
+    assert target[1] == -42.0

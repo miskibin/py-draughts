@@ -502,11 +502,17 @@ def _base_scan_arrays(samples):
 def build_features_coo(samples, a=1.0):
     """Sparse COO features for the v4 regression, with 180-degree mirrors.
 
-    Returns ``(base, rows, cols, vals, target)`` where ``base`` and
-    ``target`` are per-row (length ``2*len(samples)`` incl. mirrors) and
-    ``rows/cols/vals`` are parallel COO arrays. The regression eval is
-    ``E = base + bincount(rows, w[cols]*vals)`` and ``target = a * scan``
-    (mirror rows negate the Scan label, as in ``build_features``).
+    Returns ``(base, rows, cols, vals, target, result)`` where ``base``,
+    ``target`` and ``result`` are per-row (length ``2*len(samples)`` incl.
+    mirrors) and ``rows/cols/vals`` are parallel COO arrays. The regression
+    eval is ``E = base + bincount(rows, w[cols]*vals)`` and ``target = a *
+    scan`` (mirror rows negate the Scan label, as in ``build_features``).
+
+    ``result`` carries the game outcome from WHITE's perspective
+    (``smp[5]`` in ``{0.0, 0.5, 1.0}``, default ``0.5``) for each sample row;
+    the 180-degree mirror row stores ``1.0 - res`` so a white win becomes a
+    black win under the colour swap -- consistent with the mirror negating the
+    Scan label. Consumed by :func:`blend_target` for the Texel-style objective.
     """
     import numpy as np
     from tools.checkpoints import turbo_v3 as v3
@@ -523,6 +529,7 @@ def build_features_coo(samples, a=1.0):
     N = len(samples) * 2
     base = np.empty(N, dtype=np.float64)
     target = np.empty(N, dtype=np.float64)
+    result = np.empty(N, dtype=np.float64)
     rows: list[int] = []
     cols: list[int] = []
     vals: list[float] = []
@@ -558,17 +565,20 @@ def build_features_coo(samples, a=1.0):
     for smp in samples:
         wm, wk, bm, bk = smp[0], smp[1], smp[2], smp[3]
         sw = smp[4] if len(smp) >= 5 else 0.0
+        res = smp[5] if len(smp) >= 6 else 0.5
         base[i] = _base_white_v4(v3, wm, wk, bm, bk)
         target[i] = a * sw
+        result[i] = res
         emit(i, wm, wk, bm, bk)
         i += 1
-        # 180-degree rotate + colour swap; Scan label negates.
+        # 180-degree rotate + colour swap; Scan label negates, result flips.
         rwm = _rot_bb(bm, remap)
         rbm = _rot_bb(wm, remap)
         rwk = _rot_bb(bk, remap)
         rbk = _rot_bb(wk, remap)
         base[i] = _base_white_v4(v3, rwm, rwk, rbm, rbk)
         target[i] = a * (-sw)
+        result[i] = 1.0 - res
         emit(i, rwm, rwk, rbm, rbk)
         i += 1
 
@@ -578,7 +588,28 @@ def build_features_coo(samples, a=1.0):
         np.asarray(cols, dtype=np.int64),
         np.asarray(vals, dtype=np.float64),
         target,
+        result,
     )
+
+
+def blend_target(scan_target, result, beta, res_cp):
+    """Texel-style RESULT-BLEND target in engine-cp units.
+
+    Mixes the Scan-regression target (already in engine-cp) with a pull toward
+    the actual game outcome::
+
+        result_centered = (result - 0.5) * 2.0   # {0,0.5,1} -> {-1,0,+1}
+        blended = (1 - beta) * scan_target + beta * (res_cp * result_centered)
+
+    A white win (``result=1`` -> ``+1``) pulls the target UP by ``beta*res_cp``
+    cp; a black win (``result=0`` -> ``-1``) pulls it down the same amount; a
+    draw (``result=0.5`` -> ``0``) leaves only the shrunk Scan target. The
+    mirror rows built by :func:`build_features_coo` store ``1.0 - res``, so the
+    centred result auto-negates in lock-step with the mirrored Scan label,
+    keeping the whole objective in engine-cp units for least squares.
+    """
+    result_centered = (result - 0.5) * 2.0
+    return (1.0 - beta) * scan_target + beta * (res_cp * result_centered)
 
 
 # ---------------------------------------------------------------------------
@@ -866,14 +897,27 @@ def _train_v4(args):
     cleaned = clean_samples(samples, max_abs=600.0, a=a, seed=args.seed)
     print(f"clean_samples: {len(samples)} -> {len(cleaned)} samples")
 
-    base, rows, cols, vals, target = build_features_coo(cleaned, a=a)
+    base, rows, cols, vals, target, result = build_features_coo(cleaned, a=a)
     KBASE = N_PATTERNS_ALL * PAT_ENTRIES * 2
     n_weights = KBASE + 100
     print(f"  COO features: N={len(base)} rows (incl. mirrors)  "
           f"nnz={len(rows)}  n_weights={n_weights}")
 
+    # Objective: default/"scanreg" regresses toward a*scan; "blend" adds a
+    # Texel-style pull toward the real game result. Any non-"blend" target is
+    # treated as scanreg so the v3 default ("result") stays valid for v4.
+    if args.target == "blend":
+        final_target = blend_target(target, result, args.blend_beta, args.res_cp)
+        result_cp = (result - 0.5) * 2.0 * args.res_cp
+        print(f"blend target: beta={args.blend_beta} res_cp={args.res_cp} "
+              f"(scan_target std={target.std():.1f} "
+              f"result_cp std={result_cp.std():.1f} "
+              f"blended std={final_target.std():.1f})")
+    else:
+        final_target = target
+
     w, tr_rmse, val_rmse, base_rmse = fit_regression_coo(
-        base, rows, cols, vals, target, n_weights,
+        base, rows, cols, vals, final_target, n_weights,
         args.lam, args.iters, args.lr,
     )
     gap = (100 * (base_rmse - val_rmse) / base_rmse) if base_rmse else 0.0
@@ -898,7 +942,12 @@ def main():
     ap.add_argument("--mode", default="full", choices=["full", "matref"])
     ap.add_argument("--target", default="result",
                     choices=["result", "scan", "blend", "scanreg"],
-                    help="training label source / objective")
+                    help="training label source / objective (v4: 'blend' adds "
+                         "a Texel result pull; any other value = scanreg)")
+    ap.add_argument("--blend-beta", type=float, default=0.4,
+                    help="v4 blend target: weight of the game-result pull")
+    ap.add_argument("--res-cp", type=float, default=200.0,
+                    help="v4 blend target: cp a win/loss pulls the target by")
     ap.add_argument("--label", default="result", choices=["result", "scan"],
                     help="data generator: v2 self-play vs Scan self-play")
     ap.add_argument("--scan-exe", default=os.path.join(
