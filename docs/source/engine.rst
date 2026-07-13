@@ -1,21 +1,23 @@
 .. meta::
-   :description: py-draughts engine — built-in alpha-beta search with transposition tables and iterative deepening, plus a HUB protocol bridge for external engines like Scan and Kingsrow.
-   :keywords: draughts engine, alpha-beta draughts, hub protocol, scan engine, kingsrow, python checkers ai, transposition table
+   :description: py-draughts engines — TurboEngine, a machine-learned pattern evaluation with PVS search for international draughts, and SimpleEngine, a general-purpose alpha-beta engine for every variant, plus a HUB protocol bridge for external engines like Scan and Kingsrow.
+   :keywords: draughts engine, turboengine, machine-learned evaluation, alpha-beta draughts, hub protocol, scan engine, kingsrow, python checkers ai, transposition table
 
 Engine
 ======
 
-AI engines for playing draughts.
+Two engines are built in: :class:`~draughts.TurboEngine` — the strongest, for
+international 10x10 — and :class:`~draughts.SimpleEngine`, a lightweight
+general-purpose engine that works on every variant.
 
 Quick Start
 -----------
 
 .. code-block:: python
 
-    from draughts import Board, AlphaBetaEngine
+    from draughts import Board, TurboEngine
 
     board = Board()
-    engine = AlphaBetaEngine(depth_limit=5)
+    engine = TurboEngine(time_limit=0.5)   # strongest; international 10x10 only
 
     # Get best move
     best_move = engine.get_best_move(board)
@@ -30,14 +32,49 @@ Engine Interface
 .. autoclass:: draughts.Engine
     :members:
 
-AlphaBetaEngine
----------------
+TurboEngine
+-----------
 
-.. autoclass:: draughts.AlphaBetaEngine
+The strongest built-in engine, for the standard international (10x10) board
+only. It uses Scan's 63-bit bitboard layout, a PVS search with transposition
+table, and a machine-learned pattern evaluation trained on Scan self-play.
+At equal time per move it beats :class:`~draughts.SimpleEngine` by several
+hundred Elo while using less time.
+
+.. code-block:: python
+
+    from draughts import Board, TurboEngine
+
+    board = Board()
+    engine = TurboEngine(time_limit=0.5)   # or depth_limit=...
+    move, score = engine.get_best_move(board, with_evaluation=True)
+
+.. autoclass:: draughts.TurboEngine
+    :members: __init__, get_best_move
+
+SimpleEngine
+------------
+
+A lightweight general-purpose engine — alpha-beta search with a transposition
+table and iterative deepening — that works on **every** board variant, unlike
+:class:`~draughts.TurboEngine` (international only). Use it for American,
+Frisian, Russian, Brazilian, and the other variants.
+
+.. code-block:: python
+
+    from draughts import Board, SimpleEngine
+
+    board = Board()
+    engine = SimpleEngine(depth_limit=5)
+    move, score = engine.get_best_move(board, with_evaluation=True)
+
+.. autoclass:: draughts.SimpleEngine
     :members: __init__, evaluate, get_best_move
 
 Performance
 ~~~~~~~~~~~
+
+``SimpleEngine`` search cost by depth:
 
 ============  ============  ============
 Depth         Avg Time      Avg Nodes
@@ -54,26 +91,6 @@ Depth         Avg Time      Avg Nodes
 .. image:: _static/engine_benchmark.png
    :alt: Engine Benchmark
    :width: 500px
-
-TurboEngine
------------
-
-The strongest built-in engine, for the standard international (10x10) board
-only. It uses Scan's 63-bit bitboard layout, a PVS search with transposition
-table, and a machine-learned pattern evaluation trained on Scan self-play.
-At equal time per move it beats :class:`~draughts.AlphaBetaEngine` by several
-hundred Elo while using less time.
-
-.. code-block:: python
-
-    from draughts import Board, TurboEngine
-
-    board = Board()
-    engine = TurboEngine(time_limit=0.5)   # or depth_limit=...
-    move, score = engine.get_best_move(board, with_evaluation=True)
-
-.. autoclass:: draughts.TurboEngine
-    :members: __init__, get_best_move
 
 HubEngine
 ---------
@@ -116,12 +133,12 @@ Quick Start
 
 .. code-block:: python
 
-    from draughts import Benchmark, AlphaBetaEngine
+    from draughts import Benchmark, SimpleEngine
 
     # Compare two engines
     stats = Benchmark(
-        AlphaBetaEngine(depth_limit=4),
-        AlphaBetaEngine(depth_limit=6),
+        SimpleEngine(depth_limit=4),
+        SimpleEngine(depth_limit=6),
         games=20
     ).run()
 
@@ -130,17 +147,17 @@ Quick Start
 Output::
 
     ============================================================
-      BENCHMARK: AlphaBetaEngine (d=4) vs AlphaBetaEngine (d=6)
+      BENCHMARK: SimpleEngine (d=4) vs SimpleEngine (d=6)
     ============================================================
 
       RESULTS: 2-12-6 (W-L-D)
-      AlphaBetaEngine (d=4) win rate: 25.0%
+      SimpleEngine (d=4) win rate: 25.0%
       Elo difference: -191
 
       PERFORMANCE
       Avg game length: 85.3 moves
-      AlphaBetaEngine (d=4): 25.2ms/move, 312 nodes/move
-      AlphaBetaEngine (d=6): 142.5ms/move, 1850 nodes/move
+      SimpleEngine (d=4): 25.2ms/move, 312 nodes/move
+      SimpleEngine (d=6): 142.5ms/move, 1850 nodes/move
       Total time: 45.2s
       ...
 
@@ -166,17 +183,17 @@ Custom Names
 
 Engines with the same class name are automatically distinguished by their settings::
 
-    # These will show as "AlphaBetaEngine (d=4)" and "AlphaBetaEngine (d=6)"
+    # These will show as "SimpleEngine (d=4)" and "SimpleEngine (d=6)"
     Benchmark(
-        AlphaBetaEngine(depth_limit=4),
-        AlphaBetaEngine(depth_limit=6)
+        SimpleEngine(depth_limit=4),
+        SimpleEngine(depth_limit=6)
     )
 
 Or provide custom names::
 
     Benchmark(
-        AlphaBetaEngine(depth_limit=4, name="FastBot"),
-        AlphaBetaEngine(depth_limit=6, name="StrongBot")
+        SimpleEngine(depth_limit=4, name="FastBot"),
+        SimpleEngine(depth_limit=6, name="StrongBot")
     )
 
 Custom Openings
@@ -184,7 +201,7 @@ Custom Openings
 
 By default, 10x10 boards use built-in opening positions. Provide your own::
 
-    from draughts import Benchmark, AlphaBetaEngine, STANDARD_OPENINGS
+    from draughts import Benchmark, SimpleEngine, STANDARD_OPENINGS
 
     # Use specific FEN positions
     custom_openings = [
@@ -193,8 +210,8 @@ By default, 10x10 boards use built-in opening positions. Provide your own::
     ]
 
     stats = Benchmark(
-        AlphaBetaEngine(depth_limit=4),
-        AlphaBetaEngine(depth_limit=6),
+        SimpleEngine(depth_limit=4),
+        SimpleEngine(depth_limit=6),
         openings=custom_openings
     ).run()
 
@@ -206,13 +223,13 @@ Different Board Variants
 
 Test engines on any supported variant::
 
-    from draughts import Benchmark, AlphaBetaEngine
+    from draughts import Benchmark, SimpleEngine
     from draughts import AmericanBoard, FrisianBoard, RussianBoard
 
     # American checkers (8x8)
     stats = Benchmark(
-        AlphaBetaEngine(depth_limit=5),
-        AlphaBetaEngine(depth_limit=7),
+        SimpleEngine(depth_limit=5),
+        SimpleEngine(depth_limit=7),
         board_class=AmericanBoard,
         games=10
     ).run()

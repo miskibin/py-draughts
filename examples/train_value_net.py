@@ -24,7 +24,7 @@ this example is that **data quality matters far more than network size**:
 Teacher: Scan 3.1 (10x10 International draughts) by Fabien Letouzey. Download
 https://hjetten.home.xs4all.nl/scan/scan_31.zip, unzip it, and set the ``SCAN_EXE``
 environment variable to the extracted ``scan.exe``. Without Scan the script falls
-back to the built-in :class:`AlphaBetaEngine` (a weaker teacher, but it still runs).
+back to the built-in :class:`SimpleEngine` (a weaker teacher, but it still runs).
 
 Note on augmentation: unlike chess, a 10x10 draughts board has **no** left-right
 mirror symmetry on its playable squares (reflecting the columns flips square colour,
@@ -47,7 +47,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from loguru import logger
 
-from draughts import AlphaBetaEngine, BaseAgent, Benchmark, Color
+from draughts import SimpleEngine, BaseAgent, Benchmark, Color
 from draughts.boards.standard import Board  # 10x10 International draughts
 
 logger.remove()  # silence the library's per-move info logging for a clean run
@@ -110,7 +110,7 @@ class ValueNet(nn.Module):
 
 
 def make_teacher():
-    """Return a strong teacher engine: Scan if available, else built-in AlphaBeta."""
+    """Return a strong teacher engine: Scan if available, else built-in SimpleEngine."""
     if SCAN_EXE and Path(SCAN_EXE).exists():
         from draughts.engines.hub import HubEngine
 
@@ -119,8 +119,8 @@ def make_teacher():
         eng.start()
         print(f"  teacher: {eng.info.name} {eng.info.version}")
         return eng
-    print("  teacher: AlphaBetaEngine (Scan not found; set SCAN_EXE for a stronger net)")
-    return AlphaBetaEngine(depth_limit=6)
+    print("  teacher: SimpleEngine (Scan not found; set SCAN_EXE for a stronger net)")
+    return SimpleEngine(depth_limit=6)
 
 
 def collect_data(teacher) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
@@ -277,6 +277,6 @@ if __name__ == "__main__":
     agent = ValueAgent(net, depth=3)
     for depth in (2, 4, 6):
         stats = Benchmark(
-            agent.as_engine(), AlphaBetaEngine(depth_limit=depth), board_class=Board, games=20
+            agent.as_engine(), SimpleEngine(depth_limit=depth), board_class=Board, games=20
         ).run()
-        print(f"   vs AlphaBeta(depth={depth}): {stats}")
+        print(f"   vs SimpleEngine(depth={depth}): {stats}")

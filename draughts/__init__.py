@@ -57,11 +57,11 @@ from draughts.benchmark import STANDARD_OPENINGS, Benchmark, BenchmarkStats, Gam
 # AI/ML Support
 from draughts.boards.base import BoardFeatures
 from draughts.engines.agent import Agent, AgentEngine, BaseAgent
-from draughts.engines.alpha_beta import AlphaBetaEngine
 from draughts.engines.engine import Engine
 
 # Engines
 from draughts.engines.hub import HubEngine
+from draughts.engines.simple import SimpleEngine
 from draughts.engines.turbo import TurboEngine
 from draughts.models import Color, Figure
 from draughts.move import Move
@@ -81,7 +81,7 @@ __all__ = [
     "FryskBoard",
     # Engines
     "Engine",
-    "AlphaBetaEngine",
+    "SimpleEngine",
     "TurboEngine",
     "HubEngine",
     # Agents (AI interface)

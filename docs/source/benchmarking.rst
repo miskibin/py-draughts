@@ -48,7 +48,7 @@ Performance of the legal moves generator across different board positions:
 Engine Depth Performance
 ~~~~~~~~~~~~~~~~~~~~~~~~
 
-AlphaBeta engine search performance at different depths:
+SimpleEngine search performance at different depths:
 
 .. image:: _static/engine_benchmark.png
    :alt: Engine Depth Benchmark

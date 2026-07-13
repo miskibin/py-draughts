@@ -1,7 +1,7 @@
 :layout: landing
 
 .. meta::
-   :description: py-draughts — the fastest Python draughts / checkers library. Bitboard move generation ~200x faster than pydraughts. Built-in alpha-beta engine, HUB protocol, web UI, SVG rendering, ML tensors. 8 variants: International, American, Frisian, Russian, Brazilian, Antidraughts, Breakthrough, Frysk!.
+   :description: py-draughts — the fastest Python draughts / checkers library. Bitboard move generation ~200x faster than pydraughts. Built-in engines (ML-trained TurboEngine + general-purpose SimpleEngine), HUB protocol, web UI, SVG rendering, ML tensors. 8 variants: International, American, Frisian, Russian, Brazilian, Antidraughts, Breakthrough, Frysk!.
    :keywords: python draughts, python checkers, draughts library, checkers library, pydraughts alternative, international draughts, frisian draughts, russian draughts, brazilian draughts, antidraughts, breakthrough, frysk, bitboard, pdn, fen, alpha-beta engine, hub protocol, board game ai
 
 py-draughts
@@ -14,7 +14,7 @@ py-draughts
      <p class="hero-subtitle">
        The fastest pure-Python <strong>draughts / checkers</strong> library —
        bitboard move generation ~200× faster than pydraughts. Built-in
-       alpha-beta engine, HUB protocol bridge (Scan, Kingsrow), web UI,
+       engines (TurboEngine + SimpleEngine), HUB protocol bridge (Scan, Kingsrow), web UI,
        SVG rendering, and ML/RL helpers across 8 variants:
        International, American, Frisian, Russian, Brazilian, Antidraughts,
        Breakthrough, and Frysk!.
@@ -41,8 +41,8 @@ py-draughts
       :link: engine
       :link-type: doc
 
-      Built-in alpha-beta engine, Hub protocol bridge, and a clean
-      ``Engine`` interface for plugging in your own.
+      Built-in engines (TurboEngine + SimpleEngine), Hub protocol bridge,
+      and a clean ``Engine`` interface for plugging in your own.
 
    .. grid-item-card:: :octicon:`zap;1em;sd-text-primary` AI / RL
       :link: ai
@@ -107,13 +107,13 @@ Hello, draughts
 
 .. code-block:: python
 
-   from draughts import Board, AlphaBetaEngine
+   from draughts import Board, SimpleEngine
 
    board = Board()                       # 10x10 international draughts
    board.push_uci("31-27")
    board.push_uci("18-22")
 
-   engine = AlphaBetaEngine(depth_limit=5)
+   engine = SimpleEngine(depth_limit=5)
    board.push(engine.get_best_move(board))
 
    print(board)

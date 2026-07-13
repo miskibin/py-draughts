@@ -56,7 +56,7 @@ def _create_pst_king(num_squares: int, rows: int) -> np.ndarray:
     return pst
 
 
-class AlphaBetaEngine(Engine):
+class SimpleEngine(Engine):
     """
     AI engine using Negamax search with alpha-beta pruning.
 
@@ -83,16 +83,16 @@ class AlphaBetaEngine(Engine):
         nodes: Number of nodes searched in last call.
 
     Example:
-        >>> from draughts import Board, AlphaBetaEngine
+        >>> from draughts import Board, SimpleEngine
         >>> board = Board()
-        >>> engine = AlphaBetaEngine(depth_limit=5)
+        >>> engine = SimpleEngine(depth_limit=5)
         >>> move = engine.get_best_move(board)
         >>> board.push(move)
 
     Example with American Draughts:
         >>> from draughts.boards.american import Board
         >>> board = Board()
-        >>> engine = AlphaBetaEngine(depth_limit=6)
+        >>> engine = SimpleEngine(depth_limit=6)
         >>> move = engine.get_best_move(board)
 
     Example with evaluation:
@@ -114,8 +114,8 @@ class AlphaBetaEngine(Engine):
             name: Custom engine name. Defaults to class name.
 
         Example:
-            >>> engine = AlphaBetaEngine(depth_limit=6)
-            >>> engine = AlphaBetaEngine(depth_limit=20, time_limit=1.0)
+            >>> engine = SimpleEngine(depth_limit=6)
+            >>> engine = SimpleEngine(depth_limit=20, time_limit=1.0)
         """
         self.depth_limit = depth_limit
         self.time_limit = time_limit

@@ -1,17 +1,17 @@
 import pytest
 
 from draughts.boards.standard import Board as StandardBoard
-from draughts.engines import AlphaBetaEngine
+from draughts.engines import SimpleEngine
 from test._test_helpers import get_board, seeded_range, standard_board_after_random_play
 
 
-class TestAlphaBetaEngine:
-    """Test the AlphaBetaEngine optimizations."""
+class TestSimpleEngine:
+    """Test the SimpleEngine optimizations."""
 
     @pytest.fixture(autouse=True)
     def setup(self):
         self.board = get_board("standard")
-        self.engine = AlphaBetaEngine(depth_limit=3)
+        self.engine = SimpleEngine(depth_limit=3)
         yield
         del self.board
         del self.engine
@@ -97,7 +97,7 @@ def _snapshot(board: StandardBoard):
 @pytest.mark.parametrize("seed", list(seeded_range(15)))
 def test_engine_get_best_move_does_not_mutate_board(seed):
     board = standard_board_after_random_play(seed=seed, plies=30)
-    engine = AlphaBetaEngine(depth_limit=2)
+    engine = SimpleEngine(depth_limit=2)
 
     if board.game_over:
         return
@@ -117,7 +117,7 @@ def test_engine_get_best_move_does_not_mutate_board(seed):
 @pytest.mark.parametrize("seed", list(seeded_range(15)))
 def test_engine_hash_is_stable_across_push_pop(seed):
     board = standard_board_after_random_play(seed=seed, plies=25)
-    engine = AlphaBetaEngine(depth_limit=1)
+    engine = SimpleEngine(depth_limit=1)
 
     legal = list(board.legal_moves)
     if not legal:
@@ -133,7 +133,7 @@ def test_engine_hash_is_stable_across_push_pop(seed):
 @pytest.mark.parametrize("seed", list(seeded_range(10)))
 def test_engine_populates_transposition_table_for_root(seed):
     board = standard_board_after_random_play(seed=seed, plies=20)
-    engine = AlphaBetaEngine(depth_limit=2)
+    engine = SimpleEngine(depth_limit=2)
 
     if board.game_over:
         return
@@ -174,9 +174,9 @@ def _play_engine_vs_random(board, engine, engine_is_white: bool, seed: int) -> s
 @pytest.mark.parametrize("variant", ["standard", "american", "russian", "frisian"])
 @pytest.mark.parametrize("game_idx", range(5))
 def test_engine_depth1_beats_random(variant, game_idx):
-    """AlphaBeta depth-1 should consistently beat random moves."""
+    """SimpleEngine depth-1 should consistently beat random moves."""
     board = get_board(variant)
-    engine = AlphaBetaEngine(depth_limit=1)
+    engine = SimpleEngine(depth_limit=1)
 
     # Alternate colors
     engine_is_white = game_idx % 2 == 0

@@ -5,14 +5,14 @@ import pstats
 from io import StringIO
 
 from draughts.boards.standard import Board
-from draughts.engines import AlphaBetaEngine
+from draughts.engines import SimpleEngine
 
 
 def run_benchmark(depth=4):
     """Run benchmark with configurable depth."""
     # Test with starting position
     board = Board()
-    engine = AlphaBetaEngine(depth_limit=depth)
+    engine = SimpleEngine(depth_limit=depth)
 
     # Get one move at specified depth
     move = engine.get_best_move(board)
@@ -32,7 +32,7 @@ def run_mid_game_benchmark(depth=4):
         if moves:
             board.push(moves[0])
 
-    engine = AlphaBetaEngine(depth_limit=depth)
+    engine = SimpleEngine(depth_limit=depth)
     print(f"\nMid-game position (after 6 moves):")
     print(board)
 

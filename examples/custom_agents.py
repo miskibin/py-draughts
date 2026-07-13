@@ -12,7 +12,7 @@ from typing import Callable
 
 from draughts import (
     AgentEngine,
-    AlphaBetaEngine,
+    SimpleEngine,
     BaseAgent,
     Benchmark,
     Board,

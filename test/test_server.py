@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 from fastapi.testclient import TestClient
 
-from draughts.engines import AlphaBetaEngine, Engine
+from draughts.engines import Engine, SimpleEngine
 from draughts.move import Move
 from draughts.server.server import Server
 from test._test_helpers import get_board
@@ -124,7 +124,7 @@ def test_set_depth_clamps_and_updates_engine():
     try:
         Server.APP = _new_test_app()
         board = get_board("standard")
-        engine = AlphaBetaEngine(depth_limit=6)
+        engine = SimpleEngine(depth_limit=6)
         server = Server(board=board, white_engine=engine, black_engine=engine)
         client = TestClient(server.APP)
 

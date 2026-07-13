@@ -1,11 +1,11 @@
 """
-Example: AlphaBeta engine vs Scan engine (Hub protocol)
+Example: SimpleEngine vs Scan engine (Hub protocol)
 
-This script plays a game between the built-in AlphaBeta engine and
+This script plays a game between the built-in SimpleEngine and
 an external Scan engine using the Hub protocol.
 
 Usage:
-    python alphabeta_vs_scan.py [path_to_scan.exe]
+    python simple_vs_scan.py [path_to_scan.exe]
 
 Requirements:
     - Scan draughts engine (https://hjetten.home.xs4all.nl/scan/scan.html)
@@ -19,13 +19,13 @@ import sys
 logger.add(sys.stderr, level="DEBUG")
 
 from draughts import StandardBoard, Color
-from draughts.engines import AlphaBetaEngine
+from draughts.engines import SimpleEngine
 from draughts.engines import HubEngine
 
 
 def play_game(scan_path: str, max_moves: int = 100) -> None:
     """
-    Play a game between AlphaBeta (White) and Scan (Black).
+    Play a game between SimpleEngine (White) and Scan (Black).
     
     Args:
         scan_path: Path to the Scan executable
@@ -33,8 +33,8 @@ def play_game(scan_path: str, max_moves: int = 100) -> None:
     """
     board = StandardBoard()
     
-    # AlphaBeta plays White
-    alphabeta = AlphaBetaEngine(depth_limit=9)
+    # SimpleEngine plays White
+    engine = SimpleEngine(depth_limit=9)
     
     # Scan plays Black
     print(f"Starting Scan engine from: {scan_path}")
@@ -43,7 +43,7 @@ def play_game(scan_path: str, max_moves: int = 100) -> None:
         scan.new_game()
         
         print("\n=== Game Start ===")
-        print(f"White: AlphaBeta (depth_limit=9)")
+        print(f"White: SimpleEngine (depth_limit=9)")
         print(f"Black: {scan.info.name} {scan.info.version}")
         print()
         
@@ -53,9 +53,9 @@ def play_game(scan_path: str, max_moves: int = 100) -> None:
             move_count += 1
             
             if board.turn == Color.WHITE:
-                # AlphaBeta's turn
-                move, score = alphabeta.get_best_move(board, with_evaluation=True)
-                print(f"{move_count}. White (AlphaBeta): {move} (eval: {score:+.2f})")
+                # SimpleEngine's turn
+                move, score = engine.get_best_move(board, with_evaluation=True)
+                print(f"{move_count}. White (SimpleEngine): {move} (eval: {score:+.2f})")
             else:
                 # Scan's turn
                 move, score = scan.get_best_move(board, with_evaluation=True)
@@ -99,7 +99,7 @@ def main():
                 break
         
         if scan_path is None:
-            print("Usage: python alphabeta_vs_scan.py <path_to_scan.exe>")
+            print("Usage: python simple_vs_scan.py <path_to_scan.exe>")
             print("\nScan engine not found. Please provide the path to scan.exe")
             print("Download Scan from: https://hjetten.home.xs4all.nl/scan/scan.html")
             sys.exit(1)
