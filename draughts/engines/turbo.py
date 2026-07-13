@@ -50,6 +50,7 @@ from draughts.move import Move
 # perft in tests.
 # ---------------------------------------------------------------------------
 
+
 def _build_layout() -> tuple[tuple[int, ...], dict[int, int], int]:
     sq_to_bit: list[int] = []
     bit = 0
@@ -163,8 +164,8 @@ WM_T, WK_T, BM_T, BK_T = _build_eval_tables()
 # ---------------------------------------------------------------------------
 
 PAT_TRITS = 8
-PAT_ENTRIES = 3 ** PAT_TRITS  # 6561
-_POW3 = tuple(3 ** i for i in range(PAT_TRITS))
+PAT_ENTRIES = 3**PAT_TRITS  # 6561
+_POW3 = tuple(3**i for i in range(PAT_TRITS))
 
 
 def _build_patterns() -> tuple[tuple[int, ...], ...]:
@@ -173,8 +174,7 @@ def _build_patterns() -> tuple[tuple[int, ...], ...]:
 
     def block(r: int, c0: int) -> tuple[int, ...]:
         return tuple(
-            [r * 5 + c for c in range(c0, c0 + 4)]
-            + [(r + 1) * 5 + c for c in range(c0, c0 + 4)]
+            [r * 5 + c for c in range(c0, c0 + 4)] + [(r + 1) * 5 + c for c in range(c0, c0 + 4)]
         )
 
     pats: list[tuple[int, ...]] = []
@@ -245,12 +245,8 @@ def _load_pattern_weights() -> tuple[tuple[int, ...], ...]:
         n_pat, n_ent = struct.unpack_from("<HH", data, 4)
         if n_pat != N_PATTERNS or n_ent != PAT_ENTRIES:
             return zeros
-        vals = struct.unpack_from(
-            "<%dh" % (n_pat * n_ent), data, 8
-        )
-        return tuple(
-            tuple(vals[p * n_ent : (p + 1) * n_ent]) for p in range(n_pat)
-        )
+        vals = struct.unpack_from(f"<{n_pat * n_ent}h", data, 8)
+        return tuple(tuple(vals[p * n_ent : (p + 1) * n_ent]) for p in range(n_pat))
     except (OSError, struct.error):
         return zeros
 
@@ -296,12 +292,8 @@ def _evaluate(wm: int, wk: int, bm: int, bk: int, white_to_move: bool) -> int:
     # Left/right balance: lopsided formations are weak.
     w_all = wm | wk
     b_all = bm | bk
-    score -= SKEW_WEIGHT * abs(
-        (w_all & LEFT_MASK).bit_count() - (w_all & RIGHT_MASK).bit_count()
-    )
-    score += SKEW_WEIGHT * abs(
-        (b_all & LEFT_MASK).bit_count() - (b_all & RIGHT_MASK).bit_count()
-    )
+    score -= SKEW_WEIGHT * abs((w_all & LEFT_MASK).bit_count() - (w_all & RIGHT_MASK).bit_count())
+    score += SKEW_WEIGHT * abs((b_all & LEFT_MASK).bit_count() - (b_all & RIGHT_MASK).bit_count())
     # Trained pattern correction over MEN (white-perspective). Skipped when
     # weights are all zero so a missing weights file costs nothing.
     if PAT_ACTIVE:
@@ -322,6 +314,7 @@ def _evaluate(wm: int, wk: int, bm: int, bk: int, white_to_move: bool) -> int:
 # ---------------------------------------------------------------------------
 # Move generation (internal move = (from_bit, to_bit, captured_bitboard))
 # ---------------------------------------------------------------------------
+
 
 def _man_capture_dfs(
     frm: int,
@@ -401,9 +394,7 @@ def _king_capture_dfs(
     return extended
 
 
-def _gen_captures(
-    wm: int, wk: int, bm: int, bk: int, white: bool
-) -> list[tuple[int, int, int]]:
+def _gen_captures(wm: int, wk: int, bm: int, bk: int, white: bool) -> list[tuple[int, int, int]]:
     if white:
         men, kings, enemy = wm, wk, bm | bk
     else:
@@ -450,9 +441,7 @@ def _gen_captures(
     return result
 
 
-def _gen_quiets(
-    wm: int, wk: int, bm: int, bk: int, white: bool
-) -> list[tuple[int, int, int]]:
+def _gen_quiets(wm: int, wk: int, bm: int, bk: int, white: bool) -> list[tuple[int, int, int]]:
     all_p = wm | wk | bm | bk
     empty = SQ_MASK ^ all_p
     moves: list[tuple[int, int, int]] = []
@@ -568,6 +557,7 @@ def _apply(
 # Search
 # ---------------------------------------------------------------------------
 
+
 class _Timeout(Exception):
     pass
 
@@ -633,9 +623,7 @@ class TurboEngine(Engine):
                 return legal[0], _evaluate(wm, wk, bm, bk, white) / 100.0
             return legal[0]
 
-        best_mv, score = self._search_root(
-            wm, wk, bm, bk, white, board.halfmove_clock
-        )
+        best_mv, score = self._search_root(wm, wk, bm, bk, white, board.halfmove_clock)
         move = self._match_move(best_mv, legal)
         if with_evaluation:
             return move, score / 100.0
@@ -650,14 +638,10 @@ class TurboEngine(Engine):
         self._path = set()
         if len(self.tt) > TT_MAX:
             self.tt.clear()
-        self._deadline = (
-            time.perf_counter() + self.time_limit if self.time_limit else None
-        )
+        self._deadline = time.perf_counter() + self.time_limit if self.time_limit else None
         max_depth = self.depth_limit or 64
 
-        moves = _gen_captures(wm, wk, bm, bk, white) or _gen_quiets(
-            wm, wk, bm, bk, white
-        )
+        moves = _gen_captures(wm, wk, bm, bk, white) or _gen_quiets(wm, wk, bm, bk, white)
         best_mv = moves[0]
         best_score = -INF
         score = 0
@@ -802,9 +786,7 @@ class TurboEngine(Engine):
             try:
                 for mv in moves:
                     nwm, nwk, nbm, nbk, _ = _apply(wm, wk, bm, bk, white, mv)
-                    sc = -self._negamax(
-                        nwm, nwk, nbm, nbk, not white, 0, -beta, -alpha, ply + 1, 0
-                    )
+                    sc = -self._negamax(nwm, nwk, nbm, nbk, not white, 0, -beta, -alpha, ply + 1, 0)
                     if sc > best:
                         best = sc
                     if sc > alpha:
@@ -821,12 +803,7 @@ class TurboEngine(Engine):
 
         # Scan-style forward pruning: shallow verification search at a
         # raised beta (draughts substitute for null-move pruning).
-        if (
-            depth >= 3
-            and not captures
-            and beta < MATE - 512
-            and beta > -(MATE - 512)
-        ):
+        if depth >= 3 and not captures and beta < MATE - 512 and beta > -(MATE - 512):
             margin = 10 * depth
             new_beta = beta + margin
             v_depth = depth * 2 // 5
@@ -843,12 +820,11 @@ class TurboEngine(Engine):
                 if tt_move is not None and tt_move in moves:
                     moves.sort(key=lambda m: m != tt_move)
             else:
+
                 def order(m, _h=hist, _tt=tt_move):
                     if m == _tt:
                         return -HIST_MAX - 1
-                    return -_h[
-                        ((m[0].bit_length() - 1) << 6) | (m[1].bit_length() - 1)
-                    ]
+                    return -_h[((m[0].bit_length() - 1) << 6) | (m[1].bit_length() - 1)]
 
                 moves.sort(key=order)
 
@@ -869,18 +845,42 @@ class TurboEngine(Engine):
 
                 if i == 0:
                     sc = -self._negamax(
-                        nwm, nwk, nbm, nbk, not white, new_depth, -beta, -alpha,
-                        ply + 1, nhm,
+                        nwm,
+                        nwk,
+                        nbm,
+                        nbk,
+                        not white,
+                        new_depth,
+                        -beta,
+                        -alpha,
+                        ply + 1,
+                        nhm,
                     )
                 else:
                     sc = -self._negamax(
-                        nwm, nwk, nbm, nbk, not white, new_depth - red,
-                        -alpha - 1, -alpha, ply + 1, nhm,
+                        nwm,
+                        nwk,
+                        nbm,
+                        nbk,
+                        not white,
+                        new_depth - red,
+                        -alpha - 1,
+                        -alpha,
+                        ply + 1,
+                        nhm,
                     )
                     if sc > alpha and (red or sc < beta):
                         sc = -self._negamax(
-                            nwm, nwk, nbm, nbk, not white, new_depth, -beta, -alpha,
-                            ply + 1, nhm,
+                            nwm,
+                            nwk,
+                            nbm,
+                            nbk,
+                            not white,
+                            new_depth,
+                            -beta,
+                            -alpha,
+                            ply + 1,
+                            nhm,
                         )
                 if sc > best:
                     best = sc
@@ -892,15 +892,11 @@ class TurboEngine(Engine):
                     flag = TT_FLAG_LOWER
                     if not captures:
                         hist = self.hist
-                        idx = ((mv[0].bit_length() - 1) << 6) | (
-                            mv[1].bit_length() - 1
-                        )
+                        idx = ((mv[0].bit_length() - 1) << 6) | (mv[1].bit_length() - 1)
                         hist[idx] += (HIST_MAX - hist[idx]) >> 5
                         for j in range(i):
                             pm = moves[j]
-                            idx = ((pm[0].bit_length() - 1) << 6) | (
-                                pm[1].bit_length() - 1
-                            )
+                            idx = ((pm[0].bit_length() - 1) << 6) | (pm[1].bit_length() - 1)
                             hist[idx] -= hist[idx] >> 5
                     break
         finally:
@@ -931,9 +927,7 @@ class TurboEngine(Engine):
         """Quiet leaf: stand pat, unless the opponent threatens a capture -
         then spend one real ply so hanging pieces are seen (Scan's 'dodge')."""
         if allow_threat_ext and ply < 48 and _has_capture(wm, wk, bm, bk, not white):
-            return self._negamax(
-                wm, wk, bm, bk, white, 1, alpha, beta, ply, 0
-            )
+            return self._negamax(wm, wk, bm, bk, white, 1, alpha, beta, ply, 0)
         return _evaluate(wm, wk, bm, bk, white)
 
     # -- board conversion ---------------------------------------------------
@@ -981,6 +975,7 @@ class TurboEngine(Engine):
 # ---------------------------------------------------------------------------
 # Perft (used by tests to validate the internal move generator)
 # ---------------------------------------------------------------------------
+
 
 def perft(wm: int, wk: int, bm: int, bk: int, white: bool, depth: int) -> int:
     if depth == 0:

@@ -11,7 +11,7 @@ def main():
     depth = int(sys.argv[2]) if len(sys.argv) > 2 else 3
 
     from draughts import StandardBoard
-    from draughts.engines import AlphaBetaEngine
+    from draughts.engines import SimpleEngine
 
     board = StandardBoard.from_fen(fen) if fen else StandardBoard()
 
@@ -25,7 +25,7 @@ def main():
             "time_ms": 0,
         }
     else:
-        engine = AlphaBetaEngine(depth_limit=depth)
+        engine = SimpleEngine(depth_limit=depth)
         start = time.perf_counter()
         move = engine.get_best_move(board)
         elapsed_ms = (time.perf_counter() - start) * 1000

@@ -9,7 +9,7 @@ This page compares **py-draughts** (this library, import name ``draughts``) with
 `pydraughts <https://pypi.org/project/pydraughts/>`_, the other commonly used
 Python draughts library. If you are picking between them, the short version:
 py-draughts is dramatically faster, ships with more variants, includes a
-built-in alpha-beta engine, a web UI, SVG rendering, and ML/RL helpers.
+built-in engines, a web UI, SVG rendering, and ML/RL helpers.
 
 .. note::
 
@@ -32,7 +32,7 @@ At a glance
      - Bitboards (NumPy ``uint64``)
      - Object lists
    * - Built-in AI engine
-     - ✅ Alpha-beta + transposition tables + iterative deepening
+     - ✅ TurboEngine (ML eval, 10x10) + SimpleEngine (alpha-beta, all variants)
      - ❌ External engines only
    * - Engine benchmarking suite
      - ✅ ``Benchmark`` class with Elo, win-rate, statistics
@@ -160,13 +160,13 @@ read py-draughts code immediately.
 
 .. code-block:: python
 
-   from draughts import Board, AlphaBetaEngine
+   from draughts import Board, SimpleEngine
 
    board = Board()
    board.push_uci("31-27")
    board.push_uci("18-22")
 
-   engine = AlphaBetaEngine(depth_limit=6)
+   engine = SimpleEngine(depth_limit=6)
    best, score = engine.get_best_move(board, with_evaluation=True)
 
 When to pick which
@@ -221,6 +221,6 @@ See also
 --------
 
 - :doc:`core` — Board API reference
-- :doc:`engine` — built-in alpha-beta engine and HUB protocol bridge
+- :doc:`engine` — built-in engines and HUB protocol bridge
 - :doc:`benchmarking` — how the performance numbers above were produced
 - :doc:`ai` — tensor exports, legal-move masks, RL example

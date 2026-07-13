@@ -25,7 +25,7 @@ except ImportError:
     import numpy as np
 
 from draughts.boards.standard import Board
-from draughts.engines import AlphaBetaEngine
+from draughts.engines import SimpleEngine
 
 
 def benchmark_legal_moves():
@@ -85,7 +85,7 @@ def benchmark_engine_depth(max_depth=10):
     results = []
 
     for depth in range(1, max_depth + 1):
-        engine = AlphaBetaEngine(depth_limit=depth)
+        engine = SimpleEngine(depth_limit=depth)
 
         total_time = 0.0
         total_moves = 0
@@ -188,7 +188,7 @@ def generate_charts(legal_moves_results, engine_results, output_dir):
 
     plt.xlabel("Search Depth", fontsize=12)
     plt.ylabel("Average Time per Move (ms)", fontsize=12)
-    plt.title("AlphaBeta Engine - Search Time by Depth", fontsize=14, fontweight="bold")
+    plt.title("SimpleEngine - Search Time by Depth", fontsize=14, fontweight="bold")
     plt.xticks(depths)
     plt.yscale("log")
     plt.grid(True, alpha=0.3)
@@ -214,7 +214,7 @@ def generate_charts(legal_moves_results, engine_results, output_dir):
 
     plt.xlabel("Search Depth", fontsize=12)
     plt.ylabel("Average Nodes Searched", fontsize=12)
-    plt.title("AlphaBeta Engine - Nodes Searched by Depth", fontsize=14, fontweight="bold")
+    plt.title("SimpleEngine - Nodes Searched by Depth", fontsize=14, fontweight="bold")
     plt.xticks(depths)
     plt.yscale("log")
     plt.grid(True, alpha=0.3)
@@ -240,7 +240,7 @@ def generate_charts(legal_moves_results, engine_results, output_dir):
     ax2.tick_params(axis="y", labelcolor=color2)
     ax2.set_yscale("log")
 
-    plt.title("AlphaBeta Engine Performance by Depth", fontsize=14, fontweight="bold")
+    plt.title("SimpleEngine Performance by Depth", fontsize=14, fontweight="bold")
     fig.tight_layout()
     plt.savefig(output_dir / "engine_benchmark.png", dpi=150)
     plt.close()

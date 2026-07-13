@@ -99,7 +99,7 @@ class BaseAgent(ABC):
             # Use with Benchmark
             stats = Benchmark(
                 MyAgent().as_engine(),
-                AlphaBetaEngine(depth_limit=4),
+                SimpleEngine(depth_limit=4),
                 games=10
             ).run()
         """
@@ -128,7 +128,7 @@ class AgentEngine(Engine):
 
         # Wrap and benchmark
         engine = AgentEngine(RandomAgent(), name="Random")
-        stats = Benchmark(engine, AlphaBetaEngine(depth_limit=4)).run()
+        stats = Benchmark(engine, SimpleEngine(depth_limit=4)).run()
 
     Example with BaseAgent::
 

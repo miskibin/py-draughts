@@ -41,16 +41,13 @@ def _internal_moveset(board: Board):
             lsb = c & -c
             squares.add(B2S[lsb.bit_length() - 1])
             c ^= lsb
-        out.add(
-            (B2S[frm.bit_length() - 1], B2S[to.bit_length() - 1], frozenset(squares))
-        )
+        out.add((B2S[frm.bit_length() - 1], B2S[to.bit_length() - 1], frozenset(squares)))
     return out
 
 
 def _board_moveset(board: Board):
     return {
-        (m.square_list[0], m.square_list[-1], frozenset(m.captured_list))
-        for m in board.legal_moves
+        (m.square_list[0], m.square_list[-1], frozenset(m.captured_list)) for m in board.legal_moves
     }
 
 
@@ -74,8 +71,7 @@ def test_engine_returns_legal_move():
             break
         move = engine.get_best_move(board)
         assert any(
-            move.square_list == m.square_list
-            and move.captured_list == m.captured_list
+            move.square_list == m.square_list and move.captured_list == m.captured_list
             for m in board.legal_moves
         )
         board.push(move)
@@ -114,9 +110,7 @@ def test_engine_beats_random():
                 move = rng.choice(board.legal_moves)
             board.push(move)
         result = board.result
-        if (engine_is_white and result == "1-0") or (
-            not engine_is_white and result == "0-1"
-        ):
+        if (engine_is_white and result == "1-0") or (not engine_is_white and result == "0-1"):
             wins += 1
     assert wins == games
 

@@ -347,11 +347,11 @@ if __name__ == "__main__":
     logger.add(sys.stderr, level="DEBUG")
 
     from draughts import HubEngine, StandardBoard
-    from draughts.engines import AlphaBetaEngine
+    from draughts.engines import SimpleEngine
 
     # Example: Two engines playing against each other
-    white_engine = AlphaBetaEngine(depth_limit=9)
-    black_engine = AlphaBetaEngine(depth_limit=9)
+    white_engine = SimpleEngine(depth_limit=9)
+    black_engine = SimpleEngine(depth_limit=9)
     # black_engine = HubEngine('./scan_engine/scan.exe', depth_limit=6)
 
     board = StandardBoard()

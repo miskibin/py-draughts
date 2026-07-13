@@ -1,6 +1,6 @@
 """
 Reinforcement Learning Example - Eval-Based Training.
-Uses AlphaBetaEngine.get_eval() for dense reward signal.
+Uses SimpleEngine.get_eval() for dense reward signal.
 """
 import random
 import numpy as np
@@ -14,7 +14,7 @@ except ImportError:
     print("pip install torch")
     exit(1)
 
-from draughts import Color, AlphaBetaEngine
+from draughts import Color, SimpleEngine
 from draughts.boards.american import Board
 from draughts.benchmark import Benchmark
 
@@ -50,7 +50,7 @@ class NNEngine:
             return board.index_to_move(logits[0].argmax().item())
 
 
-def collect_eval_data(engine: AlphaBetaEngine, n_games=200):
+def collect_eval_data(engine: SimpleEngine, n_games=200):
     """Collect (state, action, eval) from engine self-play."""
     data = []
     for _ in range(n_games):
@@ -162,12 +162,12 @@ def eval_vs(net, opponent, n=100):
 
 
 def train():
-    engine = AlphaBetaEngine(depth_limit=4)
+    engine = SimpleEngine(depth_limit=4)
     net = PolicyNet()
     best_wr, best_state = 0, None
     
     # Phase 1: Supervised Learning from engine moves + evals
-    print("Phase 1: Learning from AlphaBeta(depth=4) moves + evals")
+    print("Phase 1: Learning from SimpleEngine(depth=4) moves + evals")
     print("=" * 65)
     print("Collecting training data with evaluations...")
     data = collect_eval_data(engine, n_games=300)
@@ -224,5 +224,5 @@ if __name__ == "__main__":
     net = train()
     
     print("\n" + "=" * 60)
-    print("Final Benchmark: NeuralNet vs AlphaBeta(depth=2)")
-    print(Benchmark(NNEngine(net), AlphaBetaEngine(depth_limit=2), board_class=Board, games=20).run())
+    print("Final Benchmark: NeuralNet vs SimpleEngine(depth=2)")
+    print(Benchmark(NNEngine(net), SimpleEngine(depth_limit=2), board_class=Board, games=20).run())

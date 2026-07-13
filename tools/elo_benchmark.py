@@ -12,7 +12,7 @@ Each engine is given as a spec string ``kind[:key=val...]``:
     turbo                      TurboEngine, default settings
     turbo:time=0.2             TurboEngine, 0.2s / move
     turbo:depth=8:name=deep    TurboEngine, fixed depth 8, labelled "deep"
-    alphabeta:depth=6          AlphaBetaEngine, depth 6
+    simple:depth=6          SimpleEngine, depth 6
 
 Examples::
 
@@ -20,8 +20,8 @@ Examples::
     python tools/elo_benchmark.py --e1 turbo:time=0.1 --e2 turbo:time=0.3 \
         --games 300 --workers 6
 
-    # TurboEngine vs the alpha-beta engine.
-    python tools/elo_benchmark.py --e1 turbo:time=0.2 --e2 alphabeta:depth=6 \
+    # TurboEngine vs the simple engine.
+    python tools/elo_benchmark.py --e1 turbo:time=0.2 --e2 simple:depth=6 \
         --games 100
 
 A positive Elo means ``--e1`` is stronger. ``significant`` is true when the
@@ -37,10 +37,10 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from draughts import AlphaBetaEngine, Benchmark, TurboEngine  # noqa: E402
+from draughts import Benchmark, SimpleEngine, TurboEngine  # noqa: E402
 from draughts.models import Color  # noqa: E402
 
-_KINDS = {"turbo": TurboEngine, "alphabeta": AlphaBetaEngine}
+_KINDS = {"turbo": TurboEngine, "simple": SimpleEngine}
 
 
 def build_engine(spec: str):
@@ -96,22 +96,28 @@ def elo_and_se(scores: list[float]) -> tuple[float, float]:
 
 
 def main():
-    ap = argparse.ArgumentParser(description=__doc__,
-                                 formatter_class=argparse.RawDescriptionHelpFormatter)
+    ap = argparse.ArgumentParser(
+        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
+    )
     ap.add_argument("--e1", required=True, help="engine 1 spec (kind[:key=val...])")
     ap.add_argument("--e2", required=True, help="engine 2 spec (kind[:key=val...])")
     ap.add_argument("--games", type=int, default=100)
     ap.add_argument("--workers", type=int, default=1)
     ap.add_argument("--max-moves", type=int, default=200)
-    ap.add_argument("--no-swap", action="store_true",
-                    help="do not swap colours between games (default: swap)")
+    ap.add_argument(
+        "--no-swap", action="store_true", help="do not swap colours between games (default: swap)"
+    )
     ap.add_argument("--csv", default=None, help="append summary to this CSV path")
     args = ap.parse_args()
 
     e1, e2 = build_engine(args.e1), build_engine(args.e2)
     stats = Benchmark(
-        e1, e2, games=args.games, swap_colors=not args.no_swap,
-        max_moves=args.max_moves, workers=args.workers,
+        e1,
+        e2,
+        games=args.games,
+        swap_colors=not args.no_swap,
+        max_moves=args.max_moves,
+        workers=args.workers,
     ).run()
 
     scores = e1_scores(stats)
@@ -125,7 +131,9 @@ def main():
     print(f"  W-L-D (e1):  {stats.e1_wins}-{stats.e2_wins}-{stats.draws}")
     print(f"  e1 score:    {stats.e1_win_rate:.1%}")
     print(f"  Elo (e1-e2): {elo:+.1f}  +/- {two_se:.1f} (2 SE)")
-    print(f"  significant: {significant}  (|Elo| >= 2 SE, e1 {'stronger' if elo > 0 else 'weaker'})")
+    print(
+        f"  significant: {significant}  (|Elo| >= 2 SE, e1 {'stronger' if elo > 0 else 'weaker'})"
+    )
 
     if args.csv:
         stats.to_csv(args.csv)

@@ -12,7 +12,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from draughts.boards.standard import Board
-from draughts.engines import AlphaBetaEngine
+from draughts.engines import SimpleEngine
 
 # Test positions - mix of opening, midgame, and endgame
 TEST_POSITIONS = [
@@ -29,7 +29,7 @@ MOVES_PER_POSITION = 3  # Number of moves to make per position
 
 def benchmark_depth(depth: int) -> dict:
     """Benchmark engine at given depth, return stats."""
-    engine = AlphaBetaEngine(depth_limit=depth)
+    engine = SimpleEngine(depth_limit=depth)
 
     total_time = 0.0
     total_moves = 0

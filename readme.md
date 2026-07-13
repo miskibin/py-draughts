@@ -7,7 +7,7 @@
 [![Python](https://img.shields.io/pypi/pyversions/py-draughts.svg)](https://pypi.org/project/py-draughts/)
 [![License](https://img.shields.io/badge/license-GPL--3.0-blue.svg)](LICENSE)
 
-**py-draughts** (import name: `draughts`) is a fast, modern Python library for **draughts** (also known as **checkers**). Bitboard-backed move generation, PDN/FEN parsing, a built-in alpha-beta engine, HUB protocol bridge for external engines like [Scan](https://hjetten.home.xs4all.nl/scan/scan.html) and [Kingsrow](http://www.edgilbert.org/Checkers/KingsRow.htm), an interactive web UI, and tensor exports for RL / ML — all in one package.
+**py-draughts** (import name: `draughts`) is a fast, modern Python library for **draughts** (also known as **checkers**). Bitboard-backed move generation, PDN/FEN parsing, built-in engines (the ML-trained `TurboEngine` plus a general-purpose `SimpleEngine`), a HUB protocol bridge for external engines like [Scan](https://hjetten.home.xs4all.nl/scan/scan.html) and [Kingsrow](http://www.edgilbert.org/Checkers/KingsRow.htm), an interactive web UI, and tensor exports for RL / ML — all in one package.
 
 > [!IMPORTANT]
 > The fastest pure-Python draughts library: **~200x faster** legal-move generation than [pydraughts](https://pypi.org/project/pydraughts/), with 8 supported variants and 260+ tests.
@@ -21,7 +21,7 @@
 | Board init | **3.3 µs** | 579.45 µs (**176x slower**) |
 | FEN parse | **27.4 µs** | 295.10 µs (**11x slower**) |
 | Variants | 8 (Standard, American, Frisian, Russian, Brazilian, Antidraughts, Breakthrough, Frysk!) | 6 |
-| Built-in AI engine | ✅ Alpha-beta + transposition tables | ❌ External only |
+| Built-in AI engine | ✅ TurboEngine (learned eval) + SimpleEngine (all variants) | ❌ External only |
 | Engine benchmarking suite | ✅ | ❌ |
 | Web UI | ✅ FastAPI + interactive board | ❌ |
 | SVG rendering | ✅ | ❌ |
@@ -202,35 +202,34 @@ False
 
 ## [Engine](https://miskibin.github.io/py-draughts/engine.html)
 
-Built-in alpha-beta engine with transposition tables and iterative deepening:
+Two built-in engines.
 
-```python
->>> from draughts import Board, AlphaBetaEngine
-
->>> board = Board()
->>> engine = AlphaBetaEngine(depth_limit=5)
-
->>> move = engine.get_best_move(board)
->>> move
-Move: 32->28
-
->>> move, score = engine.get_best_move(board, with_evaluation=True)
->>> score
-0.15
-```
-
-### TurboEngine (strongest built-in)
+### TurboEngine (strongest, recommended)
 
 For the standard international (10x10) board, `TurboEngine` combines Scan's
 63-bit bitboard layout, a PVS search, and a machine-learned pattern evaluation
-trained on Scan self-play. At equal time per move it beats `AlphaBetaEngine`
-by several hundred Elo while using less time:
+trained on Scan self-play — it is the strongest built-in engine:
 
 ```python
 >>> from draughts import Board, TurboEngine
 
 >>> engine = TurboEngine(time_limit=0.5)  # or depth_limit=...
 >>> move, score = engine.get_best_move(Board(), with_evaluation=True)
+```
+
+### SimpleEngine (all variants)
+
+`SimpleEngine` is a lightweight general-purpose engine — alpha-beta with
+transposition tables and iterative deepening — that works on **every variant**
+(`TurboEngine` is international-only):
+
+```python
+>>> from draughts import Board, SimpleEngine
+
+>>> engine = SimpleEngine(depth_limit=5)
+>>> move, score = engine.get_best_move(Board(), with_evaluation=True)
+>>> score
+0.15
 ```
 
 ### External Engines (Hub Protocol)
@@ -257,20 +256,20 @@ Compatible engines:
 Compare engines against each other with comprehensive statistics:
 
 ```python
->>> from draughts import Benchmark, AlphaBetaEngine
+>>> from draughts import Benchmark, SimpleEngine
 
 >>> stats = Benchmark(
-...     AlphaBetaEngine(depth_limit=4),
-...     AlphaBetaEngine(depth_limit=6),
+...     SimpleEngine(depth_limit=4),
+...     SimpleEngine(depth_limit=6),
 ...     games=20
 ... ).run()
 
 >>> print(stats)
 ============================================================
-  BENCHMARK: AlphaBetaEngine (d=4) vs AlphaBetaEngine (d=6)
+  BENCHMARK: SimpleEngine (d=4) vs SimpleEngine (d=6)
 ============================================================
   RESULTS: 2-12-6 (W-L-D)
-  AlphaBetaEngine (d=4) win rate: 25.0%
+  SimpleEngine (d=4) win rate: 25.0%
   Elo difference: -191
   ...
 ```
@@ -291,7 +290,7 @@ Build custom agents with neural networks, MCTS, or any algorithm:
 >>> move = agent.select_move(board)
 
 # Use with Benchmark
->>> stats = Benchmark(agent.as_engine(), AlphaBetaEngine(depth_limit=4), games=10).run()
+>>> stats = Benchmark(agent.as_engine(), SimpleEngine(depth_limit=4), games=10).run()
 ```
 
 **ML-ready features:**
@@ -330,9 +329,9 @@ plus the 180° augmentation. Same ~630K params, ~0.2 s/move (25–40 games each)
 
 | Opponent | Result (W–L–D) | Verdict |
 |----------|:--------------:|---------|
-| `AlphaBeta(depth=2)` | **22–2–1**   | dominates |
-| `AlphaBeta(depth=4)` | **27–2–11**  | dominates (was 15–3–12 without features) |
-| `AlphaBeta(depth=6)` | **11–9–5**   | now ahead of a depth‑6 search |
+| `SimpleEngine(depth=2)` | **22–2–1**   | dominates |
+| `SimpleEngine(depth=4)` | **27–2–11**  | dominates (was 15–3–12 without features) |
+| `SimpleEngine(depth=6)` | **11–9–5**   | now ahead of a depth‑6 search |
 
 Load the trained weights and play:
 
@@ -408,11 +407,11 @@ Scan it falls back to the built-in engine as a weaker teacher.
 Interactive web interface for playing and engine testing:
 
 ```python
-from draughts import Board, Server, AlphaBetaEngine, HubEngine
+from draughts import Board, Server, SimpleEngine, HubEngine
 
 server = Server(
     board=Board(),
-    white_engine=AlphaBetaEngine(depth_limit=6),
+    white_engine=SimpleEngine(depth_limit=6),
     black_engine=HubEngine("path/to/scan.exe", time_limit=1.0)
 )
 server.run() # Open http://localhost:8000

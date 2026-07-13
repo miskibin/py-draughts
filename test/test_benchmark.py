@@ -4,7 +4,6 @@ import pytest
 
 from draughts import (
     STANDARD_OPENINGS,
-    AlphaBetaEngine,
     AmericanBoard,
     Benchmark,
     BenchmarkStats,
@@ -12,6 +11,7 @@ from draughts import (
     FrisianBoard,
     GameResult,
     RussianBoard,
+    SimpleEngine,
     StandardBoard,
 )
 from draughts.benchmark import _engine_label
@@ -93,29 +93,29 @@ class TestEngineLabel:
     """Tests for engine labeling."""
 
     def test_label_with_depth(self):
-        engine = AlphaBetaEngine(depth_limit=5)
+        engine = SimpleEngine(depth_limit=5)
         label = _engine_label(engine)
         assert "d=5" in label
-        assert "AlphaBetaEngine" in label
+        assert "SimpleEngine" in label
 
     def test_label_with_time(self):
-        engine = AlphaBetaEngine(depth_limit=None, time_limit=2.0)
+        engine = SimpleEngine(depth_limit=None, time_limit=2.0)
         label = _engine_label(engine)
         assert "t=2.0s" in label
 
     def test_label_with_both(self):
-        engine = AlphaBetaEngine(depth_limit=6, time_limit=1.0)
+        engine = SimpleEngine(depth_limit=6, time_limit=1.0)
         label = _engine_label(engine)
         assert "d=6" in label
         assert "t=1.0s" in label
 
     def test_label_with_suffix(self):
-        engine = AlphaBetaEngine(depth_limit=4)
+        engine = SimpleEngine(depth_limit=4)
         label = _engine_label(engine, " #1")
         assert label.endswith(" #1")
 
     def test_custom_name(self):
-        engine = AlphaBetaEngine(depth_limit=4, name="MyBot")
+        engine = SimpleEngine(depth_limit=4, name="MyBot")
         label = _engine_label(engine)
         assert "MyBot" in label
 
@@ -124,22 +124,22 @@ class TestBenchmarkInit:
     """Tests for Benchmark initialization."""
 
     def test_default_openings_standard(self):
-        e1 = AlphaBetaEngine(depth_limit=2)
-        e2 = AlphaBetaEngine(depth_limit=2)
+        e1 = SimpleEngine(depth_limit=2)
+        e2 = SimpleEngine(depth_limit=2)
         bench = Benchmark(e1, e2, board_class=StandardBoard)
         assert len(bench.openings) == len(STANDARD_OPENINGS)
 
     def test_default_openings_american(self):
         """Non-50 square boards should use starting position."""
-        e1 = AlphaBetaEngine(depth_limit=2)
-        e2 = AlphaBetaEngine(depth_limit=2)
+        e1 = SimpleEngine(depth_limit=2)
+        e2 = SimpleEngine(depth_limit=2)
         bench = Benchmark(e1, e2, board_class=AmericanBoard)
         assert len(bench.openings) == 1
         assert bench.openings[0][0] == "Start"
 
     def test_custom_openings(self):
-        e1 = AlphaBetaEngine(depth_limit=2)
-        e2 = AlphaBetaEngine(depth_limit=2)
+        e1 = SimpleEngine(depth_limit=2)
+        e2 = SimpleEngine(depth_limit=2)
         custom = ["W:W31,32:B1,2", "B:W40:B10"]
         bench = Benchmark(e1, e2, openings=custom)
         assert len(bench.openings) == 2
@@ -147,23 +147,23 @@ class TestBenchmarkInit:
         assert bench.openings[1][0] == "Custom 2"
 
     def test_same_name_engines_distinguished(self):
-        e1 = AlphaBetaEngine(depth_limit=3)
-        e2 = AlphaBetaEngine(depth_limit=5)
+        e1 = SimpleEngine(depth_limit=3)
+        e2 = SimpleEngine(depth_limit=5)
         bench = Benchmark(e1, e2)
         assert "d=3" in bench.e1_name
         assert "d=5" in bench.e2_name
         assert bench.e1_name != bench.e2_name
 
     def test_identical_engines_get_suffix(self):
-        e1 = AlphaBetaEngine(depth_limit=4)
-        e2 = AlphaBetaEngine(depth_limit=4)
+        e1 = SimpleEngine(depth_limit=4)
+        e2 = SimpleEngine(depth_limit=4)
         bench = Benchmark(e1, e2)
         assert "#1" in bench.e1_name
         assert "#2" in bench.e2_name
 
     def test_different_names_preserved(self):
-        e1 = AlphaBetaEngine(depth_limit=3, name="Bot1")
-        e2 = AlphaBetaEngine(depth_limit=5, name="Bot2")
+        e1 = SimpleEngine(depth_limit=3, name="Bot1")
+        e2 = SimpleEngine(depth_limit=5, name="Bot2")
         bench = Benchmark(e1, e2)
         assert bench.e1_name == "Bot1"
         assert bench.e2_name == "Bot2"
@@ -173,8 +173,8 @@ class TestBenchmarkRun:
     """Tests for running benchmarks."""
 
     def test_run_returns_stats(self):
-        e1 = AlphaBetaEngine(depth_limit=1)
-        e2 = AlphaBetaEngine(depth_limit=1)
+        e1 = SimpleEngine(depth_limit=1)
+        e2 = SimpleEngine(depth_limit=1)
         bench = Benchmark(e1, e2, games=2, max_moves=10)
         stats = bench.run()
 
@@ -183,8 +183,8 @@ class TestBenchmarkRun:
         assert len(stats.results) == 2
 
     def test_swap_colors(self):
-        e1 = AlphaBetaEngine(depth_limit=1)
-        e2 = AlphaBetaEngine(depth_limit=1)
+        e1 = SimpleEngine(depth_limit=1)
+        e2 = SimpleEngine(depth_limit=1)
         bench = Benchmark(e1, e2, games=4, max_moves=5, swap_colors=True)
         stats = bench.run()
 
@@ -193,24 +193,24 @@ class TestBenchmarkRun:
         assert Color.BLACK in colors
 
     def test_no_swap_colors(self):
-        e1 = AlphaBetaEngine(depth_limit=1)
-        e2 = AlphaBetaEngine(depth_limit=1)
+        e1 = SimpleEngine(depth_limit=1)
+        e2 = SimpleEngine(depth_limit=1)
         bench = Benchmark(e1, e2, games=3, max_moves=5, swap_colors=False)
         stats = bench.run()
 
         assert all(r.e1_color == Color.WHITE for r in stats.results)
 
     def test_max_moves_respected(self):
-        e1 = AlphaBetaEngine(depth_limit=1)
-        e2 = AlphaBetaEngine(depth_limit=1)
+        e1 = SimpleEngine(depth_limit=1)
+        e2 = SimpleEngine(depth_limit=1)
         bench = Benchmark(e1, e2, games=1, max_moves=10)
         stats = bench.run()
 
         assert stats.results[0].moves <= 10
 
     def test_game_numbers_sequential(self):
-        e1 = AlphaBetaEngine(depth_limit=1)
-        e2 = AlphaBetaEngine(depth_limit=1)
+        e1 = SimpleEngine(depth_limit=1)
+        e2 = SimpleEngine(depth_limit=1)
         bench = Benchmark(e1, e2, games=5, max_moves=5)
         stats = bench.run()
 
@@ -223,8 +223,8 @@ class TestBenchmarkBoardVariants:
 
     @pytest.mark.parametrize("board_class", [StandardBoard, AmericanBoard, RussianBoard])
     def test_board_variant(self, board_class):
-        e1 = AlphaBetaEngine(depth_limit=1)
-        e2 = AlphaBetaEngine(depth_limit=1)
+        e1 = SimpleEngine(depth_limit=1)
+        e2 = SimpleEngine(depth_limit=1)
         bench = Benchmark(e1, e2, board_class=board_class, games=1, max_moves=10)
         stats = bench.run()
 
@@ -233,8 +233,8 @@ class TestBenchmarkBoardVariants:
 
     def test_frisian_variant(self):
         """Frisian has different rules, verify it works."""
-        e1 = AlphaBetaEngine(depth_limit=1)
-        e2 = AlphaBetaEngine(depth_limit=1)
+        e1 = SimpleEngine(depth_limit=1)
+        e2 = SimpleEngine(depth_limit=1)
         bench = Benchmark(e1, e2, board_class=FrisianBoard, games=1, max_moves=10)
         stats = bench.run()
 
@@ -246,8 +246,8 @@ class TestBenchmarkOpenings:
 
     def test_openings_cycle(self):
         """Openings should cycle when games > openings."""
-        e1 = AlphaBetaEngine(depth_limit=1)
-        e2 = AlphaBetaEngine(depth_limit=1)
+        e1 = SimpleEngine(depth_limit=1)
+        e2 = SimpleEngine(depth_limit=1)
         # Only 2 custom openings, but 4 games
         bench = Benchmark(
             e1,
@@ -269,8 +269,8 @@ class TestBenchmarkOpenings:
 
     def test_invalid_opening_fen(self):
         """Invalid FEN should raise an error during game."""
-        e1 = AlphaBetaEngine(depth_limit=1)
-        e2 = AlphaBetaEngine(depth_limit=1)
+        e1 = SimpleEngine(depth_limit=1)
+        e2 = SimpleEngine(depth_limit=1)
 
         # This should raise when trying to parse invalid FEN
         with pytest.raises(Exception):
@@ -305,16 +305,16 @@ class TestEngineNameParameter:
     """Tests for engine name parameter."""
 
     def test_engine_default_name(self):
-        engine = AlphaBetaEngine(depth_limit=5)
-        assert engine.name == "AlphaBetaEngine"
+        engine = SimpleEngine(depth_limit=5)
+        assert engine.name == "SimpleEngine"
 
     def test_engine_custom_name(self):
-        engine = AlphaBetaEngine(depth_limit=5, name="MyCustomEngine")
+        engine = SimpleEngine(depth_limit=5, name="MyCustomEngine")
         assert engine.name == "MyCustomEngine"
 
     def test_benchmark_uses_custom_name(self):
-        e1 = AlphaBetaEngine(depth_limit=3, name="FastBot")
-        e2 = AlphaBetaEngine(depth_limit=5, name="StrongBot")
+        e1 = SimpleEngine(depth_limit=3, name="FastBot")
+        e2 = SimpleEngine(depth_limit=5, name="StrongBot")
         bench = Benchmark(e1, e2, games=1, max_moves=5)
         stats = bench.run()
 

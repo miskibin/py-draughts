@@ -15,13 +15,13 @@ Quick Start
 
 .. code-block:: python
 
-    from draughts import Board, Server, AlphaBetaEngine
+    from draughts import Board, Server, SimpleEngine
 
     board = Board()
     server = Server(
         board=board,
-        white_engine=AlphaBetaEngine(depth_limit=6),
-        black_engine=AlphaBetaEngine(depth_limit=4)
+        white_engine=SimpleEngine(depth_limit=6),
+        black_engine=SimpleEngine(depth_limit=4)
     )
     server.run()  # Open http://localhost:8000
 
@@ -37,7 +37,7 @@ Engine Matches
 
 Pit engines against each other::
 
-    from draughts import Board, Server, AlphaBetaEngine, Engine
+    from draughts import Board, Server, SimpleEngine, Engine
     import random
 
     class RandomEngine(Engine):
@@ -47,7 +47,7 @@ Pit engines against each other::
 
     server = Server(
         board=Board(),
-        white_engine=AlphaBetaEngine(depth_limit=6),
+        white_engine=SimpleEngine(depth_limit=6),
         black_engine=RandomEngine()
     )
     server.run()

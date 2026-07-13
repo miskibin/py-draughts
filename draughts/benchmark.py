@@ -2,10 +2,10 @@
 Benchmarking module for comparing draughts engines.
 
 Example:
-    >>> from draughts import Benchmark, AlphaBetaEngine
+    >>> from draughts import Benchmark, SimpleEngine
     >>> stats = Benchmark(
-    ...     AlphaBetaEngine(depth_limit=4),
-    ...     AlphaBetaEngine(depth_limit=6),
+    ...     SimpleEngine(depth_limit=4),
+    ...     SimpleEngine(depth_limit=6),
     ...     games=10
     ... ).run()
 """
@@ -334,8 +334,8 @@ class Benchmark:
     Benchmark two engines against each other.
 
     Example:
-        >>> from draughts import Benchmark, AlphaBetaEngine
-        >>> bench = Benchmark(AlphaBetaEngine(depth_limit=4), AlphaBetaEngine(depth_limit=6))
+        >>> from draughts import Benchmark, SimpleEngine
+        >>> bench = Benchmark(SimpleEngine(depth_limit=4), SimpleEngine(depth_limit=6))
         >>> print(bench.run())
     """
 
@@ -432,7 +432,7 @@ class Benchmark:
 
 
 if __name__ == "__main__":
-    from draughts import AlphaBetaEngine
+    from draughts import SimpleEngine
 
-    bench = Benchmark(AlphaBetaEngine(depth_limit=4), AlphaBetaEngine(depth_limit=6), workers=10)
+    bench = Benchmark(SimpleEngine(depth_limit=4), SimpleEngine(depth_limit=6), workers=10)
     print(bench.run())

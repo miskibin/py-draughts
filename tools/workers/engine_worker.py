@@ -20,7 +20,7 @@ import time
 
 # Import once at startup
 from draughts import StandardBoard
-from draughts.engines import AlphaBetaEngine
+from draughts.engines import SimpleEngine
 from draughts.move import Move
 
 # Persistent board state across moves in same game
@@ -76,7 +76,7 @@ def handle_move(depth: int) -> dict:
             "time_ms": 0,
         }
 
-    engine = AlphaBetaEngine(depth_limit=depth)
+    engine = SimpleEngine(depth_limit=depth)
     start = time.perf_counter()
     move = engine.get_best_move(current_board)
     elapsed_ms = (time.perf_counter() - start) * 1000
