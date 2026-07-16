@@ -28,6 +28,7 @@ from __future__ import annotations
 import argparse
 import json
 import sys
+from concurrent.futures import ProcessPoolExecutor
 from pathlib import Path
 
 import matplotlib
@@ -372,7 +373,11 @@ def fig_pipeline():
 
 
 def _selfplay_worker(args):
-    """Play shallow untrained self-play games, return quiet (wm,wk,bm,bk,result)."""
+    """Play shallow untrained self-play games, return quiet (wm,wk,bm,bk,result).
+
+    Uses the hand-eval base (pattern term off) -- the trained residual's
+    starting point -- so the reproduced training curve fits patterns from
+    scratch on this data."""
     seed, n_games, depth, max_plies, min_open, max_open, cap = args
     import importlib.util
     import random
@@ -459,6 +464,21 @@ def _build_features(samples):
     return base, cells, y, P * E
 
 
+def _selfplay(games, depth, workers):
+    per = max(1, games // workers)
+    tasks, s, rem = [], 1234, games
+    while rem > 0:
+        g = min(per, rem)
+        tasks.append((s, g, depth, 160, 4, 9, 30))
+        rem -= g
+        s += 1
+    samples = []
+    with ProcessPoolExecutor(max_workers=workers) as ex:
+        for fut in [ex.submit(_selfplay_worker, t) for t in tasks]:
+            samples.extend(fut.result())
+    return samples
+
+
 def _sigmoid(x):
     return 1.0 / (1.0 + np.exp(-np.clip(x, -40, 40)))
 
@@ -498,21 +518,7 @@ def _fit_curve(base, cells, y, n_w, lam=1e-3, iters=400, lr=1.0, seed=0):
     return hist, base_val_mse
 
 
-def fig_training_curve(games, depth, workers):
-    from concurrent.futures import ProcessPoolExecutor
-
-    print(f"  generating {games} untrained self-play games (d={depth}) for the training curve...")
-    per = max(1, games // workers)
-    tasks, s, rem = [], 1234, games
-    while rem > 0:
-        g = min(per, rem)
-        tasks.append((s, g, depth, 160, 4, 9, 30))
-        rem -= g
-        s += 1
-    samples = []
-    with ProcessPoolExecutor(max_workers=workers) as ex:
-        for fut in [ex.submit(_selfplay_worker, t) for t in tasks]:
-            samples.extend(fut.result())
+def fig_training_curve(samples):
     print(f"  {len(samples)} quiet positions -> {2 * len(samples)} with 180° augmentation")
     base, cells, y, n_w = _build_features(samples)
     hist, base_mse = _fit_curve(base, cells, y, n_w)
@@ -549,8 +555,8 @@ def main():
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--with-curve", action="store_true",
                     help="also generate the reproduced training-loss curve (does self-play)")
-    ap.add_argument("--curve-games", type=int, default=160)
-    ap.add_argument("--curve-depth", type=int, default=3)
+    ap.add_argument("--curve-games", type=int, default=200)
+    ap.add_argument("--curve-depth", type=int, default=4)
     ap.add_argument("--workers", type=int, default=3)
     args = ap.parse_args()
 
@@ -564,7 +570,10 @@ def main():
         fig_ladder(elo)
         fig_strength(elo)
     if args.with_curve:
-        fig_training_curve(args.curve_games, args.curve_depth, args.workers)
+        print(f"  self-play: {args.curve_games} games at depth {args.curve_depth} "
+              f"({args.workers} workers) for the reproduced training curve...")
+        samples = _selfplay(args.curve_games, args.curve_depth, args.workers)
+        fig_training_curve(samples)
     print("done.")
 
 

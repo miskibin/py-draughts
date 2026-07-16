@@ -147,10 +147,12 @@ frozen, so the pure-Python leaf is unchanged. The offline pipeline
    ``turbo_weights.bin``, which the engine loads with the standard library
    alone.
 
-Fitting the residual measurably sharpens the evaluation's agreement with game
-outcomes. The curve below is a fresh reproduction of the methodology on
-self-play data generated on the spot (the shipped v3 weights used Scan 3.1
-labels, which are not reproduced here):
+Fitting the residual measurably lowers the held-out win-probability loss that
+the trainer optimises. The curve below is a fresh reproduction of the
+methodology on self-play data generated on the spot — it shows the fit
+generalising (validation loss drops below the base-only baseline), not a game
+strength claim; the shipped v3 weights used Scan 3.1 labels, which are not
+reproduced here:
 
 .. image:: _static/turbo_training_curve.png
    :alt: Reproduced training curve — held-out loss vs iterations
@@ -173,13 +175,16 @@ Measured strength
 ~~~~~~~~~~~~~~~~~~
 
 Strength was measured with ``tools/measure_turbo_elo.py`` and rendered by
-``tools/generate_turbo_charts.py``. All headline figures use a **fixed search
+``tools/generate_turbo_charts.py``. Headline figures use a **fixed search
 depth**: wall-clock Elo is noisy and machine-dependent on a shared CPU, whereas
-depth-limited games give the same result on any machine. Each number is an Elo
-estimate with a ``±2·SE`` interval (win = 1, draw = ½, loss = 0). The internal
-ladder is a *relative* scale anchored at the shallowest depth — with no
-externally calibrated opponent (e.g. Scan) wired in, an absolute FMJD rating is
-not claimed.
+depth-limited games reproduce on any machine. Every game starts from a
+**distinct, material-balanced random opening**, so the games are statistically
+independent and the standard errors are honest — cycling a small fixed opening
+book against a deterministic engine produces correlated, near-duplicate games
+and *understates* the error. Each number is an Elo estimate with a ``±2·SE``
+interval (win = 1, draw = ½, loss = 0). The internal ladder is a *relative*
+scale anchored at the shallowest depth; with no externally calibrated opponent
+(e.g. Scan) wired in, an absolute FMJD rating is not claimed.
 
 .. image:: _static/turbo_elo_ladder.png
    :alt: Measured internal Elo vs search depth
@@ -191,12 +196,25 @@ not claimed.
 
 .. TURBO_ELO_TABLE
 
-Two results stand out. First, the flagship gap: at equal search depth
-TurboEngine overwhelms the general-purpose :class:`~draughts.SimpleEngine` while
-spending far less time per move (≈100 ms vs ≈280 ms at depth 6). Second, the
-**training payoff** — the same engine with the trained pattern term switched off
-(``TURBO_WEIGHTS=none``) plays measurably weaker, isolating the Elo the offline
-training actually bought on top of the frozen hand eval.
+**The flagship gap.** At equal search depth TurboEngine beats the
+general-purpose :class:`~draughts.SimpleEngine` decisively while spending far
+less time per move (≈180 ms vs ≈400 ms at depth 6, and fewer nodes) — it is
+stronger *and* faster. Each extra ply of search is worth roughly 90–120 Elo over
+the range measured, so the engine scales cleanly with thinking time.
+
+**The training payoff — and its ceiling.** The shipped pattern weights are a
+*residual* on the frozen hand eval, and the honest game-Elo effect is small.
+Switching the trained term off (``TURBO_WEIGHTS=none``) changes how the engine
+plays — most ablation games are decisive, not draws — yet at fixed depth the two
+versions score within a few dozen Elo of each other (the leftmost bar above),
+close to the measurement's noise floor. That matches the project's own
+:doc:`v4 eval-tuning investigation <benchmarking>`, which concluded the v3
+pattern eval already sits near the ceiling of what a
+pattern-evaluation-trained-on-Scan-labels can extract: the learned residual
+reshapes play more than it moves the scoreboard at these depths, and the
+remaining headroom is in *search*, not more pattern capacity. (Reproducing the
+raw eval-accuracy gain would need an externally calibrated oracle such as the
+Scan engine for labels, which is not wired into this environment.)
 
 **Reproduce it**::
 
@@ -204,7 +222,8 @@ training actually bought on top of the frozen hand eval.
     python tools/measure_turbo_elo.py --all --workers 3 \
         --out docs/source/_static/turbo_elo.json
 
-    # rebuild every figure on this page (add --with-curve for the training curve)
+    # rebuild every figure on this page (Elo charts, weights, training curve);
+    # --with-curve does a few minutes of self-play
     python tools/generate_turbo_charts.py --with-curve
 
 SimpleEngine

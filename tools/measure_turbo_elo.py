@@ -51,7 +51,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from draughts import Benchmark, SimpleEngine, TurboEngine  # noqa: E402
-from draughts.benchmark import STANDARD_OPENINGS, _play_game  # noqa: E402
+from draughts.benchmark import _play_game  # noqa: E402
 from draughts.boards.standard import Board as StandardBoard  # noqa: E402
 from draughts.models import Color  # noqa: E402
 
@@ -92,6 +92,42 @@ def _scores_from_results(results) -> list[float]:
     return out
 
 
+def random_openings(n: int, seed: int, min_ply: int = 4, max_ply: int = 7) -> list[str]:
+    """``n`` distinct, near-balanced opening FENs, each reached by a few random
+    legal plies from the start.  Using a *distinct* opening per game makes the
+    games statistically independent — cycling a small fixed book with a
+    deterministic fixed-depth engine produces correlated (near-duplicate) games
+    and understates the Elo standard error.
+    """
+    import random
+
+    rng = random.Random(seed)
+    seen: set[str] = set()
+    out: list[str] = []
+    guard = 0
+    while len(out) < n and guard < n * 80:
+        guard += 1
+        board = StandardBoard()
+        for _ in range(rng.randint(min_ply, max_ply)):
+            lm = board.legal_moves
+            if not lm or board.game_over:
+                break
+            board.push(rng.choice(lm))
+        if board.game_over:
+            continue
+        # keep only material-balanced openings (no capture played: 20 men each)
+        w = int(board.white_men | board.white_kings).bit_count()
+        b = int(board.black_men | board.black_kings).bit_count()
+        if w != 20 or b != 20:
+            continue
+        fen = board.fen.split('"')[1]  # inner FEN, unwrapped
+        if fen in seen:
+            continue
+        seen.add(fen)
+        out.append(fen)
+    return out
+
+
 def _summary(name: str, results, extra: dict | None = None) -> dict:
     scores = _scores_from_results(results)
     wins = sum(1 for s in scores if s == 1.0)
@@ -123,9 +159,10 @@ def _summary(name: str, results, extra: dict | None = None) -> dict:
 # ---------------------------------------------------------------------------
 
 
-def run_match(e1, e2, name, games, workers, max_moves=250, swap=True) -> dict:
+def run_match(e1, e2, name, games, workers, openings, max_moves=250, swap=True) -> dict:
     stats = Benchmark(
-        e1, e2, games=games, swap_colors=swap, max_moves=max_moves, workers=workers
+        e1, e2, games=games, openings=openings, swap_colors=swap,
+        max_moves=max_moves, workers=workers,
     ).run()
     return _summary(
         name,
@@ -183,10 +220,10 @@ class _R:
         self.e1_color = e1_color
 
 
-def run_ablation(depth, games, workers, max_moves=250) -> dict:
-    openings = list(STANDARD_OPENINGS)
+def run_ablation(depth, games, workers, openings, max_moves=250) -> dict:
+    # one distinct opening per game -> independent games (see random_openings)
     configs = [
-        (i + 1, i % 2 == 0, openings[i % len(openings)]) for i in range(games)
+        (i + 1, i % 2 == 0, (f"open{i}", openings[i % len(openings)])) for i in range(games)
     ]
     # Split into `workers` contiguous slices.
     per = math.ceil(games / max(1, workers))
@@ -239,6 +276,10 @@ def main():
     ap.add_argument("--ablation-games", type=int, default=200)
     ap.add_argument("--ablation-depth", type=int, default=6)
     ap.add_argument("--time-control", type=float, default=0.1)
+    ap.add_argument("--open-seed", type=int, default=20260716,
+                    help="seed for the distinct random opening positions")
+    ap.add_argument("--open-min", type=int, default=4, help="min random opening plies")
+    ap.add_argument("--open-max", type=int, default=7, help="max random opening plies")
     ap.add_argument("--out", default=str(Path(__file__).parent.parent / "docs" / "source" / "_static" / "turbo_elo.json"))
     args = ap.parse_args()
 
@@ -251,6 +292,14 @@ def main():
     if not (args.ladder or args.flagship or args.ablation):
         ap.error("choose --all / --ladder / --flagship / --ablation (or --smoke)")
 
+    # Each matchup gets its own set of DISTINCT random openings (one per game),
+    # so games are independent and the reported standard errors are honest.
+    seed = [args.open_seed]
+
+    def openings(n):
+        seed[0] += 1
+        return random_openings(n, seed[0], args.open_min, args.open_max)
+
     t0 = time.perf_counter()
     data: dict = {
         "meta": {
@@ -259,6 +308,8 @@ def main():
             "processor": platform.processor() or platform.machine(),
             "cpu_count": os.cpu_count(),
             "workers": args.workers,
+            "openings": "distinct random per game (independent games)",
+            "open_plies": [args.open_min, args.open_max],
             "note": (
                 "Fixed-depth Elo is machine-independent; the internal ladder is "
                 "anchored at the shallowest depth (relative scale, not absolute FMJD)."
@@ -277,6 +328,7 @@ def main():
                 f"Turbo d={high} vs d={low}",
                 args.ladder_games,
                 args.workers,
+                openings(args.ladder_games),
             )
             row["high"], row["low"] = high, low
             ladder.append(row)
@@ -287,7 +339,6 @@ def main():
 
     if args.flagship:
         print("\n== FLAGSHIP vs BASELINE (Turbo vs Simple) ==")
-        flagship = []
         fd = 6 if not args.smoke else 4
         flagship_depth = run_match(
             TurboEngine(depth_limit=fd),
@@ -295,6 +346,7 @@ def main():
             f"Turbo d={fd} vs Simple d={fd}",
             args.flagship_games,
             args.workers,
+            openings(args.flagship_games),
         )
         flagship_depth["mode"] = "fixed-depth"
         flagship_depth["depth"] = fd
@@ -305,6 +357,7 @@ def main():
             f"Turbo t={args.time_control}s vs Simple t={args.time_control}s",
             args.flagship_games,
             args.workers,
+            openings(args.flagship_games),
         )
         flagship_time["mode"] = "equal-time"
         flagship_time["time_control"] = args.time_control
@@ -317,6 +370,7 @@ def main():
             args.ablation_depth if not args.smoke else 4,
             args.ablation_games,
             args.workers,
+            openings(args.ablation_games),
         )
 
     data["meta"]["elapsed_s"] = round(time.perf_counter() - t0, 1)
