@@ -1,5 +1,22 @@
 # Changelog
 
+## Unreleased
+
+New:
+
+- **TurboEngine strength benchmarks + in-depth docs**: `tools/measure_turbo_elo.py`
+  measures TurboEngine's strength — a self-play depth ladder, the flagship gap vs
+  `SimpleEngine`, and the trained-vs-untrained pattern-eval ablation — reporting
+  each as an Elo with a standard error. `tools/generate_turbo_charts.py` renders
+  the documentation figures (learned-weight distribution and per-pattern activity,
+  the training pipeline, a reproduced Texel training curve, and the measured-Elo
+  charts). The engine docs gain a full "How it works / The trained pattern
+  evaluation / How it was trained / Measured strength" walkthrough.
+- **`TURBO_WEIGHTS` override**: point the environment variable at a custom `.bin`
+  produced by `tools/train_pattern_eval.py` to load your own trained pattern
+  weights, or set it to `none`/`off` to disable the trained term (v2 hand eval
+  only). Unset uses the shipped `turbo_weights.bin`.
+
 ## 1.9.0
 
 Breaking changes:
