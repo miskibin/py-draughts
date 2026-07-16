@@ -232,13 +232,34 @@ _PAT_SH, _PAT_WM, _PAT_TW, _PAT_TB = _build_pattern_tables()
 WEIGHTS_FILE = os.path.join(os.path.dirname(__file__), "turbo_weights.bin")
 _PAT_MAGIC = b"TPW1"
 
+# Sentinels that disable the trained pattern term (fall back to the v2 hand
+# eval). Handy for A/B measuring the training's Elo contribution.
+_NO_WEIGHTS = {"", "none", "off", "0", "disable", "disabled"}
+
+
+def _weights_path() -> Optional[str]:
+    """Resolve the pattern-weights file, honouring the ``TURBO_WEIGHTS``
+    override.  Set it to a custom ``.bin`` produced by
+    ``tools/train_pattern_eval.py`` to load your own weights, or to one of
+    ``none``/``off``/``0`` to run with the pattern term disabled.  Unset uses
+    the shipped ``turbo_weights.bin``."""
+    override = os.environ.get("TURBO_WEIGHTS")
+    if override is None:
+        return WEIGHTS_FILE
+    if override.strip().lower() in _NO_WEIGHTS:
+        return None
+    return override
+
 
 def _load_pattern_weights() -> tuple[tuple[int, ...], ...]:
     """Load trained int16 pattern weights, or fall back to all-zeros (which
     makes the pattern term a no-op, i.e. identical to the v2 hand eval)."""
     zeros = tuple((0,) * PAT_ENTRIES for _ in range(N_PATTERNS))
+    path = _weights_path()
+    if path is None:
+        return zeros
     try:
-        with open(WEIGHTS_FILE, "rb") as f:
+        with open(path, "rb") as f:
             data = f.read()
         if data[:4] != _PAT_MAGIC:
             return zeros

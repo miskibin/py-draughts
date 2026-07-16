@@ -120,3 +120,36 @@ def test_engine_rejects_non_international_board():
 
     with pytest.raises(ValueError):
         TurboEngine(depth_limit=3).get_best_move(AmericanBoard())
+
+
+def test_shipped_weights_are_active():
+    """The distributed turbo_weights.bin must load into a non-zero pattern
+    eval (a regression guard against a missing/corrupt weights file)."""
+    from draughts.engines import turbo
+
+    assert turbo._weights_path() == turbo.WEIGHTS_FILE
+    weights = turbo._load_pattern_weights()
+    assert any(any(row) for row in weights)
+
+
+@pytest.mark.parametrize("sentinel", ["none", "off", "0", "disabled"])
+def test_turbo_weights_env_disables_pattern_term(monkeypatch, sentinel):
+    """TURBO_WEIGHTS=<sentinel> disables the trained pattern correction so the
+    eval falls back to the v2 hand eval (all-zero pattern weights)."""
+    from draughts.engines import turbo
+
+    monkeypatch.setenv("TURBO_WEIGHTS", sentinel)
+    assert turbo._weights_path() is None
+    weights = turbo._load_pattern_weights()
+    assert all(not any(row) for row in weights)
+
+
+def test_turbo_weights_env_custom_path(monkeypatch):
+    """A custom TURBO_WEIGHTS path is honoured; a missing file degrades to the
+    zero (hand-eval) fallback rather than raising."""
+    from draughts.engines import turbo
+
+    monkeypatch.setenv("TURBO_WEIGHTS", "/nonexistent/turbo_weights.bin")
+    assert turbo._weights_path() == "/nonexistent/turbo_weights.bin"
+    weights = turbo._load_pattern_weights()
+    assert all(not any(row) for row in weights)
