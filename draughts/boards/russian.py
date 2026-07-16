@@ -241,6 +241,14 @@ class Board(BaseBoard):
             land_bit = 1 << land
             if (all_p & land_bit) and not (src_bit & land_bit):
                 continue
+            # A piece captured earlier in this sequence stays on the board until
+            # the move ends (Russian rule). It has already been cleared from the
+            # bitboards during generation, so ``all_p`` no longer reflects it;
+            # ``captured`` is the only record that the landing square is still
+            # blocked. Without this guard a cyclic man capture could land on a
+            # square still occupied by an already-captured piece (issue #43).
+            if land in captured:
+                continue
 
             cap_piece = 1 if bm & mid_bit else (2 if bk & mid_bit else (-1 if wm & mid_bit else -2))
 
@@ -267,8 +275,15 @@ class Board(BaseBoard):
                 else:
                     self.black_men &= ~land_bit
                     self.black_kings |= land_bit
-                # Continue capturing as a king (flying captures)
-                self._king_captures(land, enemy, captured, set(), sub)
+                # Continue capturing as a king (flying captures). The squares
+                # captured so far must keep blocking: per Russian rules a
+                # captured piece stays on the board until the sequence ends and
+                # may not be flown over or landed on again. Those pieces have
+                # already been removed from the bitboards, so the promoted king
+                # would otherwise fly straight over them. Seed the king's
+                # ``forbidden`` set with the accumulated captures so it treats
+                # them as still-occupied blockers (issue #43).
+                self._king_captures(land, enemy, captured, set(captured), sub)
             else:
                 # Continue as man
                 self._man_captures(land, enemy, captured, sub, is_white)
