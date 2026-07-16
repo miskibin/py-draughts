@@ -1,0 +1,32 @@
+name: Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Release tag (e.g. v1.9.0); must match a '## <version>' section in changelog.md"
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Extract changelog section
+        env:
+          TAG: ${{ inputs.tag }}
+        run: |
+          VERSION="${TAG#v}"
+          awk -v ver="$VERSION" '$0 == "## " ver {flag=1; next} /^## /{flag=0} flag' changelog.md > /tmp/notes.md
+          if ! [ -s /tmp/notes.md ]; then
+            echo "No changelog section found for version $VERSION" >&2
+            exit 1
+          fi
+      - name: Create tag and GitHub release
+        env:
+          TAG: ${{ inputs.tag }}
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "$TAG" --target "$GITHUB_SHA" --title "$TAG" --notes-file /tmp/notes.md
