@@ -12,10 +12,16 @@ on:
     tags:
       - "v*"
   workflow_dispatch:
+  # Tags created by the Release workflow use GITHUB_TOKEN and therefore do not
+  # fire the tag-push trigger above, so chain off that workflow instead.
+  workflow_run:
+    workflows: ["Release"]
+    types: [completed]
 
 jobs:
   build:
     name: Build distribution
+    if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -50,3 +56,5 @@ jobs:
           path: dist/
       - name: Publish package distributions to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          skip-existing: true
