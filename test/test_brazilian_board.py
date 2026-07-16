@@ -6,8 +6,12 @@ Differences from Russian:
   the move finishes)
 """
 
+import numpy as np
+
 from draughts import BrazilianBoard
 from draughts.boards.russian import Board as RussianBoard
+from draughts.models import Color
+from test._test_helpers import assert_no_captured_square_recrossed
 
 
 def test_starting_position_matches_russian():
@@ -87,3 +91,24 @@ def test_push_pop_roundtrip():
     board.push(move)
     board.pop()
     assert board.fen == snap_fen
+
+
+def test_flying_king_windmill_does_not_recross_captured():
+    """
+    Brazilian shares Russian's flying-king capture generator. In a windmill the
+    king returns to its start while capturing four men; it must never fly over
+    or land on a square whose piece was already captured earlier in the same
+    sequence (the same rule broken by issue #43 in the promoted-king path).
+    """
+    position = np.zeros(32, dtype=np.int8)
+    # White king on 12; black men on 8, 14, 16, 22 (plus 29 for shape).
+    for sq_1, val in {8: 1, 12: -2, 14: 1, 16: 1, 22: 1, 29: 1}.items():
+        position[sq_1 - 1] = val
+    board = BrazilianBoard(position, Color.WHITE)
+
+    moves = board.legal_moves
+    # The full 4-piece windmill is the maximum capture and must be present.
+    assert any(len(m.captured_list) == 4 for m in moves)
+    # Check the entire flight path of every jump, not just the landing squares.
+    for m in moves:
+        assert_no_captured_square_recrossed(m)

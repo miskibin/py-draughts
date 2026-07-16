@@ -8,7 +8,7 @@ import draughts.boards.russian as russian
 from draughts.boards.russian import Board
 from draughts.models import Color, Figure
 from draughts.move import Move
-from test._test_helpers import get_board
+from test._test_helpers import assert_no_captured_square_recrossed, get_board
 
 
 class TestRussianBoard:
@@ -260,6 +260,106 @@ class TestRussianMidCapturePromotion:
         # Just verify move generation doesn't crash
         moves = board.legal_moves
         assert isinstance(moves, list)
+
+
+class TestRussianIssue43:
+    """
+    Regression tests for issue #43.
+
+    Position ``B:W15,16,K17,21,25:B9,13`` (black to move). The black man on 13
+    (a5) captures the white king on 17 (b4) landing 22 (c3), captures the man on
+    25 (b2) landing 29 (a1) where it promotes mid-capture. Per Russian rules a
+    captured piece stays on the board until the sequence ends and may not be
+    passed over or landed on again, so the promoted king on a1 is BLOCKED by the
+    already-captured piece on b2 (25) and cannot continue. The only legal move is
+    therefore ``13x22x29``.
+
+    Before the fix, ``_man_captures`` handed the promoted man off to
+    ``_king_captures`` with an EMPTY forbidden set, so the new king flew over the
+    already-captured square 25 and produced the illegal sequences
+    ``13x22x29x11x20``, ``13x22x29x8`` and ``13x22x29x4``.
+    """
+
+    FEN = "B:W15,16,K17,21,25:B9,13"
+
+    def test_only_legal_move_is_short_capture(self):
+        """The single legal move is 13x22x29 (capture b4-king + b2, promoting)."""
+        board = Board.from_fen(self.FEN)
+        moves = board.legal_moves
+        assert [str(m) for m in moves] == ["13x22x29"]
+        move = moves[0]
+        # Captures exactly the king on 17 and the man on 25 (0-indexed 16, 24).
+        assert sorted(c + 1 for c in move.captured_list) == [17, 25]
+        assert move.is_promotion, "man promotes on a1 mid-capture"
+
+    def test_illegal_flyover_sequences_absent(self):
+        """The three illegal fly-over-captured sequences must not be generated."""
+        board = Board.from_fen(self.FEN)
+        generated = {str(m) for m in board.legal_moves}
+        for illegal in ("13x22x29x11x20", "13x22x29x8", "13x22x29x4"):
+            assert illegal not in generated, f"{illegal} should be illegal"
+
+    def test_illegal_sequences_rejected_by_push(self):
+        """push_uci must reject each illegal continuation."""
+        for illegal in ("13x22x29x11x20", "13x22x29x8", "13x22x29x4"):
+            board = Board.from_fen(self.FEN)
+            with pytest.raises(ValueError):
+                board.push_uci(illegal)
+
+    def test_captures_are_mandatory_no_quiet_slide(self):
+        """
+        Captures are mandatory: every legal move is a capture and no quiet slide
+        (e.g. the plain move ``13-29``) is offered.
+        """
+        board = Board.from_fen(self.FEN)
+        moves = board.legal_moves
+        assert all(m.captured_list for m in moves), "captures are mandatory"
+        # No quiet, non-capturing move from 13 (idx 12) to 29 (idx 28) exists.
+        assert not any(
+            m.square_list == [12, 28] and not m.captured_list for m in moves
+        ), "the plain slide 13-29 must not be a legal move"
+
+    def test_no_capture_revisits_captured_square(self):
+        """
+        General invariant: no generated capture may pass over or land on a
+        square that was already captured earlier in the same sequence. This
+        checks the full flight path of every jump (via the shared king-ray
+        geometry), not merely the landing waypoints.
+        """
+        board = Board.from_fen(self.FEN)
+        for m in board.legal_moves:
+            assert_no_captured_square_recrossed(m)
+
+    def test_legal_capture_leaves_king_on_a1(self):
+        """Playing 13x22x29 removes b4-king and b2, and crowns a black king on a1."""
+        board = Board.from_fen(self.FEN)
+        board.push_uci("13x22x29")
+        # a1 == square 29 == index 28 must hold a black king.
+        assert board.black_kings & (1 << 28)
+        assert not (board.black_men & (1 << 28))
+        # Captured white pieces (17 and 25) are gone; 15, 16, 21 remain.
+        assert board.fen == '[FEN "W:W15,16,21:B9,K29"]'
+
+
+class TestRussianCapturedSquareBlocking:
+    """
+    Broader coverage for the "captured pieces keep blocking" rule (issue #43),
+    exercised by a promoted king that would otherwise fly over captured men.
+    """
+
+    def test_promoted_king_cannot_fly_over_captured_man(self):
+        """
+        White man F6 jumps E7 -> D8 (promotes), then as a flying king must not
+        fly back over the already-captured E7 square.
+        """
+        # Minimal position found by search: pieces on (1-indexed)
+        # 7,8 black men; 10 white man; 14,25,26 mixed; white to move.
+        position = np.zeros(32, dtype=np.int8)
+        for sq_1, val in {7: 1, 8: 1, 10: -1, 14: 1, 25: 1, 26: 1}.items():
+            position[sq_1 - 1] = val
+        board = Board(position, Color.WHITE)
+        for m in board.legal_moves:
+            assert_no_captured_square_recrossed(m)
 
 
 class TestRussianDrawRules:
