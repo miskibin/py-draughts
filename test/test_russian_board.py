@@ -8,7 +8,7 @@ import draughts.boards.russian as russian
 from draughts.boards.russian import Board
 from draughts.models import Color, Figure
 from draughts.move import Move
-from test._test_helpers import get_board
+from test._test_helpers import assert_no_captured_square_recrossed, get_board
 
 
 class TestRussianBoard:
@@ -322,15 +322,13 @@ class TestRussianIssue43:
     def test_no_capture_revisits_captured_square(self):
         """
         General invariant: no generated capture may pass over or land on a
-        square that was already captured earlier in the same sequence.
+        square that was already captured earlier in the same sequence. This
+        checks the full flight path of every jump (via the shared king-ray
+        geometry), not merely the landing waypoints.
         """
         board = Board.from_fen(self.FEN)
         for m in board.legal_moves:
-            captured = set(m.captured_list)
-            for landing in m.square_list[1:]:
-                assert landing not in captured, (
-                    f"{m} lands on/flies over already-captured square {landing + 1}"
-                )
+            assert_no_captured_square_recrossed(m)
 
     def test_legal_capture_leaves_king_on_a1(self):
         """Playing 13x22x29 removes b4-king and b2, and crowns a black king on a1."""
@@ -361,11 +359,7 @@ class TestRussianCapturedSquareBlocking:
             position[sq_1 - 1] = val
         board = Board(position, Color.WHITE)
         for m in board.legal_moves:
-            captured = set(m.captured_list)
-            for landing in m.square_list[1:]:
-                assert landing not in captured, (
-                    f"{m} flies over/lands on already-captured square {landing + 1}"
-                )
+            assert_no_captured_square_recrossed(m)
 
 
 class TestRussianDrawRules:

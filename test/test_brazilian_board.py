@@ -11,6 +11,7 @@ import numpy as np
 from draughts import BrazilianBoard
 from draughts.boards.russian import Board as RussianBoard
 from draughts.models import Color
+from test._test_helpers import assert_no_captured_square_recrossed
 
 
 def test_starting_position_matches_russian():
@@ -108,9 +109,6 @@ def test_flying_king_windmill_does_not_recross_captured():
     moves = board.legal_moves
     # The full 4-piece windmill is the maximum capture and must be present.
     assert any(len(m.captured_list) == 4 for m in moves)
+    # Check the entire flight path of every jump, not just the landing squares.
     for m in moves:
-        captured = set(m.captured_list)
-        for landing in m.square_list[1:]:
-            assert landing not in captured, (
-                f"{m} flies over/lands on already-captured square {landing + 1}"
-            )
+        assert_no_captured_square_recrossed(m)
