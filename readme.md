@@ -217,6 +217,14 @@ trained on Scan self-play — it is the strongest built-in engine:
 >>> move, score = engine.get_best_move(Board(), with_evaluation=True)
 ```
 
+Measured over independent, colour-swapped games (see the
+[engine docs](https://miskibin.github.io/py-draughts/engine.html#measured-strength)):
+TurboEngine beats `SimpleEngine` by **+436 Elo** at equal search depth (and
+**+352 Elo** at equal time), and the trained pattern evaluation is worth
+**+76 ± 42 Elo** over the bare hand eval. Its own search scales at ~110–175 Elo
+per extra ply. Set `TURBO_WEIGHTS` to load your own trained weights, or to
+`none` to disable the pattern term.
+
 ### SimpleEngine (all variants)
 
 `SimpleEngine` is a lightweight general-purpose engine — alpha-beta with

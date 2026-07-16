@@ -38,8 +38,8 @@ TurboEngine
 The strongest built-in engine, for the standard international (10x10) board
 only. It uses Scan's 63-bit bitboard layout, a PVS search with transposition
 table, and a machine-learned pattern evaluation trained on Scan self-play.
-At equal search depth it beats :class:`~draughts.SimpleEngine` decisively while
-searching in roughly a third of the time per move.
+At equal search depth it beats :class:`~draughts.SimpleEngine` by a wide margin
+(measured below) while using less time per move.
 
 .. code-block:: python
 
@@ -194,27 +194,71 @@ scale anchored at the shallowest depth; with no externally calibrated opponent
    :alt: Trained-vs-untrained ablation and TurboEngine vs SimpleEngine
    :width: 700px
 
-.. TURBO_ELO_TABLE
+.. list-table:: Measured TurboEngine strength (Elo of the first engine; win = 1, draw = ½, loss = 0)
+   :header-rows: 1
+   :widths: 34 16 10 16 24
+
+   * - Matchup
+     - W–L–D
+     - Score
+     - Elo (±2·SE)
+     - Notes
+   * - Turbo d=5 vs d=4
+     - 46–9–25
+     - 73.1%
+     - +174 ± 68
+     - self-play, +1 ply
+   * - Turbo d=6 vs d=5
+     - 45–9–26
+     - 72.5%
+     - +168 ± 67
+     - self-play, +1 ply
+   * - Turbo d=7 vs d=6
+     - 39–14–27
+     - 65.6%
+     - +112 ± 65
+     - self-play, +1 ply
+   * - Turbo vs Simple (depth 6)
+     - 54–3–3
+     - 92.5%
+     - +436 ± 154
+     - flagship gap, fixed depth
+   * - Turbo vs Simple (0.1 s/move)
+     - 51–5–4
+     - 88.3%
+     - +352 ± 128
+     - flagship gap, equal time
+   * - Trained vs untrained eval (depth 6)
+     - 78–39–63
+     - 60.8%
+     - +76 ± 42
+     - ``TURBO_WEIGHTS`` ablation
+
+*Independent, material-balanced random openings; 4–7 random opening plies per game.
+Fixed depth except where a time control is given. The depth ladder is a relative
+internal scale — cumulatively about +455 Elo (±115) from depth 4 to depth 7 —
+not an absolute FMJD rating.*
+
 
 **The flagship gap.** At equal search depth TurboEngine beats the
-general-purpose :class:`~draughts.SimpleEngine` decisively while spending far
-less time per move (≈180 ms vs ≈400 ms at depth 6, and fewer nodes) — it is
-stronger *and* faster. Each extra ply of search is worth roughly 90–120 Elo over
-the range measured, so the engine scales cleanly with thinking time.
+general-purpose :class:`~draughts.SimpleEngine` by **+436 Elo** — it scores
+92.5% — while *also* using less time per move (≈235 ms vs ≈287 ms at depth 6) and
+fewer nodes: stronger and faster at once. At equal wall-clock time (0.1 s/move)
+the gap is **+352 Elo**. Turbo's own search scales cleanly too — each extra ply
+is worth roughly 110–175 Elo across the measured range (the ladder), for about
+**+455 Elo** from depth 4 to depth 7.
 
-**The training payoff — and its ceiling.** The shipped pattern weights are a
-*residual* on the frozen hand eval, and the honest game-Elo effect is small.
-Switching the trained term off (``TURBO_WEIGHTS=none``) changes how the engine
-plays — most ablation games are decisive, not draws — yet at fixed depth the two
-versions score within a few dozen Elo of each other (the leftmost bar above),
-close to the measurement's noise floor. That matches the project's own
-:doc:`v4 eval-tuning investigation <benchmarking>`, which concluded the v3
-pattern eval already sits near the ceiling of what a
-pattern-evaluation-trained-on-Scan-labels can extract: the learned residual
-reshapes play more than it moves the scoreboard at these depths, and the
-remaining headroom is in *search*, not more pattern capacity. (Reproducing the
-raw eval-accuracy gain would need an externally calibrated oracle such as the
-Scan engine for labels, which is not wired into this environment.)
+**The training payoff.** The shipped pattern weights are a small *residual* on
+the frozen hand eval, but they buy real strength. Switching the trained term off
+(``TURBO_WEIGHTS=none``) costs the engine **+76 ± 42 Elo** at depth 6 over 180
+independent games (the trained-vs-untrained bar above) — a significant gain, in
+line with the figure reported when the eval first shipped. Pushing the eval
+*further* is where the returns stop: the project's own
+:doc:`v4 eval-tuning investigation <benchmarking>` — more patterns, tapered
+middlegame/endgame terms, learned king tables, retrained on fresh Scan labels —
+could not beat v3 at any time control, concluding the v3 pattern eval already
+sits near the ceiling of what pattern-evaluation-trained-on-Scan-labels extracts.
+The remaining headroom is in *search*, not more pattern capacity.
 
 **Reproduce it**::
 
