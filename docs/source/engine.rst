@@ -147,16 +147,11 @@ frozen, so the pure-Python leaf is unchanged. The offline pipeline
    ``turbo_weights.bin``, which the engine loads with the standard library
    alone.
 
-Fitting the residual measurably lowers the held-out win-probability loss that
-the trainer optimises. The curve below is a fresh reproduction of the
-methodology on self-play data generated on the spot — it shows the fit
-generalising (validation loss drops below the base-only baseline), not a game
-strength claim; the shipped v3 weights used Scan 3.1 labels, which are not
-reproduced here:
-
-.. image:: _static/turbo_training_curve.png
-   :alt: Reproduced training curve — held-out loss vs iterations
-   :width: 560px
+The label quality matters: the shipped weights were fit against Scan 3.1's own
+search scores, a far cleaner signal than raw self-play game results, which is why
+the ``scanreg`` objective (regress the eval toward Scan's judgement) is the
+recommended recipe below. The measured game-strength effect of the finished
+weights is reported in :ref:`Measured strength <measured-strength>`.
 
 **Reproduce it.** The trainer is self-contained; point it at a Scan binary for
 the strongest labels, or let it self-play::
@@ -170,6 +165,8 @@ Load your own weights (or disable the trained term) at runtime via the
 
     TURBO_WEIGHTS=/path/to/my_weights.bin   # custom trained weights
     TURBO_WEIGHTS=none                       # disable → v2 hand eval only
+
+.. _measured-strength:
 
 Measured strength
 ~~~~~~~~~~~~~~~~~~
@@ -266,9 +263,8 @@ The remaining headroom is in *search*, not more pattern capacity.
     python tools/measure_turbo_elo.py --all --workers 3 \
         --out docs/source/_static/turbo_elo.json
 
-    # rebuild every figure on this page (Elo charts, weights, training curve);
-    # --with-curve does a few minutes of self-play
-    python tools/generate_turbo_charts.py --with-curve
+    # rebuild every figure on this page (Elo charts, learned weights, pipeline)
+    python tools/generate_turbo_charts.py
 
 SimpleEngine
 ------------

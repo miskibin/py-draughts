@@ -10,7 +10,6 @@ Figures
 * ``turbo_eval_learned.png``     mean learned correction by local men balance (what it learned)
 * ``turbo_pattern_coverage.png`` the 11 overlapping men patterns on the board
 * ``turbo_training_pipeline.png`` schematic of the offline training pipeline
-* ``turbo_training_curve.png``   reproduced Texel fit: val loss vs iterations (``--with-curve``)
 
 Elo figures read ``docs/source/_static/turbo_elo.json`` (produced by
 ``tools/measure_turbo_elo.py``); weight figures read the shipped
@@ -19,8 +18,7 @@ palette (validated blue/green/orange + a blue->orange diverging ramp).
 
 Usage::
 
-    python tools/generate_turbo_charts.py            # all data-free + Elo figures
-    python tools/generate_turbo_charts.py --with-curve --curve-games 160
+    python tools/generate_turbo_charts.py     # regenerate every figure
 """
 
 from __future__ import annotations
@@ -28,7 +26,6 @@ from __future__ import annotations
 import argparse
 import json
 import sys
-from concurrent.futures import ProcessPoolExecutor
 from pathlib import Path
 
 import matplotlib
@@ -367,198 +364,10 @@ def fig_pipeline():
     _save(fig, "turbo_training_pipeline.png")
 
 
-# ---------------------------------------------------------------------------
-# 7. Reproduced Texel training curve (self-play + logistic fit)
-# ---------------------------------------------------------------------------
-
-
-def _selfplay_worker(args):
-    """Play shallow untrained self-play games, return quiet (wm,wk,bm,bk,result).
-
-    Uses the hand-eval base (pattern term off) -- the trained residual's
-    starting point -- so the reproduced training curve fits patterns from
-    scratch on this data."""
-    seed, n_games, depth, max_plies, min_open, max_open, cap = args
-    import importlib.util
-    import random
-
-    from draughts import Board
-    from draughts.models import Color
-
-    spec = importlib.util.spec_from_file_location(
-        "turbo_base", str(ROOT / "draughts" / "engines" / "turbo.py"))
-    m = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(m)
-    m.PAT_W = tuple((0,) * m.PAT_ENTRIES for _ in range(m.N_PATTERNS))
-    m.PAT_ACTIVE = False  # hand-eval base (the trained residual's starting point)
-
-    rng = random.Random(seed)
-    eng = m.TurboEngine(depth_limit=depth)
-    samples = []
-    for _ in range(n_games):
-        board = Board()
-        for _ in range(rng.randint(min_open, max_open)):
-            lm = board.legal_moves
-            if not lm or board.game_over:
-                break
-            board.push(rng.choice(lm))
-        positions, plies = [], 0
-        while not board.game_over and plies < max_plies:
-            wm, wk, bm, bk = m.TurboEngine._convert(board)
-            white = board.turn == Color.WHITE
-            if not m._has_capture(wm, wk, bm, bk, white) and not m._has_capture(
-                wm, wk, bm, bk, not white
-            ):
-                positions.append((wm, wk, bm, bk))
-            board.push(eng.get_best_move(board))
-            plies += 1
-        if board.is_draw or plies >= max_plies:
-            res = 0.5
-        elif board.game_over:
-            res = 0.0 if board.turn == Color.WHITE else 1.0
-        else:
-            res = 0.5
-        if len(positions) > cap:
-            positions = rng.sample(positions, cap)
-        samples.extend((wm, wk, bm, bk, res) for (wm, wk, bm, bk) in positions)
-    return samples
-
-
-def _build_features(samples):
-    """(base, cells, y) with 180-degree colour-swapped augmentation."""
-    import importlib.util
-
-    spec = importlib.util.spec_from_file_location(
-        "turbo_base2", str(ROOT / "draughts" / "engines" / "turbo.py"))
-    m = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(m)
-    m.PAT_W = tuple((0,) * m.PAT_ENTRIES for _ in range(m.N_PATTERNS))
-    m.PAT_ACTIVE = False
-
-    P, E = m.N_PATTERNS, m.PAT_ENTRIES
-    remap = {m.S2B[s]: m.S2B[49 - s] for s in range(50)}
-
-    def rot(bb):
-        out = 0
-        while bb:
-            lsb = bb & -bb
-            out |= 1 << remap[lsb.bit_length() - 1]
-            bb ^= lsb
-        return out
-
-    offs = np.arange(P, dtype=np.int64) * E
-    base = np.empty(len(samples) * 2, dtype=np.float64)
-    cells = np.empty((len(samples) * 2, P), dtype=np.int64)
-    y = np.empty(len(samples) * 2, dtype=np.float64)
-    i = 0
-    for wm, wk, bm, bk, res in samples:
-        base[i] = m._evaluate(wm, wk, bm, bk, True)
-        cells[i] = offs + np.asarray(m.pattern_indices(wm, bm))
-        y[i] = res
-        i += 1
-        rwm, rbm, rwk, rbk = rot(bm), rot(wm), rot(bk), rot(wk)
-        base[i] = m._evaluate(rwm, rwk, rbm, rbk, True)
-        cells[i] = offs + np.asarray(m.pattern_indices(rwm, rbm))
-        y[i] = 1.0 - res
-        i += 1
-    return base, cells, y, P * E
-
-
-def _selfplay(games, depth, workers):
-    per = max(1, games // workers)
-    tasks, s, rem = [], 1234, games
-    while rem > 0:
-        g = min(per, rem)
-        tasks.append((s, g, depth, 160, 4, 9, 30))
-        rem -= g
-        s += 1
-    samples = []
-    with ProcessPoolExecutor(max_workers=workers) as ex:
-        for fut in [ex.submit(_selfplay_worker, t) for t in tasks]:
-            samples.extend(fut.result())
-    return samples
-
-
-def _sigmoid(x):
-    return 1.0 / (1.0 + np.exp(-np.clip(x, -40, 40)))
-
-
-def _fit_curve(base, cells, y, n_w, lam=1e-3, iters=400, lr=1.0, seed=0):
-    """Texel logistic fit of pattern residuals on the fixed base; record the
-    held-out MSE every few iterations (mirrors tools/train_pattern_eval.fit)."""
-    rng = np.random.default_rng(seed)
-    N, P = len(y), cells.shape[1]
-    perm = rng.permutation(N)
-    nval = int(0.15 * N)
-    val, tr = perm[:nval], perm[nval:]
-    ctr, ytr, btr = cells[tr], y[tr], base[tr]
-    flat = ctr.ravel()
-    Ntr = len(tr)
-
-    # fixed logistic scale K fit on base-only (patterns off)
-    ks = np.linspace(0.001, 0.03, 60)
-    K = ks[np.argmin([np.mean((_sigmoid(k * base) - y) ** 2) for k in ks])]
-    base_val_mse = float(np.mean((_sigmoid(K * base[val]) - y[val]) ** 2))
-
-    w = np.zeros(n_w)
-    mw = np.zeros(n_w)
-    vw = np.zeros(n_w)
-    b1, b2, eps = 0.9, 0.999, 1e-8
-    hist = []
-    for t in range(1, iters + 1):
-        E = btr + w[ctr].sum(axis=1)
-        g = (K / Ntr) * (_sigmoid(K * E) - ytr)
-        gw = np.bincount(flat, weights=np.repeat(g, P), minlength=n_w) + 2 * lam * w
-        mw = b1 * mw + (1 - b1) * gw
-        vw = b2 * vw + (1 - b2) * gw * gw
-        w -= lr * (mw / (1 - b1 ** t)) / (np.sqrt(vw / (1 - b2 ** t)) + eps)
-        if t == 1 or t % 10 == 0:
-            Ev = base[val] + w[cells[val]].sum(axis=1)
-            hist.append((t, float(np.mean((_sigmoid(K * Ev) - y[val]) ** 2))))
-    return hist, base_val_mse
-
-
-def fig_training_curve(samples):
-    print(f"  {len(samples)} quiet positions -> {2 * len(samples)} with 180° augmentation")
-    base, cells, y, n_w = _build_features(samples)
-    hist, base_mse = _fit_curve(base, cells, y, n_w)
-
-    ts = [h[0] for h in hist]
-    ms = [h[1] for h in hist]
-    fig, ax = plt.subplots(figsize=(8.2, 5.0))
-    ax.axhline(base_mse, color=MUTED, linestyle="--", linewidth=1.6,
-               label="base eval only (patterns off)")
-    ax.plot(ts, ms, "-o", color=GREEN, markersize=5, markerfacecolor=GREEN,
-            markeredgecolor="white", linewidth=2.2, label="base + trained patterns")
-    ax.set_xlabel("Adam iteration")
-    ax.set_ylabel("held-out win-probability MSE (Texel)")
-    ax.set_title("Reproduced training curve: patterns learn a residual on the frozen eval",
-                 fontweight="bold", loc="left")
-    ax.legend(frameon=False)
-    red = 100 * (base_mse - ms[-1]) / base_mse
-    ax.annotate(
-        f"{len(samples):,} quiet self-play positions (×2 mirror)\n"
-        f"held-out MSE {base_mse:.4f} → {ms[-1]:.4f}  ({red:.0f}% lower)",
-        (0.97, 0.95), xycoords="axes fraction", ha="right", va="top",
-        fontsize=9.5, color=MUTED,
-        bbox=dict(boxstyle="round,pad=0.4", fc="white", ec=GRIDC),
-    )
-    fig.text(0.01, -0.02,
-             "Reproduction of the documented methodology on freshly generated data; the shipped "
-             "v3 weights used Scan 3.1 labels (not available here).",
-             fontsize=8.5, color=MUTED, style="italic")
-    _save(fig, "turbo_training_curve.png")
-
-
 def main():
     ap = argparse.ArgumentParser(description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("--with-curve", action="store_true",
-                    help="also generate the reproduced training-loss curve (does self-play)")
-    ap.add_argument("--curve-games", type=int, default=200)
-    ap.add_argument("--curve-depth", type=int, default=4)
-    ap.add_argument("--workers", type=int, default=3)
-    args = ap.parse_args()
+    ap.parse_args()
 
     print("Generating TurboEngine figures ->", STATIC.relative_to(ROOT))
     fig_pipeline()
@@ -569,11 +378,6 @@ def main():
     if elo:
         fig_ladder(elo)
         fig_strength(elo)
-    if args.with_curve:
-        print(f"  self-play: {args.curve_games} games at depth {args.curve_depth} "
-              f"({args.workers} workers) for the reproduced training curve...")
-        samples = _selfplay(args.curve_games, args.curve_depth, args.workers)
-        fig_training_curve(samples)
     print("done.")
 
 
