@@ -1,5 +1,21 @@
 # Changelog
 
+## 1.9.0
+
+Breaking changes:
+
+- **`AlphaBetaEngine` removed** (#42): renamed to `SimpleEngine` (identical API — alpha-beta with transposition table and iterative deepening, works on all variants).
+
+New:
+
+- **`TurboEngine`** (#42): new flagship engine for international draughts — Scan-style 63-bit board layout, PVS search with iterative deepening, transposition table, LMR and quiescence, plus a Scan-taught pattern evaluation (~+90 Elo at fixed depth, +176 Elo at 0.25s/move over the hand eval). International 10x10 only; `SimpleEngine` covers the other variants.
+- **Cross-validation harness**: `tools/cross_validate_moves.py` and `test/test_cross_validation.py` validate standard-variant move generation against the Scan 3.1 engine; 7,492 positions across adversarial families (multi-capture tangles, windmills, coup-turc, near-promotion) matched Scan exactly. The test auto-skips when the Scan binary is absent.
+- **Benchmark tooling** (#42): `tools/profile_turbo.py` (nodes/s profiler) and `tools/elo_benchmark.py` (head-to-head Elo with standard error).
+
+Bug fixes:
+
+- **Russian mid-capture promotion** (#43): a man promoting mid-capture could continue as a king flying over pieces it had already captured (e.g. `13x22x29x11x20` from `B:W15,16,K17,21,25:B9,13`). Captured pieces now block the promoted king for the rest of the sequence; the only legal move in that position is `13x22x29`.
+
 ## 1.8.4
 
 Bug fixes:
