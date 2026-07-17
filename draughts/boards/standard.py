@@ -6,10 +6,16 @@ from __future__ import annotations
 
 import numpy as np
 
-from draughts.boards import _core10
+from draughts.boards._core import CORE_STANDARD as _CORE
 from draughts.boards.base import BaseBoard
 from draughts.models import Color
 from draughts.move import Move
+
+# Bind the generators as module globals so the hot path avoids per-call
+# attribute lookups on the core instance.
+_to_ghost = _CORE.to_ghost
+_gen_captures = _CORE.gen_captures
+_gen_quiets = _CORE.gen_quiets
 
 # fmt: off
 SQUARES = [B10, D10, F10, H10, J10,
@@ -50,27 +56,28 @@ class Board(BaseBoard):
 
     @property
     def legal_moves(self) -> list[Move]:
-        wm = _core10.to_ghost(self.white_men)
-        wk = _core10.to_ghost(self.white_kings)
-        bm = _core10.to_ghost(self.black_men)
-        bk = _core10.to_ghost(self.black_kings)
+        wm = _to_ghost(self.white_men)
+        wk = _to_ghost(self.white_kings)
+        bm = _to_ghost(self.black_men)
+        bk = _to_ghost(self.black_kings)
         white = self.turn == Color.WHITE
 
-        raw = _core10.gen_captures(wm, wk, bm, bk, white)
+        raw = _gen_captures(wm, wk, bm, bk, white)
         if raw:
+            # Mandatory maximum capture: keep only the longest chains.
             best = 0
-            for _, caps in raw:
+            for _, caps, _promo in raw:
                 if len(caps) > best:
                     best = len(caps)
             get = self._get
             moves = [
-                Move(list(path), list(caps), [get(c) for c in caps])
-                for path, caps in raw
+                Move(list(path), list(caps), [get(c) for c in caps], promo)
+                for path, caps, promo in raw
                 if len(caps) == best
             ]
             return self._dedupe_captures(moves)
 
-        return [Move([frm, to]) for frm, to in _core10.gen_quiets(wm, wk, bm, bk, white)]
+        return [Move([frm, to]) for frm, to in _gen_quiets(wm, wk, bm, bk, white)]
 
     @property
     def is_draw(self) -> bool:
