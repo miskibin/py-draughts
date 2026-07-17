@@ -1,0 +1,157 @@
+{
+  "meta": {
+    "timestamp": "2026-07-17T10:28:00.478477+00:00",
+    "python": "3.11.15",
+    "processor": "x86_64",
+    "cpu_count": 4,
+    "workers": 4,
+    "openings": "distinct random per game (independent games)",
+    "open_plies": [
+      4,
+      7
+    ],
+    "note": "Fixed-depth Elo is machine-independent; the internal ladder is anchored at the shallowest depth (relative scale, not absolute FMJD).",
+    "elapsed_s": 1951.9
+  },
+  "ladder": [
+    {
+      "name": "Turbo d=5 vs d=4",
+      "games": 40,
+      "wins": 22,
+      "losses": 4,
+      "draws": 14,
+      "score": 0.725,
+      "elo": 168.4,
+      "se": 46.1,
+      "elo_2se": 92.2,
+      "e1": "TurboEngine (d=5)",
+      "e2": "TurboEngine (d=4)",
+      "avg_moves": 126.0,
+      "avg_ms_e1": 82.5,
+      "avg_ms_e2": 41.8,
+      "avg_nodes_e1": 6341,
+      "avg_nodes_e2": 3234,
+      "high": 5,
+      "low": 4
+    },
+    {
+      "name": "Turbo d=6 vs d=5",
+      "games": 40,
+      "wins": 23,
+      "losses": 3,
+      "draws": 14,
+      "score": 0.75,
+      "elo": 190.8,
+      "se": 46.3,
+      "elo_2se": 92.6,
+      "e1": "TurboEngine (d=6)",
+      "e2": "TurboEngine (d=5)",
+      "avg_moves": 123.8,
+      "avg_ms_e1": 305.4,
+      "avg_ms_e2": 133.6,
+      "avg_nodes_e1": 22560,
+      "avg_nodes_e2": 9902,
+      "high": 6,
+      "low": 5
+    },
+    {
+      "name": "Turbo d=7 vs d=6",
+      "games": 40,
+      "wins": 22,
+      "losses": 6,
+      "draws": 12,
+      "score": 0.7,
+      "elo": 147.2,
+      "se": 48.1,
+      "elo_2se": 96.1,
+      "e1": "TurboEngine (d=7)",
+      "e2": "TurboEngine (d=6)",
+      "avg_moves": 124.8,
+      "avg_ms_e1": 464.8,
+      "avg_ms_e2": 233.3,
+      "avg_nodes_e1": 35311,
+      "avg_nodes_e2": 17754,
+      "high": 7,
+      "low": 6
+    }
+  ],
+  "ladder_cumulative": [
+    {
+      "depth": 4,
+      "elo": 0.0,
+      "se": 0.0
+    },
+    {
+      "depth": 5,
+      "elo": 168.4,
+      "se": 46.1
+    },
+    {
+      "depth": 6,
+      "elo": 359.2,
+      "se": 65.3
+    },
+    {
+      "depth": 7,
+      "elo": 506.4,
+      "se": 81.1
+    }
+  ],
+  "ladder_anchor_depth": 4,
+  "flagship": [
+    {
+      "name": "Turbo d=6 vs Simple d=6",
+      "games": 30,
+      "wins": 27,
+      "losses": 0,
+      "draws": 3,
+      "score": 0.95,
+      "elo": 511.5,
+      "se": 100.2,
+      "elo_2se": 200.3,
+      "e1": "TurboEngine",
+      "e2": "SimpleEngine",
+      "avg_moves": 110.0,
+      "avg_ms_e1": 239.3,
+      "avg_ms_e2": 278.7,
+      "avg_nodes_e1": 17903,
+      "avg_nodes_e2": 5948,
+      "mode": "fixed-depth",
+      "depth": 6,
+      "reproducible": true
+    },
+    {
+      "name": "Turbo t=0.1s vs Simple t=0.1s",
+      "games": 30,
+      "wins": 28,
+      "losses": 1,
+      "draws": 1,
+      "score": 0.95,
+      "elo": 511.5,
+      "se": 132.1,
+      "elo_2se": 264.3,
+      "e1": "TurboEngine",
+      "e2": "SimpleEngine",
+      "avg_moves": 103.7,
+      "avg_ms_e1": 86.4,
+      "avg_ms_e2": 125.6,
+      "avg_nodes_e1": 6896,
+      "avg_nodes_e2": 2682,
+      "mode": "equal-time",
+      "time_control": 0.1,
+      "reproducible": false
+    }
+  ],
+  "ablation": {
+    "name": "Turbo(d=6) trained vs untrained",
+    "games": 60,
+    "wins": 28,
+    "losses": 15,
+    "draws": 17,
+    "score": 0.6083,
+    "elo": 76.5,
+    "se": 38.5,
+    "elo_2se": 77.0,
+    "depth": 6
+  }
+}
