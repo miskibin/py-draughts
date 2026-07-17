@@ -84,7 +84,7 @@ class ScanOracle:
         self.variant = variant
         self.proc: Optional[subprocess.Popen] = None
 
-    def __enter__(self) -> "ScanOracle":
+    def __enter__(self) -> ScanOracle:
         self.start()
         return self
 
@@ -231,9 +231,16 @@ class Position:
         return True
 
 
-def _random_position(rng: random.Random, label: str, *, n_min: int, n_max: int,
-                     king_ratio: float, man_pool_w=WHITE_MAN_SQUARES,
-                     man_pool_b=BLACK_MAN_SQUARES) -> Optional[Position]:
+def _random_position(
+    rng: random.Random,
+    label: str,
+    *,
+    n_min: int,
+    n_max: int,
+    king_ratio: float,
+    man_pool_w=WHITE_MAN_SQUARES,
+    man_pool_b=BLACK_MAN_SQUARES,
+) -> Optional[Position]:
     """Generic random placement respecting man/promotion constraints."""
     total = rng.randint(n_min, n_max)
     n_white = rng.randint(1, total - 1)
@@ -286,7 +293,11 @@ def gen_capture_dense(rng: random.Random, n: int) -> Iterable[Position]:
     while made < n and guard < n * 60:
         guard += 1
         p = _random_position(
-            rng, "capture_dense", n_min=10, n_max=30, king_ratio=0.3,
+            rng,
+            "capture_dense",
+            n_min=10,
+            n_max=30,
+            king_ratio=0.3,
             man_pool_w=[s for s in WHITE_MAN_SQUARES if s in center or rng.random() < 0.5],
             man_pool_b=[s for s in BLACK_MAN_SQUARES if s in center or rng.random() < 0.5],
         )
@@ -358,7 +369,7 @@ def gen_windmill(rng: random.Random, n: int) -> Iterable[Position]:
     enemy men so a capture would want to revisit an already-captured square."""
     # Hand-picked ring seeds (square sets of enemy men around a king square).
     seeds = [
-        (2, {7, 8, 17, 18}),       # issue #34 windmill
+        (2, {7, 8, 17, 18}),  # issue #34 windmill
         (3, {8, 9, 18, 19}),
         (28, {22, 23, 32, 33}),
         (27, {21, 22, 31, 32}),
@@ -389,8 +400,7 @@ def gen_windmill(rng: random.Random, n: int) -> Iterable[Position]:
                 pos.bk.add(r)
         # optional extra friendly king elsewhere
         if rng.random() < 0.3:
-            free = [s for s in range(40, 51)
-                    if s not in (pos.wk | pos.wm | pos.bm | pos.bk)]
+            free = [s for s in range(40, 51) if s not in (pos.wk | pos.wm | pos.bm | pos.bk)]
             if free:
                 pos.wk.add(rng.choice(free))
         if pos.valid() and (pos.bm or pos.bk):
@@ -398,8 +408,9 @@ def gen_windmill(rng: random.Random, n: int) -> Iterable[Position]:
             yield pos
 
 
-def gen_playout(rng: random.Random, oracle: ScanOracle, n: int,
-                max_depth: int = 60) -> Iterable[Position]:
+def gen_playout(
+    rng: random.Random, oracle: ScanOracle, n: int, max_depth: int = 60
+) -> Iterable[Position]:
     """Random playouts from the start position. Every advancing move is drawn from
     the intersection of the oracle's and py-draughts' legal sets, so reachability
     can never be skewed by a py-draughts bug. Each visited position is yielded."""
@@ -464,8 +475,14 @@ def _keys_to_strs(keys: Iterable[MoveKey]) -> list[str]:
     return sorted(out)
 
 
-def run_campaign(count: int, seed: int, families: list[str], scan: Path,
-                 report_path: Optional[str] = None, verbose: bool = True) -> dict:
+def run_campaign(
+    count: int,
+    seed: int,
+    families: list[str],
+    scan: Path,
+    report_path: Optional[str] = None,
+    verbose: bool = True,
+) -> dict:
     rng = random.Random(seed)
     mismatches: list[Mismatch] = []
     per_family: dict[str, int] = {}
@@ -474,14 +491,19 @@ def run_campaign(count: int, seed: int, families: list[str], scan: Path,
 
     # Allocate counts across families (playout gets a bigger share).
     weights = {
-        "playout": 3.0, "random": 2.0, "capture_dense": 2.0,
-        "many_kings": 1.0, "near_promo": 1.5, "windmill": 1.0,
+        "playout": 3.0,
+        "random": 2.0,
+        "capture_dense": 2.0,
+        "many_kings": 1.0,
+        "near_promo": 1.5,
+        "windmill": 1.0,
     }
     active = [f for f in families]
     wsum = sum(weights.get(f, 1.0) for f in active)
     alloc = {f: max(1, int(count * weights.get(f, 1.0) / wsum)) for f in active}
 
     with ScanOracle(scan) as oracle:
+
         def check(pos: Position) -> None:
             nonlocal checked, skipped
             okeys = oracle.legal_moves(pos.hub())
@@ -501,15 +523,17 @@ def run_campaign(count: int, seed: int, families: list[str], scan: Path,
             if pkeys != okeys:
                 py_only = pkeys - okeys
                 oracle_only = okeys - pkeys
-                mismatches.append(Mismatch(
-                    label=pos.label,
-                    fen=pos.fen(),
-                    hub=pos.hub(),
-                    py_only=_keys_to_strs(py_only),
-                    oracle_only=_keys_to_strs(oracle_only),
-                    py_moves=_keys_to_strs(pkeys),
-                    oracle_moves=_keys_to_strs(okeys),
-                ))
+                mismatches.append(
+                    Mismatch(
+                        label=pos.label,
+                        fen=pos.fen(),
+                        hub=pos.hub(),
+                        py_only=_keys_to_strs(py_only),
+                        oracle_only=_keys_to_strs(oracle_only),
+                        py_moves=_keys_to_strs(pkeys),
+                        oracle_moves=_keys_to_strs(okeys),
+                    )
+                )
                 if verbose:
                     print(f"  [MISMATCH:{pos.label}] {pos.fen()}")
                     print(f"      py_only={_keys_to_strs(py_only)}")
@@ -569,14 +593,17 @@ def main() -> int:
 
     scan = find_scan_binary(args.scan)
     if scan is None:
-        print("ERROR: Scan oracle binary not found. Set --scan or $SCAN_ORACLE.",
-              file=sys.stderr)
+        print("ERROR: Scan oracle binary not found. Set --scan or $SCAN_ORACLE.", file=sys.stderr)
         return 2
 
     families = [f.strip() for f in args.families.split(",") if f.strip()]
     summary = run_campaign(
-        count=args.count, seed=args.seed, families=families,
-        scan=scan, report_path=args.report, verbose=not args.quiet,
+        count=args.count,
+        seed=args.seed,
+        families=families,
+        scan=scan,
+        report_path=args.report,
+        verbose=not args.quiet,
     )
     return 1 if summary["mismatch_count"] else 0
 

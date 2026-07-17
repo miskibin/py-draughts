@@ -315,9 +315,9 @@ class TestRussianIssue43:
         moves = board.legal_moves
         assert all(m.captured_list for m in moves), "captures are mandatory"
         # No quiet, non-capturing move from 13 (idx 12) to 29 (idx 28) exists.
-        assert not any(
-            m.square_list == [12, 28] and not m.captured_list for m in moves
-        ), "the plain slide 13-29 must not be a legal move"
+        assert not any(m.square_list == [12, 28] and not m.captured_list for m in moves), (
+            "the plain slide 13-29 must not be a legal move"
+        )
 
     def test_no_capture_revisits_captured_square(self):
         """

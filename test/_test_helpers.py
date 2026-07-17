@@ -52,9 +52,9 @@ def flown_over_squares(start: int, end: int) -> list[int]:
     Returns an empty list if ``end`` is not reachable from ``start`` on a diagonal
     (which should never happen for a well-formed capture segment).
     """
-    from draughts.boards.russian import KING_RAYS
+    from draughts.boards._core import CORE_RUSSIAN
 
-    for ray in KING_RAYS[start]:
+    for ray in CORE_RUSSIAN.KING_RAYS[start]:
         if end in ray:
             return list(ray[: ray.index(end)])
     return []
@@ -72,16 +72,12 @@ def assert_no_captured_square_recrossed(move) -> None:
     captured = set(move.captured_list)
     for i in range(len(move.square_list) - 1):
         start, end = move.square_list[i], move.square_list[i + 1]
-        assert end not in captured, (
-            f"{move} lands on already-captured square {end + 1}"
-        )
+        assert end not in captured, f"{move} lands on already-captured square {end + 1}"
         pivot = move.captured_list[i] if i < len(move.captured_list) else None
         for sq in flown_over_squares(start, end):
             if sq == pivot:
                 continue
-            assert sq not in captured, (
-                f"{move} flies over already-captured square {sq + 1}"
-            )
+            assert sq not in captured, f"{move} flies over already-captured square {sq + 1}"
 
 
 def board_after_random_play(

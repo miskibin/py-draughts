@@ -405,6 +405,70 @@ class BaseBoard(ABC):
         """
         return bool(move.captured_list)
 
+    def _legal_moves_from_core(
+        self, core, *, max_capture: bool, captures_optional: bool = False
+    ) -> list[Move]:
+        """Build the variant's legal moves from a unified ``_core.MoveGen``.
+
+        Shared by every diagonal variant (standard/american/russian/brazilian).
+        Each side's rule differences reduce to two flags:
+
+        * ``max_capture`` -- keep only the longest capture chains and drop
+          duplicate-outcome routes (Standard/Brazilian). ``False`` returns every
+          capture chain (Russian free choice).
+        * ``captures_optional`` -- captures do not force out quiet moves, so both
+          are offered, quiets first (American). Otherwise captures, when present,
+          replace the quiet moves entirely.
+
+        The ``is_promotion`` flag is threaded uniformly from the core into every
+        capture ``Move``; only Russian's core sets it, and it is always ``False``
+        for the other variants (harmless). The core hands back capture paths as
+        tuples (cheaper to snapshot at each chain terminal than lists) and this
+        materializes the ``Move`` square lists only for the moves it returns --
+        the maximum-capture variants discard most chains, so copying them into
+        lists up front would be wasted work. Quiet moves already arrive as the
+        fresh two-element lists ``Move`` needs.
+        """
+        to_ghost = core.to_ghost
+        wm = to_ghost(self.white_men)
+        wk = to_ghost(self.white_kings)
+        bm = to_ghost(self.black_men)
+        bk = to_ghost(self.black_kings)
+        white = self.turn == Color.WHITE
+
+        caps, quiets = core.gen_moves(wm, wk, bm, bk, white, captures_optional)
+        get = self._get
+
+        if captures_optional:
+            # American: quiets first (historical ordering), then every capture.
+            moves = [Move(pair) for pair in quiets]
+            moves.extend(
+                Move(list(path), list(cap), [get(c) for c in cap], promo)
+                for path, cap, promo in caps
+            )
+            return moves
+
+        if caps:
+            if max_capture:
+                # Manual max (not ``max(genexpr)``): the generator frame's
+                # per-item overhead is measurable on capture-heavy 10x10 nodes.
+                best = 0
+                for _path, cap, _promo in caps:
+                    if len(cap) > best:
+                        best = len(cap)
+                moves = [
+                    Move(list(path), list(cap), [get(c) for c in cap], promo)
+                    for path, cap, promo in caps
+                    if len(cap) == best
+                ]
+                return self._dedupe_captures(moves)
+            return [
+                Move(list(path), list(cap), [get(c) for c in cap], promo)
+                for path, cap, promo in caps
+            ]
+
+        return [Move(pair) for pair in quiets]
+
     @staticmethod
     def _dedupe_captures(captures: list[Move]) -> list[Move]:
         """

@@ -39,7 +39,8 @@ The strongest built-in engine, for the standard international (10x10) board
 only. It uses Scan's 63-bit bitboard layout, a PVS search with transposition
 table, and a machine-learned pattern evaluation trained on Scan self-play.
 At equal search depth it beats :class:`~draughts.SimpleEngine` decisively while
-searching in roughly a third of the time per move.
+spending less wall-clock time per move — its bitboard leaf searches several
+times more nodes per second.
 
 .. code-block:: python
 
@@ -147,12 +148,15 @@ frozen, so the pure-Python leaf is unchanged. The offline pipeline
    ``turbo_weights.bin``, which the engine loads with the standard library
    alone.
 
-Fitting the residual measurably lowers the held-out win-probability loss that
-the trainer optimises. The curve below is a fresh reproduction of the
-methodology on self-play data generated on the spot — it shows the fit
-generalising (validation loss drops below the base-only baseline), not a game
-strength claim; the shipped v3 weights used Scan 3.1 labels, which are not
-reproduced here:
+Fitting the residual against strong labels is how the shipped weights were
+produced. The curve below is a fresh reproduction of the *methodology* on
+self-play data generated on the spot — a mechanism check, not a game-strength
+claim. Here only self-play game-result labels are available (the shipped v3
+weights were trained on Scan 3.1 score labels, which this environment cannot
+reproduce); with those noisy binary labels the pattern residual converges
+essentially back to the base-only baseline, so the held-out loss ends level with
+"patterns off". The durable loss reduction that produced the shipped weights
+needed the stronger Scan labels:
 
 .. image:: _static/turbo_training_curve.png
    :alt: Reproduced training curve — held-out loss vs iterations
@@ -197,17 +201,21 @@ scale anchored at the shallowest depth; with no externally calibrated opponent
 .. TURBO_ELO_TABLE
 
 **The flagship gap.** At equal search depth TurboEngine beats the
-general-purpose :class:`~draughts.SimpleEngine` decisively while spending far
-less time per move (≈180 ms vs ≈400 ms at depth 6, and fewer nodes) — it is
-stronger *and* faster. Each extra ply of search is worth roughly 90–120 Elo over
-the range measured, so the engine scales cleanly with thinking time.
+general-purpose :class:`~draughts.SimpleEngine` decisively (27–0–3, **+512 ± 200
+Elo** at depth 6) while spending less wall-clock time per move (≈240 ms vs
+≈280 ms) — and it does so while searching several times more nodes (≈18k vs ≈6k
+per move), so its bitboard leaf is much faster per node. It is stronger *and*
+faster. Each extra ply of search is worth roughly **150–190 Elo** over the range
+measured (d4→d5 +168, d5→d6 +191, d6→d7 +147), so the engine scales cleanly with
+thinking time.
 
 **The training payoff — and its ceiling.** The shipped pattern weights are a
 *residual* on the frozen hand eval, and the honest game-Elo effect is small.
 Switching the trained term off (``TURBO_WEIGHTS=none``) changes how the engine
-plays — most ablation games are decisive, not draws — yet at fixed depth the two
-versions score within a few dozen Elo of each other (the leftmost bar above),
-close to the measurement's noise floor. That matches the project's own
+plays — most ablation games are decisive, not draws (28–15–17 over 60 games) —
+yet at fixed depth the two versions are only about **+75 Elo** apart (the
+leftmost bar above), a margin whose ±2·SE interval still reaches down to zero:
+the effect is close to the measurement's noise floor. That matches the project's own
 :doc:`v4 eval-tuning investigation <benchmarking>`, which concluded the v3
 pattern eval already sits near the ceiling of what a
 pattern-evaluation-trained-on-Scan-labels can extract: the learned residual
