@@ -57,20 +57,7 @@ class Board(BaseBoard):
     def legal_moves(self) -> list[Move]:
         """All legal moves. Captures are NOT mandatory in American checkers, so
         simple moves and captures are both offered (no maximum-capture rule)."""
-        to_ghost = _CORE.to_ghost
-        wm = to_ghost(self.white_men)
-        wk = to_ghost(self.white_kings)
-        bm = to_ghost(self.black_men)
-        bk = to_ghost(self.black_kings)
-        white = self.turn == Color.WHITE
-
-        moves = [Move([frm, to]) for frm, to in _CORE.gen_quiets(wm, wk, bm, bk, white)]
-        get = self._get
-        moves.extend(
-            Move(list(path), list(caps), [get(c) for c in caps])
-            for path, caps, _promo in _CORE.gen_captures(wm, wk, bm, bk, white)
-        )
-        return moves
+        return self._legal_moves_from_core(_CORE, max_capture=False, captures_optional=True)
 
     @property
     def is_draw(self) -> bool:

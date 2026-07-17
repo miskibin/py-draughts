@@ -52,9 +52,9 @@ def flown_over_squares(start: int, end: int) -> list[int]:
     Returns an empty list if ``end`` is not reachable from ``start`` on a diagonal
     (which should never happen for a well-formed capture segment).
     """
-    from draughts.boards.russian import KING_RAYS
+    from draughts.boards._core import CORE_RUSSIAN
 
-    for ray in KING_RAYS[start]:
+    for ray in CORE_RUSSIAN.KING_RAYS[start]:
         if end in ray:
             return list(ray[: ray.index(end)])
     return []

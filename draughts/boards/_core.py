@@ -40,19 +40,18 @@ from __future__ import annotations
 from typing import Callable
 
 # ``gen_captures`` returns a list of completed capture chains, each a tuple of
-# ``(path square indices, captured square indices, promoted?)``.
+# ``(path square indices, captured square indices, promoted?)``. The square
+# sequences are tuples: snapshotting a finished chain as a tuple is cheaper than
+# as a list, and the board materializes lists only for the moves it keeps.
 
 
 class _Geometry:
     """Ghost-square layout and board<->ghost conversion for one board size."""
 
     __slots__ = (
-        "size",
-        "half",
         "squares",
         "s1",
         "s2",
-        "S2B",
         "BIT_TO_SQ",
         "SQ_MASK",
         "BIT",
@@ -63,8 +62,7 @@ class _Geometry:
     )
 
     def __init__(self, size: int) -> None:
-        self.size = size
-        self.half = half = size // 2
+        half = size // 2
         self.squares = size * half
         # Down shifts: half + 1 (even->odd rows) and half + 2 (odd->even rows).
         self.s1, self.s2 = half + 1, half + 2
@@ -76,7 +74,6 @@ class _Geometry:
                 s2b.append(bit)
                 bit += 1
             bit += 1 if row % 2 == 0 else 2
-        self.S2B = tuple(s2b)
         self.BIT = tuple(1 << b for b in s2b)
         maxbit = max(s2b) + 1
         self.BIT_TO_SQ = tuple({b: i for i, b in enumerate(s2b)}.get(b, -1) for b in range(maxbit))
@@ -158,17 +155,11 @@ class MoveGen:
 
     __slots__ = (
         "geo",
-        "men_forward_only",
-        "flying_kings",
-        "mid_capture_promotion",
         "to_ghost",
-        "SQ_MASK",
-        "BIT_TO_SQ",
-        "PROMO_WHITE",
-        "PROMO_BLACK",
         "KING_RAYS",
         "gen_captures",
         "gen_quiets",
+        "gen_moves",
     )
 
     def __init__(
@@ -180,28 +171,28 @@ class MoveGen:
         mid_capture_promotion: bool,
     ) -> None:
         self.geo = geo = _Geometry(size)
-        self.men_forward_only = men_forward_only
-        self.flying_kings = flying_kings
-        self.mid_capture_promotion = mid_capture_promotion
         self.to_ghost = geo.to_ghost
-        self.SQ_MASK = geo.SQ_MASK
-        self.BIT_TO_SQ = geo.BIT_TO_SQ
-        self.PROMO_WHITE = geo.PROMO_WHITE
-        self.PROMO_BLACK = geo.PROMO_BLACK
         self.KING_RAYS = geo.KING_RAYS
-        self.gen_captures, self.gen_quiets = self._build()
+        # The rule flags and mask copies are only consumed while building the
+        # closures, so they live as locals in ``_build`` rather than as slots.
+        self.gen_captures, self.gen_quiets, self.gen_moves = self._build(
+            men_forward_only=men_forward_only,
+            flying_kings=flying_kings,
+            mid_capture_promotion=mid_capture_promotion,
+        )
 
-    def _build(self):
-        SQ_MASK = self.SQ_MASK
-        b2s = self.BIT_TO_SQ
-        s1, s2 = self.geo.s1, self.geo.s2
+    def _build(self, *, men_forward_only: bool, flying_kings: bool, mid_capture_promotion: bool):
+        geo = self.geo
+        SQ_MASK = geo.SQ_MASK
+        b2s = geo.BIT_TO_SQ
+        s1, s2 = geo.s1, geo.s2
         all_dirs = (s1, s2, -s1, -s2)
-        flying = self.flying_kings
-        mid_promo = self.mid_capture_promotion
-        promo_white = self.PROMO_WHITE
-        promo_black = self.PROMO_BLACK
-        white_man_dirs = (-s1, -s2) if self.men_forward_only else all_dirs
-        black_man_dirs = (s1, s2) if self.men_forward_only else all_dirs
+        flying = flying_kings
+        mid_promo = mid_capture_promotion
+        promo_white = geo.PROMO_WHITE
+        promo_black = geo.PROMO_BLACK
+        white_man_dirs = (-s1, -s2) if men_forward_only else all_dirs
+        black_man_dirs = (s1, s2) if men_forward_only else all_dirs
         d1, d2 = 2 * s1, 2 * s2  # capture landing distances
 
         # -- capture chains (path tracking) ---------------------------------
@@ -287,9 +278,11 @@ class MoveGen:
                         caps.pop()
                 return extended
 
-        def gen_captures(wm, wk, bm, bk, white):
+        def _captures(wm, wk, bm, bk, white, all_p, empty):
             """Every capture chain for the side to move as ``(path, captured,
-            promo)`` tuples of board-square indices. No max-capture filtering."""
+            promo)`` tuples of board-square indices. No max-capture filtering.
+            ``all_p`` / ``empty`` are precomputed by the caller so a quiet node
+            does not derive them twice (once here, once for the quiet fallback)."""
             if white:
                 men, kings, enemy = wm, wk, bm | bk
                 man_dirs, promo = white_man_dirs, promo_white
@@ -298,8 +291,6 @@ class MoveGen:
                 man_dirs, promo = black_man_dirs, promo_black
             if not enemy:
                 return []
-            all_p = wm | wk | bm | bk
-            empty = SQ_MASK ^ all_p
             out = []
 
             # Men with an enemy one step away and an empty landing two steps away,
@@ -334,11 +325,11 @@ class MoveGen:
                     man_dfs(frm, enemy, all_p ^ frm, all_dirs, 0, [frm_sq], [], out)
             return out
 
-        def gen_quiets(wm, wk, bm, bk, white):
-            """Non-capturing moves as ``(from, to)`` square-index pairs. Men move
-            forward only; kings slide (flying) or step one square."""
-            all_p = wm | wk | bm | bk
-            empty = SQ_MASK ^ all_p
+        def _quiets(wm, wk, bm, bk, white, all_p, empty):
+            """Non-capturing moves as ``[from, to]`` square-index pairs (fresh
+            lists handed straight to Move). Men move forward only; kings slide
+            (flying) or step one square. ``all_p`` is unused here but kept in the
+            signature so the caller can compute the masks once and pass both."""
             moves = []
             if white:
                 for sh in (s1, s2):
@@ -346,7 +337,7 @@ class MoveGen:
                     while t:
                         lsb = t & -t
                         t ^= lsb
-                        moves.append((b2s[(lsb << sh).bit_length() - 1], b2s[lsb.bit_length() - 1]))
+                        moves.append([b2s[(lsb << sh).bit_length() - 1], b2s[lsb.bit_length() - 1]])
                 kings = wk
             else:
                 for sh in (s1, s2):
@@ -354,7 +345,7 @@ class MoveGen:
                     while t:
                         lsb = t & -t
                         t ^= lsb
-                        moves.append((b2s[(lsb >> sh).bit_length() - 1], b2s[lsb.bit_length() - 1]))
+                        moves.append([b2s[(lsb >> sh).bit_length() - 1], b2s[lsb.bit_length() - 1]])
                 kings = bk
 
             if flying:
@@ -367,7 +358,7 @@ class MoveGen:
                         step = sh if pos else -sh
                         sq = (frm << step) if pos else (frm >> step)
                         while sq & empty:
-                            moves.append((frm_sq, b2s[sq.bit_length() - 1]))
+                            moves.append([frm_sq, b2s[sq.bit_length() - 1]])
                             sq = (sq << step) if pos else (sq >> step)
             else:
                 while kings:
@@ -377,10 +368,33 @@ class MoveGen:
                     for sh in all_dirs:
                         to = (frm << sh) if sh > 0 else (frm >> -sh)
                         if to & empty:
-                            moves.append((frm_sq, b2s[to.bit_length() - 1]))
+                            moves.append([frm_sq, b2s[to.bit_length() - 1]])
             return moves
 
-        return gen_captures, gen_quiets
+        # Public closures. ``gen_captures`` / ``gen_quiets`` keep their standalone
+        # signatures (each derives its own masks); ``gen_moves`` is the boundary
+        # the boards use -- it derives ``all_p`` / ``empty`` once and reuses them
+        # for both the capture scan and the quiet fallback.
+        def gen_captures(wm, wk, bm, bk, white):
+            all_p = wm | wk | bm | bk
+            return _captures(wm, wk, bm, bk, white, all_p, SQ_MASK ^ all_p)
+
+        def gen_quiets(wm, wk, bm, bk, white):
+            all_p = wm | wk | bm | bk
+            return _quiets(wm, wk, bm, bk, white, all_p, SQ_MASK ^ all_p)
+
+        def gen_moves(wm, wk, bm, bk, white, captures_optional):
+            """Return ``(captures, quiets)`` for the side to move. ``quiets`` is
+            ``None`` when captures are present and forced (they win over quiets);
+            with ``captures_optional`` (American) both lists are always returned."""
+            all_p = wm | wk | bm | bk
+            empty = SQ_MASK ^ all_p
+            caps = _captures(wm, wk, bm, bk, white, all_p, empty)
+            if captures_optional or not caps:
+                return caps, _quiets(wm, wk, bm, bk, white, all_p, empty)
+            return caps, None
+
+        return gen_captures, gen_quiets, gen_moves
 
 
 # Per-variant generators, built once at import. Antidraughts and Breakthrough
