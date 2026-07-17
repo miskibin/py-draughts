@@ -72,16 +72,12 @@ def assert_no_captured_square_recrossed(move) -> None:
     captured = set(move.captured_list)
     for i in range(len(move.square_list) - 1):
         start, end = move.square_list[i], move.square_list[i + 1]
-        assert end not in captured, (
-            f"{move} lands on already-captured square {end + 1}"
-        )
+        assert end not in captured, f"{move} lands on already-captured square {end + 1}"
         pivot = move.captured_list[i] if i < len(move.captured_list) else None
         for sq in flown_over_squares(start, end):
             if sq == pivot:
                 continue
-            assert sq not in captured, (
-                f"{move} flies over already-captured square {sq + 1}"
-            )
+            assert sq not in captured, f"{move} flies over already-captured square {sq + 1}"
 
 
 def board_after_random_play(

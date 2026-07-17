@@ -69,11 +69,7 @@ THROUGHPUT_CEILING_SECONDS = 12.0
 
 @pytest.mark.parametrize(
     "board_class,depth,expected",
-    [
-        (bc, d, n)
-        for bc, anchors in PERFT_ANCHORS.items()
-        for d, n in sorted(anchors.items())
-    ],
+    [(bc, d, n) for bc, anchors in PERFT_ANCHORS.items() for d, n in sorted(anchors.items())],
     ids=lambda v: v.__module__.rsplit(".", 1)[-1] if isinstance(v, type) else str(v),
 )
 def test_perft_node_counts(board_class: type[BaseBoard], depth: int, expected: int) -> None:

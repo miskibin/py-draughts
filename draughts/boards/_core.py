@@ -246,9 +246,7 @@ class MoveGen:
                         if land & promo:
                             if not king_dfs(land, enemy_rem ^ mid, occ, True, path, caps, out):
                                 out.append((tuple(path), tuple(caps), True))
-                        elif not man_dfs(
-                            land, enemy_rem ^ mid, occ, dirs, promo, path, caps, out
-                        ):
+                        elif not man_dfs(land, enemy_rem ^ mid, occ, dirs, promo, path, caps, out):
                             out.append((tuple(path), tuple(caps), False))
                         path.pop()
                         caps.pop()

@@ -161,8 +161,13 @@ def _summary(name: str, results, extra: dict | None = None) -> dict:
 
 def run_match(e1, e2, name, games, workers, openings, max_moves=250, swap=True) -> dict:
     stats = Benchmark(
-        e1, e2, games=games, openings=openings, swap_colors=swap,
-        max_moves=max_moves, workers=workers,
+        e1,
+        e2,
+        games=games,
+        openings=openings,
+        swap_colors=swap,
+        max_moves=max_moves,
+        workers=workers,
     ).run()
     return _summary(
         name,
@@ -222,9 +227,7 @@ class _R:
 
 def run_ablation(depth, games, workers, openings, max_moves=250) -> dict:
     # one distinct opening per game -> independent games (see random_openings)
-    configs = [
-        (i + 1, i % 2 == 0, (f"open{i}", openings[i % len(openings)])) for i in range(games)
-    ]
+    configs = [(i + 1, i % 2 == 0, (f"open{i}", openings[i % len(openings)])) for i in range(games)]
     # Split into `workers` contiguous slices.
     per = math.ceil(games / max(1, workers))
     slices = [configs[i : i + per] for i in range(0, games, per)]
@@ -276,11 +279,20 @@ def main():
     ap.add_argument("--ablation-games", type=int, default=200)
     ap.add_argument("--ablation-depth", type=int, default=6)
     ap.add_argument("--time-control", type=float, default=0.1)
-    ap.add_argument("--open-seed", type=int, default=20260716,
-                    help="seed for the distinct random opening positions")
+    ap.add_argument(
+        "--open-seed",
+        type=int,
+        default=20260716,
+        help="seed for the distinct random opening positions",
+    )
     ap.add_argument("--open-min", type=int, default=4, help="min random opening plies")
     ap.add_argument("--open-max", type=int, default=7, help="max random opening plies")
-    ap.add_argument("--out", default=str(Path(__file__).parent.parent / "docs" / "source" / "_static" / "turbo_elo.json"))
+    ap.add_argument(
+        "--out",
+        default=str(
+            Path(__file__).parent.parent / "docs" / "source" / "_static" / "turbo_elo.json"
+        ),
+    )
     args = ap.parse_args()
 
     if args.smoke:

@@ -14,6 +14,8 @@ from __future__ import annotations
 
 import pytest
 
+from draughts.boards.standard import Board
+from draughts.models import Color
 from tools.cross_validate_moves import (
     Position,
     ScanOracle,
@@ -22,9 +24,6 @@ from tools.cross_validate_moves import (
     py_legal_map,
     run_campaign,
 )
-
-from draughts.boards.standard import Board
-from draughts.models import Color
 
 SCAN = find_scan_binary()
 
@@ -96,6 +95,5 @@ def test_generated_campaign_has_no_mismatches():
     )
     assert summary["checked"] >= 200, f"too few positions checked: {summary}"
     assert summary["mismatch_count"] == 0, (
-        f"{summary['mismatch_count']} mismatches; first few: "
-        f"{summary['mismatches'][:3]}"
+        f"{summary['mismatch_count']} mismatches; first few: {summary['mismatches'][:3]}"
     )
