@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 1.10.0
+
 Bug fixes:
 
 - **FEN promotion-row validation** (#47): `Board.from_fen` now rejects a man
