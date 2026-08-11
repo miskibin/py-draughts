@@ -10,6 +10,10 @@ Key differences from other variants:
 - Mid-capture promotion: if a man reaches promotion rank during a capture, it
   immediately becomes a king and continues capturing as a king
 - Mandatory captures (must capture if able, but can choose which sequence)
+- A capturing king must keep capturing while it can: if any landing square
+  behind the captured piece allows a further capture, the king is obliged to
+  land on such a square and continue (FMJD-64 rules art. 4.6). Free choice of
+  the final landing square exists only behind the last captured piece.
 """
 
 from __future__ import annotations

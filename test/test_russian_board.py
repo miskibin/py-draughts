@@ -157,6 +157,33 @@ class TestRussianCaptures:
         # Player can choose any (no max-capture filtering)
         assert len(captures) > 0
 
+    def test_king_must_land_where_capture_continues(self):
+        """A capturing king may not stop early while a landing square with a
+        continuation exists (FMJD-64 rules art. 4.6).
+
+        Black king on 13 takes the man on 17 and could land on 22, 26 or 31.
+        From 31 (and only from 31) the capture continues over 27 and then 19,
+        so landing on 22 or 26 is illegal, as is stopping on 20 after the
+        second jump while 24 still offers the third. pydraughts/lidraughts
+        agree the full chain is the only legal king move here.
+        """
+        board = Board.from_fen("B:W12,17,19,23,25,27,29:B1,3,4,7,8,10,11,K13,14")
+        king_moves = {str(m) for m in board.legal_moves if m.square_list[0] == 12}
+        assert king_moves == {"13x31x24x15"}
+        # The man's chain (14x21x30) is untouched by the king rule.
+        assert {str(m) for m in board.legal_moves} == {"13x31x24x15", "14x21x30"}
+
+    def test_king_free_landing_choice_without_continuation(self):
+        """When no landing square continues the capture, every landing square
+        behind the victim stays available (free choice, FMJD-64 art. 4.3)."""
+        position = np.zeros(32, dtype=np.int8)
+        position[russian.A1] = -2  # white king in the corner
+        position[russian.C3] = 1  # lone black man on the long diagonal
+        board = Board(position, Color.WHITE)
+        captures = [m for m in board.legal_moves if m.captured_list]
+        # Landings d4, e5, f6, g7, h8 - all five must be offered.
+        assert len(captures) == 5
+
     def test_multi_jump_must_complete(self):
         """Once a capture chain starts, must continue until no more captures."""
         position = np.zeros(32, dtype=np.int8)

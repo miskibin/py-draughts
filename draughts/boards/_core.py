@@ -28,7 +28,11 @@ scattered conditionals:
 
 The maximum-capture rule (Standard/Brazilian) is applied by the board on the
 raw chains this core returns, not here, so free-choice variants (Russian /
-American) simply keep every chain.
+American) simply keep every chain. One legality rule IS enforced here because
+it is not expressible as a post-filter on chain lengths: a flying king that
+could continue capturing from some landing square behind its victim must do
+so (FMJD-64 art. 4.6), so ``king_dfs`` never emits an early-stop terminal
+while a sibling landing square allows a continuation.
 
 In every variant a captured piece stays on the board as a blocker until the
 whole chain ends: it may be neither jumped twice nor landed on nor (for flying
@@ -202,7 +206,19 @@ class MoveGen:
 
         def king_dfs(cur, enemy_rem, occ, promo, path, caps, out):
             """Flying-king capture chains. ``occ`` excludes the moving king but
-            keeps captured pieces as blockers."""
+            keeps captured pieces as blockers.
+
+            The landing square behind a victim is a free choice only when NO
+            landing square offers a further capture: if the king can continue
+            from some square behind the piece it just took, it is obliged to
+            land there and keep capturing (FMJD-64 rules art. 4.6), so the
+            would-be terminals on the sibling landing squares are discarded.
+            For the maximum-capture variants this pruning is a no-op (an early
+            stop is always shorter than the forced continuation and would be
+            dropped by the max filter anyway); it changes the generated set
+            only for free-choice Russian, where every returned chain is legal
+            as-is.
+            """
             extended = False
             for sh in all_dirs:
                 pos = sh > 0
@@ -216,13 +232,21 @@ class MoveGen:
                 new_enemy = enemy_rem ^ victim
                 caps.append(b2s[victim.bit_length() - 1])
                 land = (victim << step) if pos else (victim >> step)
+                pending = None  # terminals held back until this victim's verdict
+                continued = False
                 while land & SQ_MASK and not land & occ:
                     extended = True
                     path.append(b2s[land.bit_length() - 1])
-                    if not king_dfs(land, new_enemy, occ, promo, path, caps, out):
-                        out.append((tuple(path), tuple(caps), promo))
+                    if king_dfs(land, new_enemy, occ, promo, path, caps, out):
+                        continued = True
+                    elif not continued:
+                        if pending is None:
+                            pending = []
+                        pending.append((tuple(path), tuple(caps), promo))
                     path.pop()
                     land = (land << step) if pos else (land >> step)
+                if pending is not None and not continued:
+                    out.extend(pending)
                 caps.pop()
             return extended
 

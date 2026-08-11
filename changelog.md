@@ -2,7 +2,32 @@
 
 ## Unreleased
 
+Bug fixes:
+
+- **FEN promotion-row validation** (#47): `Board.from_fen` now rejects a man
+  placed on its own promotion row (e.g. `W:W4:B49` in international draughts —
+  both 4 and 49 are promotion squares), since any move ending there crowns the
+  piece and only a king can legally occupy it. Kings on the promotion row and
+  men on the *opponent's* promotion row are unaffected.
+- **Russian king capture continuation**: a capturing king could stop on any
+  landing square behind its victim even when another landing square offered a
+  further capture. Per the FMJD-64 rules (art. 4.6) the king must land where it
+  can continue and capture until no continuation exists; the free choice of
+  landing square applies only behind the last captured piece. In
+  `B:W12,17,19,23,25,27,29:B1,3,4,7,8,10,11,K13,14` the early stops `13x22`,
+  `13x26` and `13x31x20` are no longer generated — `13x31x24x15` is the king's
+  only legal move, matching lidraughts/pydraughts. Other variants are
+  unaffected (the maximum-capture rule already filtered such stops).
+
 New:
+
+- **Cross-variant FEN test suite**: `test/test_fen.py` checks all eight
+  variants uniformly — promotion-row rejection, FEN round-trip fidelity from
+  random play, and parser robustness against malformed input. The full
+  position/move corpus was additionally cross-validated against the
+  independent `pydraughts` package (2,900+ random-play positions across all
+  variants with exact legal-move-set parity; American differs only by this
+  library's documented optional-captures rule).
 
 - **TurboEngine strength benchmarks + in-depth docs**: `tools/measure_turbo_elo.py`
   measures TurboEngine's strength — a self-play depth ladder, the flagship gap vs
