@@ -340,51 +340,85 @@ import torch
 import torch.nn as nn
 from draughts.boards.standard import Board  # 10x10 International
 
-def board_features(x):   # material + parity — what a flat MLP can't see in raw bits
-    c = x.sum(2); om, ok, pm, pk = c[:, 0], c[:, 1], c[:, 2], c[:, 3]; total = c.sum(1)
-    return torch.stack([om/15, ok/5, pm/15, pk/5, (om + 3*ok - pm - 3*pk)/15,
-                        (ok - pk)/5, total/40, total % 2, (om + ok) % 2,
-                        om % 2, pm % 2], dim=1)
 
-class ValueNet(nn.Module):                    # ~630K params
+def board_features(x):  # material + parity — what a flat MLP can't see in raw bits
+    c = x.sum(2)
+    om, ok, pm, pk = c[:, 0], c[:, 1], c[:, 2], c[:, 3]
+    total = c.sum(1)
+    return torch.stack(
+        [
+            om / 15,
+            ok / 5,
+            pm / 15,
+            pk / 5,
+            (om + 3 * ok - pm - 3 * pk) / 15,
+            (ok - pk) / 5,
+            total / 40,
+            total % 2,
+            (om + ok) % 2,
+            om % 2,
+            pm % 2,
+        ],
+        dim=1,
+    )
+
+
+class ValueNet(nn.Module):  # ~630K params
     def __init__(self, h=512):
         super().__init__()
         self.body = nn.Sequential(
-            nn.Linear(4*50 + 11, h), nn.ReLU(), nn.Dropout(0.3),
-            nn.Linear(h, h), nn.ReLU(), nn.Dropout(0.3),
-            nn.Linear(h, h), nn.ReLU(),
-            nn.Linear(h, 1), nn.Tanh(),
+            nn.Linear(4 * 50 + 11, h),
+            nn.ReLU(),
+            nn.Dropout(0.3),
+            nn.Linear(h, h),
+            nn.ReLU(),
+            nn.Dropout(0.3),
+            nn.Linear(h, h),
+            nn.ReLU(),
+            nn.Linear(h, 1),
+            nn.Tanh(),
         )
+
     def forward(self, x):
         flat = x.reshape(x.shape[0], -1)
         return self.body(torch.cat([flat, board_features(x)], dim=1)).squeeze(-1)
 
-net = ValueNet(); net.load_state_dict(torch.load("examples/value_net_standard.pt")); net.eval()
+
+net = ValueNet()
+net.load_state_dict(torch.load("examples/value_net_standard.pt"))
+net.eval()
+
 
 @torch.no_grad()
-def evaluate(board):                          # score for the side to move
+def evaluate(board):  # score for the side to move
     return float(net(torch.from_numpy(board.to_tensor()).unsqueeze(0)))
+
 
 @torch.no_grad()
 def search(board, depth, alpha=-1e9, beta=1e9):
     moves = board.legal_moves
     if not moves:
-        return -1.0                           # side to move has lost
+        return -1.0  # side to move has lost
     quiet = not moves[0].captured_list
     if depth <= 0 and quiet:
-        return evaluate(board)                # only ever score quiet leaves
+        return evaluate(board)  # only ever score quiet leaves
     depth = depth if not quiet else depth - 1  # quiescence: captures are "free"
     best = -2.0
     for m in moves:
-        child = board.copy(); child.push(m)
+        child = board.copy()
+        child.push(m)
         best = max(best, -search(child, depth, -beta, -alpha))
         alpha = max(alpha, best)
         if alpha >= beta:
             break
     return best
 
+
 def after(board, move):
-    child = board.copy(); child.push(move); return child
+    child = board.copy()
+    child.push(move)
+    return child
+
 
 board = Board()
 # 3-ply search: play the move that leaves the opponent worst off.
@@ -412,9 +446,9 @@ from draughts import Board, Server, SimpleEngine, HubEngine
 server = Server(
     board=Board(),
     white_engine=SimpleEngine(depth_limit=6),
-    black_engine=HubEngine("path/to/scan.exe", time_limit=1.0)
+    black_engine=HubEngine("path/to/scan.exe", time_limit=1.0),
 )
-server.run() # Open http://localhost:8000
+server.run()  # Open http://localhost:8000
 ```
 
 <img width="1914" height="1022" alt="image" src="https://github.com/user-attachments/assets/20fefe48-c0d8-470d-b7d8-b9fd4e9d72e0" />

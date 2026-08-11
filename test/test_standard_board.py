@@ -202,12 +202,15 @@ class TestBoard:
         "fen",
         [
             "W:WK4,WK5,55:B4",  # stray 'W' char + out-of-range 55
-            "W:W4,4:B10",  # duplicate square
-            "W:W4:B4",  # same square claimed by both sides
+            "W:W14,14:B10",  # duplicate square
+            "W:W14:B14",  # same square claimed by both sides
             "W:W55:B4",  # square 55 above the 50-square board
             "W:W0:B4",  # square 0 below the legal range
             "W:W50-31:B1",  # reversed range
             "W:W31-31:B1",  # empty/degenerate range
+            "W:W4:B49",  # white man on its promotion row (issue #47)
+            "W:W31:B46",  # black man on its promotion row (issue #47)
+            "W:W1-20:B31-50",  # range placing men on both promotion rows
         ],
     )
     def test_from_fen_rejects_illegal_positions(self, fen):

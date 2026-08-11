@@ -543,7 +543,9 @@ class BaseBoard(ABC):
             New board instance with the specified position.
 
         Raises:
-            ValueError: If the FEN string is invalid.
+            ValueError: If the FEN string is invalid, references a square more
+                than once, or places a man (non-king) on its own promotion row
+                (issue #47) -- such a piece could only legally exist as a king.
 
         Example:
             >>> board = Board.from_fen("W:WK10,K20:BK35,K45")
@@ -582,7 +584,10 @@ class BaseBoard(ABC):
             raise ValueError(f"Invalid FEN: {fen}")
 
         position = np.zeros(cls.SQUARES_COUNT, dtype=np.int8)
-        for group, king_val, man_val in ((r.group(2), -2, -1), (r.group(3), 2, 1)):
+        for group, king_val, man_val, promo_row in (
+            (r.group(2), -2, -1, cls.PROMO_WHITE),
+            (r.group(3), 2, 1, cls.PROMO_BLACK),
+        ):
             if not group:
                 continue
             for sq_str in group.split(","):
@@ -590,6 +595,14 @@ class BaseBoard(ABC):
                     idx = piece["square"] - 1
                     if position[idx] != 0:
                         raise ValueError(f"Duplicate square in FEN: {piece['square']}")
+                    # A man on its own promotion row is impossible: any move
+                    # ending there crowns it, so only a king can occupy the
+                    # square in a legal position (issue #47).
+                    if not piece["king"] and promo_row & (1 << idx):
+                        raise ValueError(
+                            f"Invalid FEN: man on promotion square {piece['square']} "
+                            f"(only a king may stand there)"
+                        )
                     position[idx] = king_val if piece["king"] else man_val
 
         return cls(position, Color.WHITE if r.group(1) == "W" else Color.BLACK)
