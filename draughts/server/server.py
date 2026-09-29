@@ -9,7 +9,7 @@ import json
 import threading
 from collections import defaultdict
 from pathlib import Path
-from typing import Literal, Optional
+from typing import Callable, Literal, Optional
 
 import uvicorn
 from fastapi import APIRouter, FastAPI, Request
@@ -20,6 +20,7 @@ from pydantic import BaseModel, Field
 
 from draughts.boards.base import BaseBoard, Color
 from draughts.engines import Engine, HubEngine
+from draughts.move import Move
 
 
 class PositionResponse(BaseModel):
@@ -75,7 +76,7 @@ class Server:
         self.black_engine = black_engine
         self._lock = threading.RLock()
         self.engine_depth = 6
-        self._redo_stack = []
+        self._redo_stack: list[Move] = []
 
         # Start any HubEngine instances
         for engine in [self.white_engine, self.black_engine]:
@@ -156,9 +157,13 @@ class Server:
     def index(self, request: Request):
         """Render the main game page."""
         variants = {
-            "standard": "International", "american": "American",
-            "frisian": "Frisian", "russian": "Russian", "brazilian": "Brazilian",
-            "antidraughts": "Antidraughts", "breakthrough": "Breakthrough",
+            "standard": "International",
+            "american": "American",
+            "frisian": "Frisian",
+            "russian": "Russian",
+            "brazilian": "Brazilian",
+            "antidraughts": "Antidraughts",
+            "breakthrough": "Breakthrough",
             "frysk": "Frysk!",
         }
         variant = next(
@@ -179,10 +184,18 @@ class Server:
         )
 
     def set_board(
-        self, request: Request, board_type: Literal[
-            "standard", "american", "frisian", "russian", "brazilian",
-            "antidraughts", "breakthrough", "frysk",
-        ]
+        self,
+        request: Request,
+        board_type: Literal[
+            "standard",
+            "american",
+            "frisian",
+            "russian",
+            "brazilian",
+            "antidraughts",
+            "breakthrough",
+            "frysk",
+        ],
     ):
         """Switch to a different board type."""
         with self._lock:
@@ -197,11 +210,15 @@ class Server:
                 StandardBoard,
             )
 
-            boards = {
-                "standard": StandardBoard, "american": AmericanBoard,
-                "frisian": FrisianBoard, "russian": RussianBoard,
-                "brazilian": BrazilianBoard, "antidraughts": AntidraughtsBoard,
-                "breakthrough": BreakthroughBoard, "frysk": FryskBoard,
+            boards: dict[str, Callable[[], BaseBoard]] = {
+                "standard": StandardBoard,
+                "american": AmericanBoard,
+                "frisian": FrisianBoard,
+                "russian": RussianBoard,
+                "brazilian": BrazilianBoard,
+                "antidraughts": AntidraughtsBoard,
+                "breakthrough": BreakthroughBoard,
+                "frysk": FryskBoard,
             }
             self.board = boards[board_type]()
             self._redo_stack.clear()
