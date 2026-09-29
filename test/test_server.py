@@ -92,6 +92,65 @@ def test_goto_ply_pops_history():
         r = client.get("/goto/0")
         assert r.status_code == 200
         assert len(server.board._moves_stack) == 0
+
+        # The move list can navigate forward again without losing the game.
+        r = client.get("/goto/2")
+        assert r.status_code == 200
+        assert len(server.board._moves_stack) == 2
+    finally:
+        Server.APP = old_app
+
+
+def test_refined_ui_and_variant_switch():
+    old_app = Server.APP
+    try:
+        Server.APP = _new_test_app()
+        server = Server(board=get_board("standard"))
+        client = TestClient(server.APP)
+
+        page = client.get("/")
+        assert page.status_code == 200
+        assert 'id="board"' in page.text
+        assert 'id="server-config"' in page.text
+        assert 'data-dialog="import"' in page.text
+        assert 'data-dialog="api"' in page.text
+        assert client.get("/static/css/style.css").status_code == 200
+        assert client.get("/static/js/script.js").status_code == 200
+
+        response = client.get("/set_board/brazilian", follow_redirects=True)
+        assert response.status_code == 200
+        assert '"variant": "brazilian"' in response.text
+        assert len(server.board.friendly_form) == 64
+
+        for variant in (
+            "standard", "american", "frisian", "russian", "brazilian",
+            "antidraughts", "breakthrough", "frysk",
+        ):
+            response = client.get(f"/set_board/{variant}", follow_redirects=True)
+            assert response.status_code == 200
+            assert f'"variant": "{variant}"' in response.text
+            assert len(server.board.friendly_form) in (64, 100)
+    finally:
+        Server.APP = old_app
+
+
+def test_new_move_after_navigation_discards_redo():
+    old_app = Server.APP
+    try:
+        Server.APP = _new_test_app()
+        server = Server(board=get_board("standard"))
+        client = TestClient(server.APP)
+        first = list(server.board.legal_moves)[0]
+        server.board.push(first)
+        second = list(server.board.legal_moves)[0]
+        server.board.push(second)
+
+        client.get("/goto/1")
+        alternative = next(m for m in server.board.legal_moves if m != second)
+        src, dst = str(alternative).split("-")
+        assert client.post(f"/move/{src}/{dst}").status_code == 200
+        assert client.get("/goto/3").json()["history"][-1][-1] == str(alternative)
+        assert len(server.board._moves_stack) == 2
     finally:
         Server.APP = old_app
 

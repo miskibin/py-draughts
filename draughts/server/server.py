@@ -75,6 +75,7 @@ class Server:
         self.black_engine = black_engine
         self._lock = threading.RLock()
         self.engine_depth = 6
+        self._redo_stack = []
 
         # Start any HubEngine instances
         for engine in [self.white_engine, self.black_engine]:
@@ -154,6 +155,16 @@ class Server:
 
     def index(self, request: Request):
         """Render the main game page."""
+        variants = {
+            "standard": "International", "american": "American",
+            "frisian": "Frisian", "russian": "Russian", "brazilian": "Brazilian",
+            "antidraughts": "Antidraughts", "breakthrough": "Breakthrough",
+            "frysk": "Frysk!",
+        }
+        variant = next(
+            (key for key in variants if type(self.board).__module__.endswith("." + key)),
+            "standard",
+        )
         return self.templates.TemplateResponse(
             request,
             "index.html",
@@ -162,30 +173,38 @@ class Server:
                 "has_dual_engines": self.has_dual_engines,
                 "white_engine_name": self._get_engine_name(self.white_engine),
                 "black_engine_name": self._get_engine_name(self.black_engine),
+                "variant_name": variants[variant],
+                "ui_config": {"variant": variant, "variants": variants},
             },
         )
 
     def set_board(
-        self, request: Request, board_type: Literal["standard", "american", "frisian", "russian"]
+        self, request: Request, board_type: Literal[
+            "standard", "american", "frisian", "russian", "brazilian",
+            "antidraughts", "breakthrough", "frysk",
+        ]
     ):
         """Switch to a different board type."""
         with self._lock:
-            if board_type == "standard":
-                from draughts import StandardBoard
+            from draughts import (
+                AmericanBoard,
+                AntidraughtsBoard,
+                BrazilianBoard,
+                BreakthroughBoard,
+                FrisianBoard,
+                FryskBoard,
+                RussianBoard,
+                StandardBoard,
+            )
 
-                self.board = StandardBoard()
-            elif board_type == "american":
-                from draughts import AmericanBoard
-
-                self.board = AmericanBoard()
-            elif board_type == "frisian":
-                from draughts import FrisianBoard
-
-                self.board = FrisianBoard()
-            elif board_type == "russian":
-                from draughts import RussianBoard
-
-                self.board = RussianBoard()
+            boards = {
+                "standard": StandardBoard, "american": AmericanBoard,
+                "frisian": FrisianBoard, "russian": RussianBoard,
+                "brazilian": BrazilianBoard, "antidraughts": AntidraughtsBoard,
+                "breakthrough": BreakthroughBoard, "frysk": FryskBoard,
+            }
+            self.board = boards[board_type]()
+            self._redo_stack.clear()
             return RedirectResponse(url="/")
 
     # =========================================================================
@@ -232,6 +251,7 @@ class Server:
         with self._lock:
             move_str = f"{source}-{target}"
             self.board.push_uci(move_str)
+            self._redo_stack.clear()
             return self.position_json
 
     def get_best_move(self, request: Request) -> PositionResponse:
@@ -256,12 +276,15 @@ class Server:
                 move = legal_moves[0]
 
             self.board.push(move)
+            self._redo_stack.clear()
             return self.position_json
 
     def pop(self, request: Request) -> PositionResponse:
         """Undo the last move."""
         with self._lock:
-            self.board.pop()
+            if self.board._moves_stack:
+                self._redo_stack.append(self.board._moves_stack[-1])
+                self.board.pop()
             return self.position_json
 
     def goto_ply(self, request: Request, ply: int) -> PositionResponse:
@@ -269,10 +292,13 @@ class Server:
         with self._lock:
             ply = max(0, int(ply))
             current = len(self.board._moves_stack)
-            ply = min(ply, current)
+            ply = min(ply, current + len(self._redo_stack))
 
             while len(self.board._moves_stack) > ply:
+                self._redo_stack.append(self.board._moves_stack[-1])
                 self.board.pop()
+            while len(self.board._moves_stack) < ply:
+                self.board.push(self._redo_stack.pop())
 
             return self.position_json
 
@@ -285,6 +311,7 @@ class Server:
         data = await request.json()
         with self._lock:
             self.board = type(self.board).from_pdn(data["pdn"])
+            self._redo_stack.clear()
             return self.position_json
 
     async def load_fen(self, request: Request) -> PositionResponse:
@@ -292,6 +319,7 @@ class Server:
         data = await request.json()
         with self._lock:
             self.board = type(self.board).from_fen(data["fen"])
+            self._redo_stack.clear()
             return self.position_json
 
     # =========================================================================
