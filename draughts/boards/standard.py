@@ -33,6 +33,7 @@ class Board(BaseBoard):
     """
 
     GAME_TYPE = 20
+    PDN_INTERNATIONAL_RESULT = True
     VARIANT_NAME = "Standard (international) checkers"
     STARTING_COLOR = Color.WHITE
     SQUARES_COUNT = 50
