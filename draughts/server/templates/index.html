@@ -1,108 +1,69 @@
-{% extends "base.html" %} 
-
+{% extends "base.html" %}
 {% block content %}
-<div class="app-container">
-  <main class="main-content">
-    
-    <!-- Left Panel - Controls -->
-    <div class="side-panel panel">
-      <div class="panel-header">Controls</div>
-      <div class="panel-body">
-        
-        <!-- Board Type - Compact -->
-        <div class="btn-group-vertical w-100 mb-3">
-          <a href="/set_board/american" class="btn btn-game btn-sm">8×8 American</a>
-          <a href="/set_board/russian" class="btn btn-game btn-sm">8×8 Russian</a>
-          <a href="/set_board/standard" class="btn btn-game btn-sm">10×10 Standard</a>
-          <a href="/set_board/frisian" class="btn btn-game btn-sm">10×10 Frisian</a>
-        </div>
-
-        <!-- Engine Depth -->
-        <div class="depth-control mb-3">
-          <span class="small text-muted">Depth</span>
-          <span id="depthValue" class="depth-badge">6</span>
-          <input type="range" class="form-range" id="depthSlider" min="1" max="10" value="6">
-        </div>
-
-        <!-- Engine Match Info -->
-        <div id="engineMatchInfo" class="engine-match-compact mb-3" style="display: none;">
-          <span id="whiteEngineName" class="engine-tag white">-</span>
-          <span class="vs">vs</span>
-          <span id="blackEngineName" class="engine-tag black">-</span>
-        </div>
-
-        <!-- Primary Actions -->
-        <div class="d-grid gap-1 mb-3">
-          <button id="makeMove" class="btn btn-game btn-sm" type="button">
-            <i class="bi bi-cpu"></i> Engine Move
-          </button>
-          <button id="autoPlay" class="btn btn-game btn-sm" type="button">
-            <i class="bi bi-play-fill"></i> Auto Play
-          </button>
-          <button id="popBtn" class="btn btn-game btn-sm" type="button">
-            <i class="bi bi-arrow-counterclockwise"></i> Undo
-          </button>
-        </div>
-
-        <!-- Import/Export -->
-        <div class="d-grid gap-1">
-          <button id="copyFen" class="btn btn-game btn-sm" type="button">
-            <i class="bi bi-clipboard"></i> Copy FEN
-          </button>
-          <button id="loadFen" class="btn btn-game btn-sm" type="button">
-            <i class="bi bi-file-earmark"></i> Load FEN
-          </button>
-          <button id="copyPdn" class="btn btn-game btn-sm" type="button">
-            <i class="bi bi-file-text"></i> Copy PDN
-          </button>
-          <button id="loadPdn" class="btn btn-game btn-sm" type="button">
-            <i class="bi bi-upload"></i> Load PDN
-          </button>
-        </div>
-
-      </div>
-    </div>
-
-    <!-- Board Area -->
-    <div class="board-area">
-      <div 
-        id="board" 
-        class="game-board"
-        data-crown-icon="{{ url_for('static', path='img/crown-icon.svg') }}"
-      >
-        {% for i in range(size) %}
-        <div class="tile" id="tile-{{ i }}" data-tile-number="{{ i }}">
-          <span id="tile-{{ i }}-text" class="tile-text"></span>
-        </div>
-        {% endfor %}
-      </div>
-    </div>
-
-    <!-- Right Panel - Info -->
-    <div class="side-panel panel">
-      <div class="panel-header">
-        <div id="turnIndicator" class="turn-compact turn-white">
-          <span class="turn-dot"></span>
-          <span id="turn">White</span>
-        </div>
-      </div>
-      <div class="panel-body">
-        <div id="moveList" class="move-list"></div>
-      </div>
-    </div>
-    
-  </main>
-</div>
-
-<!-- Toast -->
-<div class="toast-container position-fixed bottom-0 end-0 p-3">
-  <div id="notificationToast" class="toast" role="alert">
-    <div class="toast-header">
-      <i class="bi bi-check-circle-fill text-success me-2" id="toastIcon"></i>
-      <strong class="me-auto" id="toastTitle">Done</strong>
-      <button type="button" class="btn-close btn-close-white" data-bs-dismiss="toast"></button>
-    </div>
-    <div class="toast-body" id="toastMessage"></div>
+<svg aria-hidden="true" style="position:absolute;width:0;height:0;overflow:hidden"><defs>
+<symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"></path></symbol>
+<symbol id="i-down" viewBox="0 0 24 24"><path d="m7 10 5 5 5-5"></path></symbol>
+<symbol id="i-chevron-left" viewBox="0 0 24 24"><path d="m14 6-6 6 6 6"></path></symbol>
+<symbol id="i-chevron-right" viewBox="0 0 24 24"><path d="m10 6 6 6-6 6"></path></symbol>
+<symbol id="i-first" viewBox="0 0 24 24"><path d="M6 5v14m12-13-6 6 6 6"></path></symbol>
+<symbol id="i-last" viewBox="0 0 24 24"><path d="M18 5v14M6 6l6 6-6 6"></path></symbol>
+<symbol id="i-upload" viewBox="0 0 24 24"><path d="M12 16V3m-5 5 5-5 5 5M4 15v5h16v-5"></path></symbol>
+<symbol id="i-download" viewBox="0 0 24 24"><path d="M12 3v13m-5-5 5 5 5-5M4 16v4h16v-4"></path></symbol>
+<symbol id="i-copy" viewBox="0 0 24 24"><rect height="12" rx="2" width="12" x="8" y="8"></rect><path d="M15 8V4H4v11h4"></path></symbol>
+<symbol id="i-file" viewBox="0 0 24 24"><path d="M14 3H5v18h14V8l-5-5Z M14 3v5h5M8 12h8m-8 4h6"></path></symbol>
+<symbol id="i-cpu" viewBox="0 0 24 24"><rect height="12" rx="2" width="12" x="6" y="6"></rect><rect height="6" rx=".5" width="6" x="9" y="9"></rect><path d="M9 3v3m6-3v3M9 18v3m6-3v3M3 9h3m-3 6h3m12-6h3m-3 6h3"></path></symbol>
+<symbol id="i-sliders" viewBox="0 0 24 24"><path d="M4 7h8m4 0h4M4 17h3m4 0h9M12 4v6M7 14v6"></path></symbol>
+<symbol id="i-flip" viewBox="0 0 24 24"><path d="M4 8h15m-4-4 4 4-4 4M20 16H5m4-4-4 4 4 4"></path></symbol>
+<symbol id="i-numbers" viewBox="0 0 24 24"><path d="m9 3-3 18M18 3l-3 18M4 9h17M3 15h17"></path></symbol>
+<symbol id="i-code" viewBox="0 0 24 24"><path d="m7 6-6 6 6 6m10-12 6 6-6 6M14 4l-4 16"></path></symbol>
+<symbol id="i-play" viewBox="0 0 24 24"><path d="m8 5 11 7-11 7Z"></path></symbol>
+<symbol id="i-pause" viewBox="0 0 24 24"><path d="M8 5v14M16 5v14"></path></symbol>
+<symbol id="i-arrow" viewBox="0 0 24 24"><path d="M5 12h14m-5-5 5 5-5 5"></path></symbol>
+<symbol id="i-undo" viewBox="0 0 24 24"><path d="M5 5v6h6M5 11c2-7 15-7 15 1a7 7 0 0 1-7 7"></path></symbol>
+<symbol id="i-close" viewBox="0 0 24 24"><path d="m6 6 12 12M6 18 18 6"></path></symbol>
+<symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"></circle><path d="M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1 1m12 12 1 1M5 19l1-1M18 6l1-1"></path></symbol>
+<symbol id="i-check" viewBox="0 0 24 24"><path d="m5 12 4 4L19 6"></path></symbol>
+<symbol id="i-grid" viewBox="0 0 24 24"><rect height="16" rx="2" width="16" x="4" y="4"></rect><path d="M4 12h16M12 4v16"></path></symbol>
+<symbol id="i-more" viewBox="0 0 24 24"><circle cx="5" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/></symbol><symbol id="i-keyboard" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M7 9h.01M11 9h.01M15 9h.01M18 9h.01M7 12h.01M11 12h.01M15 12h.01M18 12h.01M8 16h8"/></symbol></defs></svg>
+<header class="app-header">
+ <a class="brand" href="#" aria-label="py-draughts"><span class="brand-mark" aria-hidden="true"><span></span><span></span><span></span><span></span></span><span>py-draughts</span></a>
+ <nav class="nav" aria-label="Workspace"><button data-mode="play">Play</button><button data-mode="analysis" class="active" aria-current="page">Analysis</button><button data-mode="engines">Engines</button></nav>
+ <button class="variant-button" data-dialog="new" title="Change variant"><span id="variant-name">{{ variant_name }}</span><span class="variant-badge" id="variant-size">10 × 10</span><svg class="icon small"><use href="#i-down"/></svg></button>
+ <div class="header-right">
+  <button class="button outline new-game" data-dialog="new"><svg class="icon small"><use href="#i-plus"/></svg><span>New game</span></button>
+  <div class="actions-wrap">
+   <button class="button outline" id="actions-toggle" aria-expanded="false" aria-controls="actions-menu" aria-haspopup="menu" aria-label="Actions"><svg class="icon"><use href="#i-more"/></svg><span class="actions-label">Actions</span><svg class="icon small actions-label"><use href="#i-down"/></svg></button>
+   <div class="actions-menu" id="actions-menu" role="menu" aria-label="Actions" hidden>
+    <button role="menuitem" data-dialog="import"><svg class="icon"><use href="#i-upload"/></svg>Import</button>
+    <button role="menuitem" data-dialog="export"><svg class="icon"><use href="#i-download"/></svg>Export</button>
+    <button role="menuitem" data-dialog="api"><svg class="icon"><use href="#i-code"/></svg>Python API</button>
+    <hr>
+    <button role="menuitem" data-action="demo"><svg class="icon"><use href="#i-undo"/></svg>Reset to standard</button>
+    <button role="menuitem" data-dialog="shortcuts"><svg class="icon"><use href="#i-keyboard"/></svg>Keyboard shortcuts</button>
+    <button role="menuitem" data-action="theme" aria-pressed="false"><svg class="icon"><use href="#i-sun"/></svg>Dark mode</button>
+   </div>
   </div>
-</div>
+ </div>
+</header>
+<main class="app-main">
+ <div class="workspace">
+  <section class="board-column" aria-label="Draughts board">
+   <div class="board-wrap"><div class="board" id="board" role="group" aria-label="International draughts"></div></div>
+   <div class="board-status"><span class="tiny-piece white" id="turn-disc" aria-hidden="true"></span><span id="turn-label">White to move</span><div class="board-tools"><button class="icon-btn" data-action="flip" title="Flip board (F)" aria-label="Flip board"><svg class="icon"><use href="#i-flip"/></svg></button><button class="icon-btn" data-action="numbers" aria-pressed="false" title="Square numbers (N)" aria-label="Toggle square numbers"><svg class="icon"><use href="#i-numbers"/></svg></button></div></div>
+  </section>
+  <aside class="sidebar" aria-label="Game details">
+   <div class="side-frame" id="standard-sidebar">
+    <div class="panel-tabs" role="tablist" aria-label="Game details"><button class="active" id="tab-moves" data-side="moves" role="tab" aria-selected="true" aria-controls="moves-panel">Moves</button><button id="tab-position" data-side="position" role="tab" aria-selected="false" aria-controls="position-panel">Position</button><span class="count" id="history-count">0 moves</span></div>
+    <div id="moves-panel" role="tabpanel" aria-labelledby="tab-moves"><div class="moves-head"><span>#</span><span>White</span><span>Black</span></div><div class="move-list" id="move-list"></div><div class="history-controls"><div class="nav-group"><button class="icon-btn" data-action="first" aria-label="Starting position" title="First (Home)"><svg class="icon"><use href="#i-first"/></svg></button><button class="icon-btn" data-action="prev" aria-label="Previous move" title="Previous (←)"><svg class="icon"><use href="#i-chevron-left"/></svg></button><button class="icon-btn" data-action="next" aria-label="Next move" title="Next (→)"><svg class="icon"><use href="#i-chevron-right"/></svg></button><button class="icon-btn" data-action="last" aria-label="Final position" title="Last (End)"><svg class="icon"><use href="#i-last"/></svg></button></div><span class="ply-label" id="ply-label">0 / 0</span></div></div>
+    <div class="position-box hidden" id="position-panel" role="tabpanel" aria-labelledby="tab-position"><label class="field-label" for="fen-text">FEN</label><pre class="code" id="fen-text" tabindex="0"></pre><div class="position-actions"><button class="button outline" data-action="copy-fen"><svg class="icon small"><use href="#i-copy"/></svg>Copy</button><button class="button" data-dialog="import">Load position</button></div><div class="tiny-stats"><div><strong id="legal-count">10</strong><span>Legal moves</span></div><div><strong id="material-count">13 : 14</strong><span>White : Black</span></div></div><div class="form-line"><span>To move</span><span id="position-turn">White</span></div><button class="button outline" data-action="svg"><svg class="icon small"><use href="#i-download"/></svg>Save SVG</button></div>
+    <section class="engine-panel" id="analysis-panel" aria-label="Engine controls"><div class="engine-controls"><button class="engine-picker" data-dialog="settings"><span id="analysis-engine-name">Engine</span><svg class="icon small"><use href="#i-down"/></svg></button><button class="depth-picker" data-dialog="settings">Depth <span id="depth-label">8</span></button><button class="icon-btn" data-dialog="settings" aria-label="Engine settings" title="Engine settings"><svg class="icon"><use href="#i-sliders"/></svg></button></div><button class="button primary hint-button" data-action="hint"><svg class="icon small"><use href="#i-arrow"/></svg>Engine move</button></section>
+    <section class="play-engine hidden" id="play-panel" aria-label="Opponent"><div class="engine-controls"><span id="play-engine-name">Engine</span><button class="icon-btn" data-dialog="settings" aria-label="Engine settings"><svg class="icon"><use href="#i-sliders"/></svg></button></div><button class="button primary hint-button" data-action="hint"><svg class="icon small"><use href="#i-play"/></svg>Engine move</button></section>
+   </div>
+   <div class="side-frame match-panel hidden" id="match-sidebar"><div class="section-line"><h2>Engine play</h2></div><div class="match-body"><p class="form-note" id="engine-summary">Loading engines…</p><div class="form-line"><label for="match-depth">Depth</label><input id="match-depth" type="number" min="1" max="10" value="6"></div><button class="button primary hint-button" data-action="autoplay"><svg class="icon small"><use href="#i-play"/></svg><span id="autoplay-label">Auto play</span></button></div></div>
+  </aside>
+ </div>
+</main>
+<dialog class="modal-layer" id="modal-layer" aria-labelledby="dialog-title"><section class="dialog" id="dialog"></section></dialog>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+<script id="server-config" type="application/json">{{ ui_config | tojson }}</script>
 {% endblock %}
