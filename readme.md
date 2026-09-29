@@ -441,18 +441,23 @@ Scan it falls back to the built-in engine as a weaker teacher.
 Interactive web interface for playing and engine testing:
 
 ```python
-from draughts import Board, Server, SimpleEngine, HubEngine
+from draughts import StandardBoard, Server, SimpleEngine
 
 server = Server(
-    board=Board(),
+    board=StandardBoard(),
     white_engine=SimpleEngine(depth_limit=6),
-    black_engine=HubEngine("path/to/scan.exe", time_limit=1.0),
+    black_engine=SimpleEngine(depth_limit=6),
 )
 server.run()  # Open http://localhost:8000
 ```
 
-<img width="1914" height="1022" alt="image" src="https://github.com/user-attachments/assets/20fefe48-c0d8-470d-b7d8-b9fd4e9d72e0" />
+![py-draughts web UI on desktop](docs/source/_static/web_ui_desktop.png)
 
+The same board works on narrow screens: [mobile screenshot](docs/source/_static/web_ui_mobile.png).
+Use **New game** to switch among all eight variants. The board, move history,
+position details, FEN/PDN import and export, and engine controls use the Python
+server directly. See the [server guide](https://miskibin.github.io/py-draughts/server.html)
+for controls and API endpoints.
 
 ## [Performance](https://miskibin.github.io/py-draughts/benchmarking.html)
 

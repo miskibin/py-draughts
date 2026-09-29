@@ -108,7 +108,8 @@ function renderHistory(history) {
     list.append(row);
   });
   const total = state.timeline.reduce((sum, row) => sum + row.length - 1, 0);
-  $('#history-count').textContent = `${total} ${total === 1 ? 'move' : 'moves'}`;
+  const fullMoves = Math.ceil(total / 2);
+  $('#history-count').textContent = `${fullMoves} ${fullMoves === 1 ? 'move' : 'moves'}`;
   $('#ply-label').textContent = `${currentPly} / ${total}`;
   $$('[data-action="first"],[data-action="prev"]').forEach(b => b.disabled = currentPly === 0);
   $$('[data-action="next"],[data-action="last"]').forEach(b => b.disabled = currentPly === total);
