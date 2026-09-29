@@ -95,7 +95,7 @@ class BaseBoard(ABC):
         "turn",
         "halfmove_clock",
         "_moves_stack",
-        "_initial_fen",
+        "_initial_state",
         "shape",
     )
 
@@ -125,8 +125,10 @@ class BaseBoard(ABC):
             self._from_array(starting_position)
         else:
             self._init_default_position()
-        self._initial_fen = (
-            self.fen if starting_position is not None or self.turn != self.STARTING_COLOR else None
+        self._initial_state = (
+            self._pdn_state()
+            if starting_position is not None or self.turn != self.STARTING_COLOR
+            else None
         )
         logger.info(f"Board initialized with shape {self.shape}.")
 
@@ -530,17 +532,25 @@ class BaseBoard(ABC):
             >>> board = Board()
             >>> print(board.fen)
         """
-        turn_s = "W" if self.turn == Color.WHITE else "B"
+        return self._format_fen(self._pdn_state())
+
+    def _pdn_state(self) -> tuple[int, int, int, int, Color]:
+        return self.white_men, self.white_kings, self.black_men, self.black_kings, self.turn
+
+    @classmethod
+    def _format_fen(cls, state: tuple[int, int, int, int, Color]) -> str:
+        white_men, white_kings, black_men, black_kings, turn = state
+        turn_s = "W" if turn == Color.WHITE else "B"
         white_sq, black_sq = [], []
-        for sq in range(self.SQUARES_COUNT):
+        for sq in range(cls.SQUARES_COUNT):
             bit = 1 << sq
-            if self.white_men & bit:
+            if white_men & bit:
                 white_sq.append(str(sq + 1))
-            elif self.white_kings & bit:
+            elif white_kings & bit:
                 white_sq.append(f"K{sq + 1}")
-            if self.black_men & bit:
+            if black_men & bit:
                 black_sq.append(str(sq + 1))
-            elif self.black_kings & bit:
+            elif black_kings & bit:
                 black_sq.append(f"K{sq + 1}")
         return f'[FEN "{turn_s}:W{",".join(white_sq)}:B{",".join(black_sq)}"]'
 
@@ -697,9 +707,9 @@ class BaseBoard(ABC):
         header = (
             f'[GameType "{self.GAME_TYPE}"]\n[Variant "{self.VARIANT_NAME}"]\n[Result "{result}"]\n'
         )
-        if self._initial_fen:
-            header += self._initial_fen + "\n"
-        starts_black = self._initial_fen is not None and self._initial_fen.startswith('[FEN "B:')
+        if self._initial_state:
+            header += self._format_fen(self._initial_state) + "\n"
+        starts_black = self._initial_state is not None and self._initial_state[4] == Color.BLACK
         moves: list[str] = []
         for i, move in enumerate(self._moves_stack):
             ply = i + starts_black
@@ -921,7 +931,7 @@ class BaseBoard(ABC):
         new.halfmove_clock = self.halfmove_clock
         new.shape = self.shape
         new._moves_stack = []
-        new._initial_fen = self.fen
+        new._initial_state = self._pdn_state()
         return new
 
     def __copy__(self) -> BaseBoard:
@@ -932,7 +942,7 @@ class BaseBoard(ABC):
         """Support for copy.deepcopy() - includes move stack."""
         new = self.copy()
         new._moves_stack = copy.deepcopy(self._moves_stack, memo)
-        new._initial_fen = self._initial_fen
+        new._initial_state = self._initial_state
         return new
 
     def features(self) -> BoardFeatures:
