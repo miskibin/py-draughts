@@ -699,7 +699,7 @@ class BaseBoard(ABC):
             >>> board.push_uci("31-27")
             >>> print(board.pdn)
         """
-        result = self.result
+        result: str = self.result
         if result == "-":
             result = "*"
         elif self.PDN_INTERNATIONAL_RESULT:
@@ -774,9 +774,9 @@ class BaseBoard(ABC):
                 break
             elif _PDN_RESULT.match(pdn, i):
                 break
-            elif move := _PDN_MOVE.match(pdn, i):
-                moves.append(re.sub(r"\s+", "", move.group()).replace(":", "x"))
-                i = move.end()
+            elif match := _PDN_MOVE.match(pdn, i):
+                moves.append(re.sub(r"\s+", "", match.group()).replace(":", "x"))
+                i = match.end()
             else:
                 i += 1
 
