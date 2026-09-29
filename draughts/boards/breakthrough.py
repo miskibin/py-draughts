@@ -23,6 +23,7 @@ class Board(StandardBoard):
     """
 
     GAME_TYPE = 20
+    PDN_INTERNATIONAL_RESULT = False
     VARIANT_NAME = "Breakthrough"
 
     @property

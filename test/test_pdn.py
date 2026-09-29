@@ -1,15 +1,38 @@
 """Generic PDN parsing tests for all draughts variants."""
 
+import copy
 import json
 from pathlib import Path
 
 import pytest
 
-from draughts import Board
+from draughts import AmericanBoard, Board, BrazilianBoard
 from test._test_helpers import get_board
 
 # Discover all variants that have random_pdns.json
 GAMES_DIR = Path(__file__).parent / "games"
+REGRESSIONS = json.loads((GAMES_DIR / "pdn_regressions.json").read_text())
+
+
+@pytest.mark.parametrize("case", REGRESSIONS, ids=lambda case: case["name"])
+def test_pdn_regression_fixtures(case):
+    board_class = type(get_board(case["variant"]))
+    if "error" in case:
+        with pytest.raises(ValueError, match=case["error"]):
+            board_class.from_pdn(case["pdn"])
+        return
+
+    board = board_class.from_pdn(case["pdn"])
+    expected = board_class.from_fen(case["start_fen"]) if "start_fen" in case else board_class()
+    for move in case["moves"]:
+        expected.push_uci(move)
+
+    assert board.fen == expected.fen
+    assert len(board._moves_stack) == len(case["moves"])
+    if not case.get("equivalent_route"):
+        assert [str(move) for move in board._moves_stack] == [
+            str(move) for move in expected._moves_stack
+        ]
 
 
 def test_draw_result_is_not_parsed_as_a_move():
@@ -31,6 +54,75 @@ def test_draw_result_is_not_parsed_as_a_move():
 
     board = Board.from_pdn(pdn)
     assert len(board._moves_stack) == 100
+
+
+@pytest.mark.parametrize("result", ["0-0", "1.01-0.99", "1/2-1/2"])
+def test_result_tags_and_trailers_are_not_moves(result):
+    pdn = f'[Result "{result}"]\n1. 32-28 20-25 {result}'
+
+    board = Board.from_pdn(pdn)
+    assert [str(move) for move in board._moves_stack] == ["32-28", "20-25"]
+
+
+def test_tags_comments_and_variations_do_not_supply_moves():
+    pdn = '[Event "31-27"]\n1. 32-28 {31-27} (1. 31-27) 20-25'
+
+    board = Board.from_pdn(pdn)
+    assert [str(move) for move in board._moves_stack] == ["32-28", "20-25"]
+
+
+def test_algebraic_tag_does_not_override_numeric_movetext():
+    board = AmericanBoard.from_pdn('[Event "a3-b4"]\n1. 21-17')
+    assert [str(move) for move in board._moves_stack] == ["21-17"]
+
+
+def test_fen_tag_sets_initial_position():
+    board = Board.from_pdn('[FEN "W:W31:B20"]\n1. 31-27')
+    assert board.fen == '[FEN "B:W27:B20"]'
+
+
+def test_algebraic_fen_from_lidraughts():
+    # From the Brazilian PDNs in test/games/brazilian/random_pdns.json.
+    fen = "W:Wa3,c3,e3,g3,b2,d2,f2,h2,a1,c1,e1,g1:Bb8,d8,f8,h8,a7,c7,e7,g7,b6,d6,f6,h6"
+    board = BrazilianBoard.from_pdn(f'[FEN "{fen}"]\n1. c3-b4 b6-a5')
+    expected = BrazilianBoard()
+    expected.push_uci("22-17")
+    expected.push_uci("9-13")
+    assert board.fen == expected.fen
+
+
+def test_spaced_captures_from_pdn_standard_example():
+    # https://wiegerw.github.io/pdn/introduction.html (opening excerpt).
+    pdn = "1.32-28 17-22 2.28 x17 11 x22 3.37-32 6-11"
+    board = Board.from_pdn(pdn)
+    assert len(board._moves_stack) == 6
+
+
+def test_pdn_export_uses_international_results_and_fen():
+    board = Board.from_fen("B:W31:B20")
+    board.push_uci("20-25")
+    pdn = board.pdn
+
+    assert '[Result "*"]' in pdn
+    assert '[FEN "B:W31:B20"]' in pdn
+    assert "1... 20-25 *" in pdn
+    assert Board.from_pdn(pdn).fen == board.fen
+
+
+def test_pdn_export_maps_international_win():
+    board = Board.from_fen("W:W:B20")
+    assert board.result == "0-1"
+    assert '[Result "0-2"]' in board.pdn
+
+
+def test_pdn_export_after_copy():
+    board = Board()
+    board.push_uci("32-28")
+    cloned = copy.deepcopy(board)
+    assert Board.from_pdn(cloned.pdn).fen == board.fen
+
+    current_position = board.copy()
+    assert Board.from_pdn(current_position.pdn).fen == board.fen
 
 
 def get_pdn_test_variants():
@@ -64,5 +156,6 @@ def test_games_from_pdns(variant: str):
             # Some PDNs might just be headers without moves
             if "1." in pdn:
                 assert len(board._moves_stack) > 0, f"Game {i}: No moves parsed from PDN with moves"
+            assert board_class.from_pdn(board.pdn).fen == board.fen
         except Exception as e:
             pytest.fail(f"Game {i} failed to parse: {e}\nPDN: {pdn[:300]}...")

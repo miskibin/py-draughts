@@ -16,6 +16,15 @@ from draughts.move import Move
 
 __all__ = ["BaseBoard", "BoardFeatures", "Color", "Figure", "Move"]
 
+_PDN_TAG = re.compile(r'\[\s*([A-Z][\w]*)\s*"((?:\\.|[^"\\])*)"\s*\]')
+_PDN_MOVE = re.compile(
+    r"(?<![\w/])(?:\d+(?:\s*[-x:]\s*\d+)+|"
+    r"[a-h][1-8](?:\s*[-x:]\s*[a-h][1-8])+)(?![\w/])",
+    re.IGNORECASE,
+)
+_PDN_RESULT = re.compile(r"(?:1/2-1/2|2-0|0-2|1-1|1-0|0-1|0-0|\*)(?![\w/])")
+_PDN_SETUP = re.compile(r"/\s*FEN\b", re.IGNORECASE)
+
 
 @dataclass(frozen=True, slots=True)
 class BoardFeatures:
@@ -77,6 +86,7 @@ class BaseBoard(ABC):
     COL_IDX: dict = {}
     STARTING_POSITION: np.ndarray = np.array([], dtype=np.int8)
     SQUARE_NAMES: list[str] = []
+    PDN_INTERNATIONAL_RESULT: bool = False
 
     __slots__ = (
         "white_men",
@@ -86,6 +96,7 @@ class BaseBoard(ABC):
         "turn",
         "halfmove_clock",
         "_moves_stack",
+        "_initial_state",
         "shape",
     )
 
@@ -115,6 +126,11 @@ class BaseBoard(ABC):
             self._from_array(starting_position)
         else:
             self._init_default_position()
+        self._initial_state = (
+            self._pdn_state()
+            if starting_position is not None or self.turn != self.STARTING_COLOR
+            else None
+        )
         logger.info(f"Board initialized with shape {self.shape}.")
 
     @abstractmethod
@@ -517,17 +533,25 @@ class BaseBoard(ABC):
             >>> board = Board()
             >>> print(board.fen)
         """
-        turn_s = "W" if self.turn == Color.WHITE else "B"
+        return self._format_fen(self._pdn_state())
+
+    def _pdn_state(self) -> tuple[int, int, int, int, Color]:
+        return self.white_men, self.white_kings, self.black_men, self.black_kings, self.turn
+
+    @classmethod
+    def _format_fen(cls, state: tuple[int, int, int, int, Color]) -> str:
+        white_men, white_kings, black_men, black_kings, turn = state
+        turn_s = "W" if turn == Color.WHITE else "B"
         white_sq, black_sq = [], []
-        for sq in range(self.SQUARES_COUNT):
+        for sq in range(cls.SQUARES_COUNT):
             bit = 1 << sq
-            if self.white_men & bit:
+            if white_men & bit:
                 white_sq.append(str(sq + 1))
-            elif self.white_kings & bit:
+            elif white_kings & bit:
                 white_sq.append(f"K{sq + 1}")
-            if self.black_men & bit:
+            if black_men & bit:
                 black_sq.append(str(sq + 1))
-            elif self.black_kings & bit:
+            elif black_kings & bit:
                 black_sq.append(f"K{sq + 1}")
         return f'[FEN "{turn_s}:W{",".join(white_sq)}:B{",".join(black_sq)}"]'
 
@@ -553,7 +577,10 @@ class BaseBoard(ABC):
         """
         logger.debug(f"Initializing from FEN: {fen}")
         fen = fen.upper()
-        fen = re.sub(r"(G[0-9]+|P[0-9]+)(,|)", "", fen)
+        if not cls.SQUARE_NAMES:
+            # Legacy numeric FEN fixtures annotate pieces with G/P markers.
+            # In algebraic FEN, G3 is a square and must remain untouched.
+            fen = re.sub(r"(G[0-9]+|P[0-9]+)(,|)", "", fen)
         # Unwrap the optional ``[FEN "..."]`` container so the colon-separated
         # fields can be counted reliably below.
         wrap = re.search(r'\[FEN\s*"([^"]*)"\]', fen)
@@ -568,9 +595,26 @@ class BaseBoard(ABC):
         # misreading a one-sided position such as ``B:W:B1`` (empty white side)
         # as if it carried a legacy prefix.
         fields = fen.split(":")
-        if len(fields) == 4 and fields[0] in ("W", "B"):
+        if len(fields) == 4 and fields[0] in ("W", "B") and fields[1] in ("W", "B"):
             del fields[0]
-            fen = ":".join(fields)
+
+        # Algebraic FEN is used by 8x8 PDNs. Normalize its square names to
+        # the numeric representation handled by the validator below.
+        if cls.SQUARE_NAMES and len(fields) >= 3:
+            squares = {name.upper(): idx + 1 for idx, name in enumerate(cls.SQUARE_NAMES)}
+            for field_idx in (1, 2):
+                field = fields[field_idx]
+                if field[:1] not in ("W", "B"):
+                    continue
+                converted = []
+                for token in field[1:].split(","):
+                    king = token.startswith("K")
+                    square = token[1:] if king else token
+                    if re.fullmatch(r"[A-H][1-8]", square):
+                        token = ("K" if king else "") + str(squares[square])
+                    converted.append(token)
+                fields[field_idx] = field[0] + ",".join(converted)
+        fen = ":".join(fields)
 
         # A canonical FEN starts with three fields: ``<turn>:W<list>:B<list>``.
         # Anchoring the start (``^``) and requiring each list to be a contiguous
@@ -656,15 +700,27 @@ class BaseBoard(ABC):
             >>> board.push_uci("31-27")
             >>> print(board.pdn)
         """
-        header = f'[GameType "{self.GAME_TYPE}"]\n[Variant "{self.VARIANT_NAME}"]\n[Result "{self.result}"]\n'
-        moves: list[list[str]] = []
-        for i, m in enumerate(self._moves_stack):
-            if i % 2 == 0:
-                moves.append([str(i // 2 + 1), str(m)])
+        result: str = self.result
+        if result == "-":
+            result = "*"
+        elif self.PDN_INTERNATIONAL_RESULT:
+            result = {"1-0": "2-0", "0-1": "0-2", "1/2-1/2": "1-1"}[result]
+        header = (
+            f'[GameType "{self.GAME_TYPE}"]\n[Variant "{self.VARIANT_NAME}"]\n[Result "{result}"]\n'
+        )
+        if self._initial_state:
+            header += self._format_fen(self._initial_state) + "\n"
+        starts_black = self._initial_state is not None and self._initial_state[4] == Color.BLACK
+        moves: list[str] = []
+        for i, move in enumerate(self._moves_stack):
+            ply = i + starts_black
+            if ply % 2 == 0:
+                moves.append(f"{ply // 2 + 1}. {move}")
+            elif i == 0:
+                moves.append(f"1... {move}")
             else:
-                moves[-1].append(str(m))
-        moves_str = " ".join(f"{m[0]}. {' '.join(m[1:])}" for m in moves)
-        return header + moves_str + ("" if self.result == "-" else f" {self.result}")
+                moves[-1] += f" {move}"
+        return header + " ".join(moves) + (" " if moves else "") + result
 
     @classmethod
     def from_pdn(cls, pdn: str) -> BaseBoard:
@@ -686,61 +742,99 @@ class BaseBoard(ABC):
             >>> pdn = '[GameType "20"]\\n1. 32-28 19-23'
             >>> board = Board.from_pdn(pdn)
         """
-        board = cls()
-        alg_to_idx = (
-            {name: idx for idx, name in enumerate(cls.SQUARE_NAMES)} if cls.SQUARE_NAMES else {}
-        )
-
-        # Extract moves - try algebraic first, fall back to numeric
-        alg_moves = re.findall(r"\b([a-h]\d[-x][a-h]\d)\b", pdn)
-        if alg_moves and alg_to_idx:
-            moves = [board._alg_to_uci(m, alg_to_idx) for m in alg_moves]
-        else:
-            results = {"2-0", "0-2", "1-1", "1-0", "0-1", "1/2-1/2"}
-            moves = [
-                m
-                for m in re.findall(r"(?<![\w/])(\d+[-x]\d+(?:[-x]\d+)*)(?![\w/])", pdn)
-                if m not in results
-            ]
-
-        # Parse moves, handling split multi-captures
-        i, chain_start = 0, None
-        while i < len(moves):
-            move, is_cap = moves[i], "x" in moves[i]
-            start, end = (
-                int(move.split("x" if is_cap else "-")[0]),
-                int(move.split("x" if is_cap else "-")[-1]),
-            )
-
-            if not is_cap:
-                board.push_uci(move)
-                chain_start = None
+        tags: dict[str, str] = {}
+        moves: list[str] = []
+        variation_depth = 0
+        i = 0
+        # Scan once rather than searching for move-shaped text in tags,
+        # comments, and side variations. Unknown annotations are ignored.
+        while i < len(pdn):
+            char = pdn[i]
+            if char.isspace():
+                i += 1
+            elif char == "{":
+                end = pdn.find("}", i + 1)
+                i = len(pdn) if end == -1 else end + 1
+            elif char in "%;":
+                end = pdn.find("\n", i + 1)
+                i = len(pdn) if end == -1 else end + 1
+            elif char == "(":
+                variation_depth += 1
+                i += 1
+            elif char == ")":
+                variation_depth = max(variation_depth - 1, 0)
+                i += 1
+            elif char == "[" and (tag := _PDN_TAG.match(pdn, i)):
+                if variation_depth == 0:
+                    tags[tag.group(1)] = tag.group(2)
+                i = tag.end()
+            elif variation_depth:
+                i += 1
+            elif char == "/" and _PDN_SETUP.match(pdn, i):
+                raise ValueError("PDN setup commands are not supported by Board.from_pdn")
+            elif (result := tags.get("Result")) and pdn.startswith(result, i):
+                # Custom ResultFormat values are opaque, including numeric text.
+                break
+            elif _PDN_RESULT.match(pdn, i):
+                break
+            elif match := _PDN_MOVE.match(pdn, i):
+                moves.append(re.sub(r"\s+", "", match.group()).replace(":", "x"))
+                i = match.end()
             else:
-                src = chain_start or start
-                cap = next(
-                    (
-                        m
-                        for m in board.legal_moves
-                        if m.captured_list
-                        and m.square_list[0] == src - 1
-                        and (end - 1) in m.square_list
-                    ),
-                    None,
-                )
-                if not cap:
-                    raise ValueError(f"No legal capture for {move}")
+                i += 1
 
-                # Check if next move continues this capture chain
-                if i + 1 < len(moves) and "x" in moves[i + 1]:
-                    nxt = moves[i + 1]
-                    nxt_start = int(nxt.split("x")[0])
-                    if nxt_start == end and (end - 1) in cap.square_list[1:-1]:
-                        chain_start = src
-                        i += 1
-                        continue
+        board = cls.from_fen(tags["FEN"]) if "FEN" in tags else cls()
+        alg_to_idx = {name: idx for idx, name in enumerate(cls.SQUARE_NAMES)}
+        moves = [
+            board._alg_to_uci(move, alg_to_idx) if move[0].isalpha() and alg_to_idx else move
+            for move in moves
+        ]
 
-                board.push(cap)
-                chain_start = None
+        # Replay moves, joining older PDNs that split one capture into
+        # consecutive segments. A full path must select that exact route.
+        i = 0
+        while i < len(moves):
+            move = moves[i]
+            if "x" not in move:
+                board.push_uci(move)
+                i += 1
+                continue
+
+            path = [int(square) - 1 for square in move.split("x")]
+            legal_captures = [cap for cap in board.legal_moves if cap.captured_list]
+            while i + 1 < len(moves) and "x" in moves[i + 1]:
+                next_path = [int(square) - 1 for square in moves[i + 1].split("x")]
+                if next_path[0] != path[-1] or not any(
+                    cap.square_list[: len(path)] == path and len(cap.square_list) > len(path)
+                    for cap in legal_captures
+                ):
+                    break
+                path.extend(next_path[1:])
+                i += 1
+
+            if len(path) > 2:
+                matches = [cap for cap in legal_captures if cap.square_list == path]
+                if len(matches) != 1:
+                    raise ValueError(f"No unique legal capture for {move}")
+                board.push(matches[0])
+            else:
+                matches = [
+                    cap
+                    for cap in legal_captures
+                    if cap.square_list[0] == path[0] and cap.square_list[-1] == path[-1]
+                ]
+                if len(matches) > 1:
+                    outcomes = {(frozenset(cap.captured_list), cap.is_promotion) for cap in matches}
+                    if len(outcomes) != 1:
+                        raise ValueError(
+                            f"{move} is ambiguous: capture paths lead to different positions. "
+                            "Specify the full path."
+                        )
+                    # Some Frisian PDNs omit a route when every route removes
+                    # the same pieces and leaves the same board position.
+                    board.push(matches[0])
+                else:
+                    board.push_uci("x".join(str(square + 1) for square in path))
             i += 1
 
         return board
@@ -749,8 +843,7 @@ class BaseBoard(ABC):
     def _alg_to_uci(move: str, mapping: dict[str, int]) -> str:
         """Convert algebraic notation (c3-d4) to UCI (22-18)."""
         sep = "x" if "x" in move else "-"
-        parts = move.lower().split(sep)
-        return f"{mapping[parts[0]] + 1}{sep}{mapping[parts[1]] + 1}"
+        return sep.join(str(mapping[square] + 1) for square in move.lower().split(sep))
 
     @property
     def position(self) -> np.ndarray:
@@ -848,6 +941,7 @@ class BaseBoard(ABC):
         new.halfmove_clock = self.halfmove_clock
         new.shape = self.shape
         new._moves_stack = []
+        new._initial_state = self._pdn_state()
         return new
 
     def __copy__(self) -> BaseBoard:
@@ -858,6 +952,7 @@ class BaseBoard(ABC):
         """Support for copy.deepcopy() - includes move stack."""
         new = self.copy()
         new._moves_stack = copy.deepcopy(self._moves_stack, memo)
+        new._initial_state = self._initial_state
         return new
 
     def features(self) -> BoardFeatures:
