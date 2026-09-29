@@ -698,7 +698,9 @@ class BaseBoard(ABC):
         else:
             results = {"2-0", "0-2", "1-1", "1-0", "0-1", "1/2-1/2"}
             moves = [
-                m for m in re.findall(r"\b(\d+[-x]\d+(?:[-x]\d+)*)\b", pdn) if m not in results
+                m
+                for m in re.findall(r"(?<![\w/])(\d+[-x]\d+(?:[-x]\d+)*)(?![\w/])", pdn)
+                if m not in results
             ]
 
         # Parse moves, handling split multi-captures
