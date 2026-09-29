@@ -2,8 +2,21 @@
 
 ## Unreleased
 
+## 1.9.1
+
 Bug fixes:
 
+- **PDN draw result** (#49, #50): recognize `1/2-1/2` as a complete result
+  rather than treating its trailing `2-1` as a move.
+- **PDN parsing and serialization** (#51): read the mainline without treating
+  tags, comments, variations, or result text as moves; support numeric and
+  algebraic notation, spaced and split captures, and tagged starting FENs.
+  Resolve full capture paths precisely, and reject endpoint-only captures
+  when legal routes lead to different positions. Serialize unfinished games
+  with `*`, use `2-0`/`0-2`/`1-1` for international results, and include the
+  starting FEN for custom positions. Unsupported inline `/FEN .../` setup
+  commands raise an explicit error. Regression fixtures cover 23 PDN cases
+  and round trips across all eight variants.
 - **FEN promotion-row validation** (#47): `Board.from_fen` now rejects a man
   placed on its own promotion row (e.g. `W:W4:B49` in international draughts —
   both 4 and 49 are promotion squares), since any move ending there crowns the
