@@ -1,0 +1,162 @@
+[
+  {
+    "name": "fmjd_spaced_captures",
+    "variant": "standard",
+    "source": "https://wiegerw.github.io/pdn/examples.html",
+    "pdn": "[Event \"FMJD World Championship\"]\n[Result \"0-2\"]\n[GameType \"20\"]\n1.32-28 17-22 2.28 x17 11 x22 3.37-32 6-11 *",
+    "moves": ["32-28", "17-22", "28x17", "11x22", "37-32", "6-11"]
+  },
+  {
+    "name": "analysis_comments_and_variations",
+    "variant": "standard",
+    "source": "https://wiegerw.github.io/pdn/examples.html",
+    "pdn": "[Event \"nk\"]\n[Result \"2-0\"]\n{The opening 31-27} 1. 34-29 17-22 2. 32-28 {2.39-34 is another line} 11-17 3. 37-32 6-11 4. 41-37 19-23 ({4... 1-6 5. 46-41 (5. 39-34) 19-23}) 5. 28x19 14x34 6. 39x30 *",
+    "moves": ["34-29", "17-22", "32-28", "11-17", "37-32", "6-11", "41-37", "19-23", "28x19", "14x34", "39x30"]
+  },
+  {
+    "name": "clock_comments",
+    "variant": "standard",
+    "source": "https://wiegerw.github.io/pdn/examples.html",
+    "pdn": "1. 32-28 {[%clock w0:00:00 B0:00:05]} 19-23 {[%clock W0:00:10 b0:00:15]} 2. 28 x19 {[%clock w0:00:20 B0:00:25]} 14 x23 3. 34-29 23 x34 4. 40 x29 10-14 *",
+    "moves": ["32-28", "19-23", "28x19", "14x23", "34-29", "23x34", "40x29", "10-14"]
+  },
+  {
+    "name": "draw_and_numeric_metadata",
+    "variant": "standard",
+    "pdn": "[Event \"31-27\"]\n[White \"20-25\"]\n[Result \"1/2-1/2\"]\n1. 32-28 20-25 1/2-1/2",
+    "moves": ["32-28", "20-25"]
+  },
+  {
+    "name": "double_forfeit",
+    "variant": "standard",
+    "source": "https://wiegerw.github.io/pdn/pdntags.html",
+    "pdn": "[Result \"0-0\"]\n1. 32-28 20-25 0-0",
+    "moves": ["32-28", "20-25"]
+  },
+  {
+    "name": "custom_goes_result",
+    "variant": "standard",
+    "source": "https://wiegerw.github.io/pdn/pdntags.html",
+    "pdn": "[ResultFormat \"Goes\"]\n[Result \"1.01-0.99\"]\n1. 32-28 20-25 1.01-0.99",
+    "moves": ["32-28", "20-25"]
+  },
+  {
+    "name": "line_comments_and_second_game",
+    "variant": "standard",
+    "pdn": "[Event \"32-28\"]\n% 31-27 is not a move\n1. 32-28 ; 31-27 is not a move\n20-25 *\n[Event \"second game\"]\n1. 31-27 19-23 *",
+    "moves": ["32-28", "20-25"]
+  },
+  {
+    "name": "numeric_fen_white_to_move",
+    "variant": "standard",
+    "pdn": "[FEN \"W:W31:B20\"]\n1. 31-27 *",
+    "start_fen": "W:W31:B20",
+    "moves": ["31-27"]
+  },
+  {
+    "name": "numeric_fen_black_to_move",
+    "variant": "standard",
+    "pdn": "[FEN \"B:W31:B20\"]\n1... 20-25 2. 31-27 *",
+    "start_fen": "B:W31:B20",
+    "moves": ["20-25", "31-27"]
+  },
+  {
+    "name": "numeric_fen_ranges",
+    "variant": "standard",
+    "pdn": "[FEN \"W:W31-50:B1-20\"]\n1. 32-28 *",
+    "start_fen": "W:W31-50:B1-20",
+    "moves": ["32-28"]
+  },
+  {
+    "name": "algebraic_fen_brazilian",
+    "variant": "brazilian",
+    "source": "test/games/brazilian/random_pdns.json",
+    "pdn": "[GameType \"26\"]\n[FEN \"W:Wa3,c3,e3,g3,b2,d2,f2,h2,a1,c1,e1,g1:Bb8,d8,f8,h8,a7,c7,e7,g7,b6,d6,f6,h6\"]\n1. c3-b4 b6-a5 2. b4-c5 d6xb4 *",
+    "start_fen": "W:Wa3,c3,e3,g3,b2,d2,f2,h2,a1,c1,e1,g1:Bb8,d8,f8,h8,a7,c7,e7,g7,b6,d6,f6,h6",
+    "moves": ["22-17", "9-13", "17-14", "10x17"]
+  },
+  {
+    "name": "russian_algebraic_capture",
+    "variant": "russian",
+    "source": "test/games/russian/random_pdns.json",
+    "pdn": "[GameType \"25\"]\n1. c3-d4 b6-c5 2. d4xb6 a7xc5 *",
+    "moves": ["22-18", "9-14", "18x9", "5x14"]
+  },
+  {
+    "name": "american_numeric_with_algebraic_tag",
+    "variant": "american",
+    "pdn": "[Event \"a3-b4\"]\n[GameType \"23\"]\n1. 21-17 9-13 *",
+    "moves": ["21-17", "9-13"]
+  },
+  {
+    "name": "frisian_opening",
+    "variant": "frisian",
+    "source": "test/games/frisian/random_pdns.json",
+    "pdn": "1. 34-30 20-25 2. 31-26 25x34 3. 39x30 17-21 *",
+    "moves": ["34-30", "20-25", "31-26", "25x34", "39x30", "17-21"]
+  },
+  {
+    "name": "frysk_opening",
+    "variant": "frysk",
+    "source": "test/games/frysk/random_pdns.json",
+    "pdn": "1. 48-43 5-10 2. 43-39 3-9 *",
+    "moves": ["48-43", "5-10", "43-39", "3-9"]
+  },
+  {
+    "name": "breakthrough_opening",
+    "variant": "breakthrough",
+    "source": "test/games/breakthrough/random_pdns.json",
+    "pdn": "1. 32-28 18-23 2. 33-29 23x32 *",
+    "moves": ["32-28", "18-23", "33-29", "23x32"]
+  },
+  {
+    "name": "antidraughts_opening",
+    "variant": "antidraughts",
+    "source": "test/games/antidraughts/random_pdns.json",
+    "pdn": "1. 31-26 19-24 2. 35-30 24x35 *",
+    "moves": ["31-26", "19-24", "35-30", "24x35"]
+  },
+  {
+    "name": "russian_mid_capture_promotion",
+    "variant": "russian",
+    "start_fen": "B:W15,16,K17,21,25:B9,13",
+    "pdn": "[FEN \"B:W15,16,K17,21,25:B9,13\"]\n1... 13x22x29 *",
+    "moves": ["13x22x29"]
+  },
+  {
+    "name": "disambiguated_capture_route",
+    "variant": "standard",
+    "start_fen": "W:WK4:B13,32,37,20",
+    "pdn": "[FEN \"W:WK4:B13,32,37,20\"]\n1. 4x31x42x15 *",
+    "moves": ["4x31x42x15"]
+  },
+  {
+    "name": "split_disambiguated_capture_route",
+    "variant": "standard",
+    "start_fen": "W:WK4:B13,32,37,20",
+    "pdn": "[FEN \"W:WK4:B13,32,37,20\"]\n1. 4x31 31x42 42x15 *",
+    "moves": ["4x31x42x15"]
+  },
+  {
+    "name": "ambiguous_capture_different_positions",
+    "variant": "standard",
+    "pdn": "[FEN \"W:WK4:B13,32,37,20\"]\n1. 4x15 *",
+    "error": "ambiguous"
+  },
+  {
+    "name": "setup_command_requires_game_history_support",
+    "variant": "standard",
+    "source": "https://wiegerw.github.io/pdn/examples.html",
+    "pdn": "1. 32-28 19-23 /FEN \"W:W31:B20\"/ 2. 31-27 *",
+    "error": "setup commands are not supported"
+  },
+  {
+    "name": "frisian_equivalent_capture_routes",
+    "variant": "frisian",
+    "source": "test/games/frisian/random_pdns.json",
+    "start_fen": "B:W17,33,34,35,36,37,39,41,42,45,46,49:B1,2,3,4,5,6,7,11,15,16,20,25",
+    "pdn": "[FEN \"B:W17,33,34,35,36,37,39,41,42,45,46,49:B1,2,3,4,5,6,7,11,15,16,20,25\"]\n1... 7x38 *",
+    "moves": ["7x27x47x38x29x40x38"],
+    "equivalent_route": true
+  }
+]

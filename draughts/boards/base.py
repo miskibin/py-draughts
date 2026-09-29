@@ -23,6 +23,7 @@ _PDN_MOVE = re.compile(
     re.IGNORECASE,
 )
 _PDN_RESULT = re.compile(r"(?:1/2-1/2|2-0|0-2|1-1|1-0|0-1|0-0|\*)(?![\w/])")
+_PDN_SETUP = re.compile(r"/\s*FEN\b", re.IGNORECASE)
 
 
 @dataclass(frozen=True, slots=True)
@@ -769,6 +770,8 @@ class BaseBoard(ABC):
                 i = tag.end()
             elif variation_depth:
                 i += 1
+            elif char == "/" and _PDN_SETUP.match(pdn, i):
+                raise ValueError("PDN setup commands are not supported by Board.from_pdn")
             elif (result := tags.get("Result")) and pdn.startswith(result, i):
                 # Custom ResultFormat values are opaque, including numeric text.
                 break
@@ -787,44 +790,51 @@ class BaseBoard(ABC):
             for move in moves
         ]
 
-        # Parse moves, handling split multi-captures
-        i, chain_start = 0, None
+        # Replay moves, joining older PDNs that split one capture into
+        # consecutive segments. A full path must select that exact route.
+        i = 0
         while i < len(moves):
-            move, is_cap = moves[i], "x" in moves[i]
-            start, end = (
-                int(move.split("x" if is_cap else "-")[0]),
-                int(move.split("x" if is_cap else "-")[-1]),
-            )
-
-            if not is_cap:
+            move = moves[i]
+            if "x" not in move:
                 board.push_uci(move)
-                chain_start = None
+                i += 1
+                continue
+
+            path = [int(square) - 1 for square in move.split("x")]
+            legal_captures = [cap for cap in board.legal_moves if cap.captured_list]
+            while i + 1 < len(moves) and "x" in moves[i + 1]:
+                next_path = [int(square) - 1 for square in moves[i + 1].split("x")]
+                if next_path[0] != path[-1] or not any(
+                    cap.square_list[: len(path)] == path and len(cap.square_list) > len(path)
+                    for cap in legal_captures
+                ):
+                    break
+                path.extend(next_path[1:])
+                i += 1
+
+            if len(path) > 2:
+                matches = [cap for cap in legal_captures if cap.square_list == path]
+                if len(matches) != 1:
+                    raise ValueError(f"No unique legal capture for {move}")
+                board.push(matches[0])
             else:
-                src = chain_start or start
-                cap = next(
-                    (
-                        m
-                        for m in board.legal_moves
-                        if m.captured_list
-                        and m.square_list[0] == src - 1
-                        and (end - 1) in m.square_list
-                    ),
-                    None,
-                )
-                if not cap:
-                    raise ValueError(f"No legal capture for {move}")
-
-                # Check if next move continues this capture chain
-                if i + 1 < len(moves) and "x" in moves[i + 1]:
-                    nxt = moves[i + 1]
-                    nxt_start = int(nxt.split("x")[0])
-                    if nxt_start == end and (end - 1) in cap.square_list[1:-1]:
-                        chain_start = src
-                        i += 1
-                        continue
-
-                board.push(cap)
-                chain_start = None
+                matches = [
+                    cap
+                    for cap in legal_captures
+                    if cap.square_list[0] == path[0] and cap.square_list[-1] == path[-1]
+                ]
+                if len(matches) > 1:
+                    outcomes = {(frozenset(cap.captured_list), cap.is_promotion) for cap in matches}
+                    if len(outcomes) != 1:
+                        raise ValueError(
+                            f"{move} is ambiguous: capture paths lead to different positions. "
+                            "Specify the full path."
+                        )
+                    # Some Frisian PDNs omit a route when every route removes
+                    # the same pieces and leaves the same board position.
+                    board.push(matches[0])
+                else:
+                    board.push_uci("x".join(str(square + 1) for square in path))
             i += 1
 
         return board

@@ -11,6 +11,28 @@ from test._test_helpers import get_board
 
 # Discover all variants that have random_pdns.json
 GAMES_DIR = Path(__file__).parent / "games"
+REGRESSIONS = json.loads((GAMES_DIR / "pdn_regressions.json").read_text())
+
+
+@pytest.mark.parametrize("case", REGRESSIONS, ids=lambda case: case["name"])
+def test_pdn_regression_fixtures(case):
+    board_class = type(get_board(case["variant"]))
+    if "error" in case:
+        with pytest.raises(ValueError, match=case["error"]):
+            board_class.from_pdn(case["pdn"])
+        return
+
+    board = board_class.from_pdn(case["pdn"])
+    expected = board_class.from_fen(case["start_fen"]) if "start_fen" in case else board_class()
+    for move in case["moves"]:
+        expected.push_uci(move)
+
+    assert board.fen == expected.fen
+    assert len(board._moves_stack) == len(case["moves"])
+    if not case.get("equivalent_route"):
+        assert [str(move) for move in board._moves_stack] == [
+            str(move) for move in expected._moves_stack
+        ]
 
 
 def test_draw_result_is_not_parsed_as_a_move():
@@ -134,5 +156,6 @@ def test_games_from_pdns(variant: str):
             # Some PDNs might just be headers without moves
             if "1." in pdn:
                 assert len(board._moves_stack) > 0, f"Game {i}: No moves parsed from PDN with moves"
+            assert board_class.from_pdn(board.pdn).fen == board.fen
         except Exception as e:
             pytest.fail(f"Game {i} failed to parse: {e}\nPDN: {pdn[:300]}...")
