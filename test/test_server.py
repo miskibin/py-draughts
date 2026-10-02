@@ -123,8 +123,14 @@ def test_refined_ui_and_variant_switch():
         assert len(server.board.friendly_form) == 64
 
         for variant in (
-            "standard", "american", "frisian", "russian", "brazilian",
-            "antidraughts", "breakthrough", "frysk",
+            "standard",
+            "american",
+            "frisian",
+            "russian",
+            "brazilian",
+            "antidraughts",
+            "breakthrough",
+            "frysk",
         ):
             response = client.get(f"/set_board/{variant}", follow_redirects=True)
             assert response.status_code == 200
