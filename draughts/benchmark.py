@@ -60,9 +60,11 @@ class GameResult(BaseModel):
     e1_nodes: int = 0
     e2_nodes: int = 0
     e1_color: Color = Color.WHITE
+    starting_color: Color = Color.WHITE
     opening: str = ""
     final_fen: str = ""
     termination: str = "unknown"
+    error: Optional[str] = None
 
     model_config = {"arbitrary_types_allowed": True}
 
@@ -106,7 +108,9 @@ class BenchmarkStats(BaseModel):
     @property
     def elo_diff(self) -> float:
         """Elo difference (positive = e1 stronger)."""
-        if not self.games or self.e1_win_rate <= 0.001:
+        if not self.games:
+            return 0.0
+        if self.e1_win_rate <= 0.001:
             return -800.0
         if self.e1_win_rate >= 0.999:
             return 800.0
@@ -123,7 +127,9 @@ class BenchmarkStats(BaseModel):
     def _avg_per_move(self, attr: str, engine: int) -> float:
         total = sum(getattr(r, f"e{engine}_{attr}") for r in self.results)
         moves = sum(
-            (r.moves + 1) // 2 if (engine == 1) == (r.e1_color == Color.WHITE) else r.moves // 2
+            (r.moves + 1) // 2
+            if (engine == 1) == (r.e1_color == r.starting_color)
+            else r.moves // 2
             for r in self.results
         )
         return total / moves if moves else 0
@@ -247,7 +253,8 @@ def _play_game(
 ) -> GameResult:
     """Play a single game and return result."""
     name, fen = opening
-    board = board_class.from_fen(f'[FEN "{fen}"]') if fen else board_class()
+    board = board_class.from_fen(fen) if fen else board_class()
+    starting_color = board.turn
 
     engines = (e1, e2) if e1_white else (e2, e1)
     e1_color = Color.WHITE if e1_white else Color.BLACK
@@ -266,7 +273,12 @@ def _play_game(
             result = eng.get_best_move(board)
             # Handle both Move and (Move, score) return types
             move: Move = result[0] if isinstance(result, tuple) else result
-        except Exception:
+            if not any(
+                move.square_list == legal.square_list and move.captured_list == legal.captured_list
+                for legal in board.legal_moves
+            ):
+                raise ValueError(f"Engine returned illegal move: {move}")
+        except Exception as exc:
             winner = Color.BLACK if board.turn == Color.WHITE else Color.WHITE
             return GameResult(
                 game_number=game_num,
@@ -277,9 +289,11 @@ def _play_game(
                 e1_nodes=e1_nodes,
                 e2_nodes=e2_nodes,
                 e1_color=e1_color,
+                starting_color=starting_color,
                 opening=name,
                 final_fen=board.fen,
                 termination="error",
+                error=f"{type(exc).__name__}: {exc}",
             )
 
         elapsed = time.perf_counter() - t0
@@ -297,11 +311,14 @@ def _play_game(
 
     # Determine winner
     final_winner: Optional[Color] = None
-    if not board.is_draw and move_count < max_moves:
-        # Current player has no moves - they lose
-        final_winner = Color.BLACK if board.turn == Color.WHITE else Color.WHITE
-
-    term = "draw" if board.is_draw else ("max_moves" if move_count >= max_moves else "checkmate")
+    # Honour the variant's result, including Antidraughts/Breakthrough, and
+    # recognize a win on the very last allowed ply instead of calling it drawn.
+    outcome = board.result
+    if outcome == "1-0":
+        final_winner = Color.WHITE
+    elif outcome == "0-1":
+        final_winner = Color.BLACK
+    term = "draw" if outcome == "1/2-1/2" else ("max_moves" if outcome == "-" else "checkmate")
 
     return GameResult(
         game_number=game_num,
@@ -312,6 +329,7 @@ def _play_game(
         e1_nodes=e1_nodes,
         e2_nodes=e2_nodes,
         e1_color=e1_color,
+        starting_color=starting_color,
         opening=name,
         final_fen=board.fen,
         termination=term,

@@ -71,9 +71,11 @@ BikDam reference counts and cross-validated move-for-move against Scan 3.1 (see
 
 **Search.** Principal-variation search with iterative deepening, aspiration
 windows, a transposition table, late-move reductions, a single-reply extension,
-and Scan-style forward pruning (a shallow verification search at a raised beta,
-the draughts substitute for null-move pruning). Move ordering is TT-move-first
-then an exponential-moving-average history heuristic. A quiescence stage
+and Scan-style forward pruning at non-PV nodes (a shallow verification search
+at a raised beta, the draughts substitute for null-move pruning). Move ordering
+uses TT moves, two killer moves per ply and separate history tables for each
+side. Transposition scores account for draw clocks and reversible-position
+history; mate distances are relative to the probing ply. A quiescence stage
 resolves every forced capture chain before a position is evaluated, with a
 one-ply threat extension at the horizon so hanging pieces are never missed.
 
@@ -81,7 +83,19 @@ one-ply threat extension at the horizon so hanging pieces are never missed.
 frozen "v2" hand eval supplies material and piece-square values (folded into
 nine 128-entry chunk tables per bitboard for an O(9) lookup), cheap man
 mobility, and a left/right balance term. On top of that sits the trained
-pattern correction described next.
+pattern correction described next. At import, men material/PST terms are
+folded into those pattern tables without changing any score. A bounded
+100,000-entry cache reuses static evaluations across iterative-deepening
+visits; search bounds are never treated as static evaluations.
+
+``completed_depth`` reports the last fully completed iterative-deepening
+iteration. A timed-out iteration may contribute an exact root score inside
+its aspiration window, but never a fail-high/low bound. Invalid time/depth
+budgets raise ``ValueError``. TurboEngine rejects other 10x10 variants;
+use ``SimpleEngine`` for those variants.
+
+See :doc:`performance_review` for the October 2026 correctness review,
+repeated performance measurements and the paired strength comparison.
 
 The machine-learned pattern evaluation
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

@@ -198,6 +198,14 @@ class MoveGen:
         white_man_dirs = (-s1, -s2) if men_forward_only else all_dirs
         black_man_dirs = (s1, s2) if men_forward_only else all_dirs
         d1, d2 = 2 * s1, 2 * s2  # capture landing distances
+        # A masked ray finds its nearest blocker with one integer operation;
+        # sparse king endings otherwise spend most time scanning empty squares.
+        ray_masks: dict[int, tuple] = {}
+        for sq, directions in enumerate(geo.KING_RAYS):
+            ray_masks[geo.BIT[sq]] = tuple(
+                (sh > 0, abs(sh), sum(geo.BIT[t] for t in ray))
+                for sh, ray in zip(all_dirs, directions)
+            )
 
         # -- capture chains (path tracking) ---------------------------------
         # ``path`` / ``caps`` are a shared backtracking stack; captured pieces
@@ -220,13 +228,12 @@ class MoveGen:
             as-is.
             """
             extended = False
-            for sh in all_dirs:
-                pos = sh > 0
-                step = sh if pos else -sh
-                sq = (cur << step) if pos else (cur >> step)
-                while sq & SQ_MASK and not sq & occ:
-                    sq = (sq << step) if pos else (sq >> step)
-                if not (sq & SQ_MASK and sq & enemy_rem):
+            for pos, step, ray in ray_masks[cur]:
+                blockers = ray & occ
+                if not blockers:
+                    continue
+                sq = (blockers & -blockers) if pos else (1 << (blockers.bit_length() - 1))
+                if not sq & enemy_rem:
                     continue
                 victim = sq
                 new_enemy = enemy_rem ^ victim

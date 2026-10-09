@@ -24,6 +24,8 @@ _PDN_MOVE = re.compile(
 )
 _PDN_RESULT = re.compile(r"(?:1/2-1/2|2-0|0-2|1-1|1-0|0-1|0-0|\*)(?![\w/])")
 _PDN_SETUP = re.compile(r"/\s*FEN\b", re.IGNORECASE)
+_FEN_FIELDS = re.compile(r"^([BW]):W([-0-9K,]*):B([-0-9K,]*)(?=:|$)")
+_FEN_SQUARE = re.compile(r"(K?)([0-9]{1,2})(?:-([0-9]{1,2}))?")
 
 
 @dataclass(frozen=True, slots=True)
@@ -97,6 +99,7 @@ class BaseBoard(ABC):
         "halfmove_clock",
         "_moves_stack",
         "_initial_state",
+        "_endgame_start",
         "shape",
     )
 
@@ -121,6 +124,7 @@ class BaseBoard(ABC):
         self.turn = turn if turn is not None else self.STARTING_COLOR
         self.halfmove_clock = 0
         self._moves_stack: list[Move] = []
+        self._endgame_start = None
 
         if starting_position is not None:
             self._from_array(starting_position)
@@ -196,7 +200,7 @@ class BaseBoard(ABC):
 
     @staticmethod
     def _popcount(bb: int) -> int:
-        return bin(bb).count("1")
+        return bb.bit_count()
 
     @property
     @abstractmethod
@@ -331,11 +335,25 @@ class BaseBoard(ABC):
         move = self._moves_stack.pop()
         src, tgt = move.square_list[0], move.square_list[-1]
         piece = self._get(tgt)
-        if move.is_promotion:
-            piece //= 2
-
-        self._set(tgt, 0)
-        self._set(src, piece)
+        src_bit, keep = 1 << src, ~(1 << tgt)
+        # The moving piece's type is known. Touch only its own bitboard rather
+        # than clearing both squares in all four bitboards via two _set calls.
+        if piece == -1:
+            self.white_men = (self.white_men & keep) | src_bit
+        elif piece == 1:
+            self.black_men = (self.black_men & keep) | src_bit
+        elif piece == -2:
+            self.white_kings &= keep
+            if move.is_promotion:
+                self.white_men |= src_bit
+            else:
+                self.white_kings |= src_bit
+        else:
+            self.black_kings &= keep
+            if move.is_promotion:
+                self.black_men |= src_bit
+            else:
+                self.black_kings |= src_bit
         for cap_sq, cap_piece in zip(move.captured_list, move.captured_entities):
             self._set(cap_sq, cap_piece)
 
@@ -375,11 +393,37 @@ class BaseBoard(ABC):
         Returns:
             True if the same position has occurred three times.
         """
-        if len(self._moves_stack) >= 9:
-            s = self._moves_stack
-            if s[-1].square_list == s[-5].square_list == s[-9].square_list:
-                return True
+        if self.halfmove_clock < 8:
+            return False
+        current = self._pdn_state()
+        occurrences = 0
+        for state in self._reversible_positions():
+            if state == current:
+                occurrences += 1
+                if occurrences == 3:
+                    return True
         return False
+
+    def _reversible_positions(self):
+        """Current and previous positions since the last irreversible move.
+
+        Undo quiet king moves on local integers, without copying or mutating
+        the board. Men cannot return to an earlier position and captures change
+        material, so neither can participate in a repetition cycle.
+        """
+        wm, wk, bm, bk, turn = self._pdn_state()
+        yield wm, wk, bm, bk, turn
+        for i in range(1, min(self.halfmove_clock, len(self._moves_stack)) + 1):
+            move = self._moves_stack[-i]
+            if move.captured_list or move.is_promotion:
+                break
+            turn = Color.BLACK if turn == Color.WHITE else Color.WHITE
+            delta = (1 << move.square_list[0]) ^ (1 << move.square_list[-1])
+            if turn == Color.WHITE:
+                wk ^= delta
+            else:
+                bk ^= delta
+            yield wm, wk, bm, bk, turn
 
     @property
     def game_over(self) -> bool:
@@ -624,20 +668,22 @@ class BaseBoard(ABC):
         # trailing counter fields (e.g. ``:H0:F2``) are tolerated. ``[-0-9K,]*``
         # permits an empty list (a side with no pieces left, which ``fen``
         # legitimately emits) and the ``-`` needed for square ranges (issue #33).
-        if not (r := re.match(r"^([BW]):W([-0-9K,]*):B([-0-9K,]*)", fen)):
+        if not (r := _FEN_FIELDS.match(fen)):
             raise ValueError(f"Invalid FEN: {fen}")
 
-        position = np.zeros(cls.SQUARES_COUNT, dtype=np.int8)
-        for group, king_val, man_val, promo_row in (
-            (r.group(2), -2, -1, cls.PROMO_WHITE),
-            (r.group(3), 2, 1, cls.PROMO_BLACK),
+        bitboards = [0, 0, 0, 0]
+        occupied = 0
+        for group, man_idx, promo_row in (
+            (r.group(2), 0, cls.PROMO_WHITE),
+            (r.group(3), 2, cls.PROMO_BLACK),
         ):
             if not group:
                 continue
             for sq_str in group.split(","):
                 for piece in cls.parse_square(sq_str, cls.SQUARES_COUNT):
                     idx = piece["square"] - 1
-                    if position[idx] != 0:
+                    bit = 1 << idx
+                    if occupied & bit:
                         raise ValueError(f"Duplicate square in FEN: {piece['square']}")
                     # A man on its own promotion row is impossible: any move
                     # ending there crowns it, so only a king can occupy the
@@ -647,9 +693,13 @@ class BaseBoard(ABC):
                             f"Invalid FEN: man on promotion square {piece['square']} "
                             f"(only a king may stand there)"
                         )
-                    position[idx] = king_val if piece["king"] else man_val
+                    occupied |= bit
+                    bitboards[man_idx + int(piece["king"])] |= bit
 
-        return cls(position, Color.WHITE if r.group(1) == "W" else Color.BLACK)
+        board = cls(turn=Color.WHITE if r.group(1) == "W" else Color.BLACK)
+        board.white_men, board.white_kings, board.black_men, board.black_kings = bitboards
+        board._initial_state = board._pdn_state()
+        return board
 
     @staticmethod
     def parse_square(sq: str, max_square: int) -> list[dict[str, int | bool]]:
@@ -675,7 +725,7 @@ class BaseBoard(ABC):
             >>> BaseBoard.parse_square("K4-6", 50)
             [{'king': True, 'square': 4}, {'king': True, 'square': 5}, {'king': True, 'square': 6}]
         """
-        if not (m := re.match(r"^(K?)([0-9]{1,2})(?:-([0-9]{1,2}))?$", sq)):
+        if not (m := _FEN_SQUARE.fullmatch(sq)):
             raise ValueError(f"Invalid square in FEN: {sq}")
         is_king, start, end = m.group(1) == "K", int(m.group(2)), m.group(3)
         if end is None:
@@ -942,6 +992,7 @@ class BaseBoard(ABC):
         new.shape = self.shape
         new._moves_stack = []
         new._initial_state = self._pdn_state()
+        new._endgame_start = getattr(self, "_endgame_remaining", None)
         return new
 
     def __copy__(self) -> BaseBoard:
@@ -953,6 +1004,7 @@ class BaseBoard(ABC):
         new = self.copy()
         new._moves_stack = copy.deepcopy(self._moves_stack, memo)
         new._initial_state = self._initial_state
+        new._endgame_start = self._endgame_start
         return new
 
     def features(self) -> BoardFeatures:

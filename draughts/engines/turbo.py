@@ -28,12 +28,16 @@ layout at the root and maps the chosen move back onto ``board.legal_moves``.
 
 from __future__ import annotations
 
+import math
 import os
 import struct
 import time
 from typing import Optional
 
+from draughts.boards._core import CORE_STANDARD
+from draughts.boards._draw import advance_clock
 from draughts.boards.base import BaseBoard
+from draughts.boards.standard import Board as StandardBoard
 from draughts.engines.engine import Engine
 from draughts.models import Color
 from draughts.move import Move
@@ -146,6 +150,10 @@ def _build_eval_tables():
 
 
 WM_T, WK_T, BM_T, BK_T = _build_eval_tables()
+
+# Bind chunk tables once, rather than indexing four nested tables at every leaf.
+_MAN_TABLES = tuple((c * 7, WM_T[c], BM_T[c]) for c in range(9))
+_KING_TABLES = tuple((c * 7, WK_T[c]) for c in range(9))
 
 # ---------------------------------------------------------------------------
 # Trained pattern evaluation (v3)
@@ -276,6 +284,37 @@ PAT_W = _load_pattern_weights()
 PAT_ACTIVE = any(any(row) for row in PAT_W)
 
 
+def _fold_material_into_patterns():
+    """Pay the men material/PST lookup once, at import, not at every leaf.
+
+    The patterns cover every square. Assign each square to its first pattern
+    and fold its white/black PST into that pattern's table. This preserves the
+    trained evaluation exactly (including overlapping-pattern corrections).
+    """
+    assigned = set()
+    tables = []
+    for pattern, weights in zip(PATTERNS, PAT_W):
+        additions = []
+        for i, sq in enumerate(pattern):
+            if sq not in assigned:
+                assigned.add(sq)
+                bit = S2B[sq]
+                w = WM_T[bit // 7][1 << (bit % 7)]
+                b = BM_T[bit // 7][1 << (bit % 7)]
+                additions.append((_POW3[i], w, -b))
+        row = list(weights)
+        for div, w, b in additions:
+            for index in range(PAT_ENTRIES):
+                trit = (index // div) % 3
+                row[index] += w if trit == 1 else b if trit == 2 else 0
+        tables.append(tuple(row))
+    assert len(assigned) == 50
+    return tuple(zip(_PAT_SH, _PAT_WM, _PAT_TW, _PAT_TB, tables))
+
+
+_FOLDED_PAT_TABLES = _fold_material_into_patterns()
+
+
 def pattern_indices(wm: int, bm: int) -> list[int]:
     """Base-3 pattern indices for a position (used by the offline trainer)."""
     out = []
@@ -294,14 +333,15 @@ RIGHT_MASK = sum(BIT[s] for s in range(50) if _file_of(s) >= 6)
 def _evaluate(wm: int, wk: int, bm: int, bk: int, white_to_move: bool) -> int:
     """Static evaluation, side-to-move relative. No allocations."""
     score = 0
-    for c in range(9):
-        sh = c * 7
-        score += (
-            WM_T[c][(wm >> sh) & 127]
-            + WK_T[c][(wk >> sh) & 127]
-            - BM_T[c][(bm >> sh) & 127]
-            - BK_T[c][(bk >> sh) & 127]
-        )
+    if PAT_ACTIVE:
+        for sh, mask, tw, tb, weights in _FOLDED_PAT_TABLES:
+            score += weights[tw[(wm >> sh) & mask] + tb[(bm >> sh) & mask]]
+    else:
+        for sh, wt, bt in _MAN_TABLES:
+            score += wt[(wm >> sh) & 127] - bt[(bm >> sh) & 127]
+    if wk or bk:
+        for sh, kt in _KING_TABLES:
+            score += kt[(wk >> sh) & 127] - kt[(bk >> sh) & 127]
     empty = SQ_MASK ^ (wm | wk | bm | bk)
     # Cheap mobility: quiet man moves (kings excluded - rarely material).
     score += MOBILITY_WEIGHT * (
@@ -315,20 +355,6 @@ def _evaluate(wm: int, wk: int, bm: int, bk: int, white_to_move: bool) -> int:
     b_all = bm | bk
     score -= SKEW_WEIGHT * abs((w_all & LEFT_MASK).bit_count() - (w_all & RIGHT_MASK).bit_count())
     score += SKEW_WEIGHT * abs((b_all & LEFT_MASK).bit_count() - (b_all & RIGHT_MASK).bit_count())
-    # Trained pattern correction over MEN (white-perspective). Skipped when
-    # weights are all zero so a missing weights file costs nothing.
-    if PAT_ACTIVE:
-        sh = _PAT_SH
-        wmk = _PAT_WM
-        tw = _PAT_TW
-        tb = _PAT_TB
-        pw = PAT_W
-        pscore = 0
-        for p in range(N_PATTERNS):
-            s = sh[p]
-            m = wmk[p]
-            pscore += pw[p][tw[p][(wm >> s) & m] + tb[p][(bm >> s) & m]]
-        score += pscore
     return score if white_to_move else -score
 
 
@@ -385,6 +411,25 @@ _UP = (6, 7)
 _DOWN = (6, 7)
 
 
+def _build_rays():
+    rays = [()] * 63
+    for bit in S2B:
+        directions = []
+        for down, sh in ((True, 6), (True, 7), (False, 6), (False, 7)):
+            sq = 1 << bit
+            ray = 0
+            sq = (sq << sh) if down else (sq >> sh)
+            while sq & SQ_MASK:
+                ray |= sq
+                sq = (sq << sh) if down else (sq >> sh)
+            directions.append((down, sh, ray))
+        rays[bit] = tuple(directions)
+    return tuple(rays)
+
+
+_RAYS = _build_rays()
+
+
 def _king_capture_dfs(
     frm: int,
     cur: int,
@@ -396,12 +441,12 @@ def _king_capture_dfs(
     """Flying-king capture chains. ``occ`` excludes the moving king itself
     but keeps captured pieces as blockers."""
     extended = False
-    for down, sh in ((True, 6), (True, 7), (False, 6), (False, 7)):
-        # Slide through empty squares to the first blocker.
-        sq = (cur << sh) if down else (cur >> sh)
-        while sq & SQ_MASK and not sq & occ:
-            sq = (sq << sh) if down else (sq >> sh)
-        if not (sq & SQ_MASK and sq & enemy_rem):
+    for down, sh, ray in _RAYS[cur.bit_length() - 1]:
+        blockers = ray & occ
+        if not blockers:
+            continue
+        sq = (blockers & -blockers) if down else (1 << (blockers.bit_length() - 1))
+        if not sq & enemy_rem:
             continue
         victim = sq
         new_enemy = enemy_rem ^ victim
@@ -523,14 +568,14 @@ def _has_capture(wm: int, wk: int, bm: int, bk: int, white: bool) -> bool:
     while kb:
         frm = kb & -kb
         kb ^= frm
-        occ = all_p ^ frm
-        for down, sh in ((True, 6), (True, 7), (False, 6), (False, 7)):
-            sq = (frm << sh) if down else (frm >> sh)
-            while sq & SQ_MASK and not sq & occ:
-                sq = (sq << sh) if down else (sq >> sh)
-            if sq & SQ_MASK and sq & enemy:
+        for down, sh, ray in _RAYS[frm.bit_length() - 1]:
+            blockers = ray & all_p
+            if not blockers:
+                continue
+            sq = (blockers & -blockers) if down else (1 << (blockers.bit_length() - 1))
+            if sq & enemy:
                 land = (sq << sh) if down else (sq >> sh)
-                if land & SQ_MASK and not land & occ:
+                if land & empty:
                     return True
     return False
 
@@ -587,6 +632,8 @@ TT_FLAG_EXACT = 0
 TT_FLAG_LOWER = 1
 TT_FLAG_UPPER = 2
 TT_MAX = 2_000_000
+EVAL_CACHE_MAX = 100_000
+MAX_PLY = 128
 
 HIST_INIT = 2048
 HIST_MAX = 4096
@@ -614,14 +661,20 @@ class TurboEngine(Engine):
         time_limit: Optional[float] = None,
         name: Optional[str] = None,
     ):
+        if depth_limit is not None and depth_limit < 1:
+            raise ValueError("depth_limit must be positive or None")
+        if time_limit is not None and (not math.isfinite(time_limit) or time_limit <= 0):
+            raise ValueError("time_limit must be finite and positive or None")
         super().__init__(depth_limit, time_limit, name)
         self.tt: dict = {}
-        self.hist = [HIST_INIT] * (64 * 64)
+        self._eval_cache: dict[tuple[int, int, int, int], int] = {}
+        self.hist = [HIST_INIT] * (2 * 64 * 64)
+        self.killers: list[list[tuple[int, int, int]]] = [[] for _ in range(MAX_PLY)]
         self.nodes = 0
         self._deadline: Optional[float] = None
-        self._path: set = set()
-        # Best fully-resolved root move of the current (possibly aborted) ID
-        # iteration, so a timed-out iteration's work is not wasted.
+        self._path: dict = {}
+        self._history: dict = {}
+        self.completed_depth = 0
         self._partial_mv: Optional[tuple[int, int, int]] = None
         self._partial_score = -INF
 
@@ -630,21 +683,30 @@ class TurboEngine(Engine):
     def get_best_move(
         self, board: BaseBoard, with_evaluation: bool = False
     ) -> Move | tuple[Move, float]:
-        if board.SQUARES_COUNT != 50:
+        if type(board) is not StandardBoard:
             raise ValueError("TurboEngine supports only 10x10 international boards")
+        self.nodes = 0
+        self.completed_depth = 0
         legal = board.legal_moves
         if not legal:
             raise ValueError("No legal moves available")
 
         wm, wk, bm, bk = self._convert(board)
         white = board.turn == Color.WHITE
-        if len(legal) == 1:
+        if len(legal) == 1 and not with_evaluation:
             self.nodes = 1
-            if with_evaluation:
-                return legal[0], _evaluate(wm, wk, bm, bk, white) / 100.0
             return legal[0]
 
-        best_mv, score = self._search_root(wm, wk, bm, bk, white, board.halfmove_clock)
+        self._history = {}
+        positions = iter(board._reversible_positions())
+        next(positions)  # root is added by _root_iter, not twice
+        conv = CORE_STANDARD.to_ghost
+        for hwm, hwk, hbm, hbk, turn in positions:
+            key = (conv(hwm), conv(hwk), conv(hbm), conv(hbk), turn == Color.WHITE)
+            self._history[key] = self._history.get(key, 0) + 1
+        best_mv, score = self._search_root(
+            wm, wk, bm, bk, white, board.halfmove_clock, board._endgame_remaining
+        )
         move = self._match_move(best_mv, legal)
         if with_evaluation:
             return move, score / 100.0
@@ -653,32 +715,41 @@ class TurboEngine(Engine):
     # -- root ---------------------------------------------------------------
 
     def _search_root(
-        self, wm: int, wk: int, bm: int, bk: int, white: bool, hm_clock: int
+        self,
+        wm: int,
+        wk: int,
+        bm: int,
+        bk: int,
+        white: bool,
+        hm_clock: int,
+        endgame: tuple[int, int] = (-1, -1),
     ) -> tuple[tuple[int, int, int], int]:
         self.nodes = 0
-        self._path = set()
+        self._path = self._history.copy()
+        self.killers = [[] for _ in range(MAX_PLY)]
+        self.completed_depth = 0
         if len(self.tt) > TT_MAX:
             self.tt.clear()
+        if len(self._eval_cache) >= EVAL_CACHE_MAX:
+            self._eval_cache.clear()
         self._deadline = time.perf_counter() + self.time_limit if self.time_limit else None
         max_depth = self.depth_limit or 64
 
         moves = _gen_captures(wm, wk, bm, bk, white) or _gen_quiets(wm, wk, bm, bk, white)
         best_mv = moves[0]
         best_score = -INF
-        score = 0
+        score = _evaluate(wm, wk, bm, bk, white)
         try:
             for depth in range(1, max_depth + 1):
-                # Reset per-depth partial tracker: if this iteration is aborted
-                # by the deadline, we still adopt the best move it resolved.
-                self._partial_mv = None
-                self._partial_score = -INF
+                if self._deadline is not None and time.perf_counter() >= self._deadline:
+                    break
                 alpha, beta = -INF, INF
                 if depth >= 4:
                     margin = 15
                     alpha, beta = score - margin, score + margin
                 while True:
                     mv, sc = self._root_iter(
-                        wm, wk, bm, bk, white, hm_clock, moves, depth, alpha, beta
+                        wm, wk, bm, bk, white, hm_clock, moves, depth, alpha, beta, endgame
                     )
                     if sc <= alpha:
                         alpha = max(-INF, alpha - (beta - alpha) * 2)
@@ -688,13 +759,14 @@ class TurboEngine(Engine):
                         best_mv, score = mv, sc
                         break
                 best_score = score
+                self.completed_depth = depth
                 # Order root moves: best first for next iteration.
                 moves.sort(key=lambda m: m != best_mv)
                 if abs(score) > MATE - 256:
                     break
         except _Timeout:
-            # Salvage the aborted iteration: if it resolved at least one root
-            # move (searched deeper than the last completed iteration), play it.
+            # Only an exact in-window partial result may replace the completed
+            # iteration; unverified fail-high/low bounds are never promoted.
             if self._partial_mv is not None:
                 best_mv, best_score = self._partial_mv, self._partial_score
         return best_mv, best_score if best_score != -INF else score
@@ -711,40 +783,52 @@ class TurboEngine(Engine):
         depth: int,
         alpha: int,
         beta: int,
+        endgame: tuple[int, int] = (-1, -1),
     ) -> tuple[tuple[int, int, int], int]:
         best_mv = moves[0]
         best = -INF
+        # Reset on *every* aspiration retry. Only scores strictly inside the
+        # window are exact and eligible to replace the completed iteration.
+        self._partial_mv = None
+        self._partial_score = -INF
+        window_alpha = alpha
         key = (wm, wk, bm, bk, white)
-        self._path.add(key)
+        count = self._path.get(key, 0)
+        self._path[key] = count + 1
         try:
             for i, mv in enumerate(moves):
                 nwm, nwk, nbm, nbk, was_man = _apply(wm, wk, bm, bk, white, mv)
                 nhm = 0 if (mv[2] or was_man) else hm_clock + 1
+                clocks = (
+                    advance_clock(nwm, nwk, nbm, nbk, endgame)
+                    if (nwk and nbk or endgame != (-1, -1))
+                    else endgame
+                )
                 if i == 0:
                     sc = -self._negamax(
-                        nwm, nwk, nbm, nbk, not white, depth - 1, -beta, -alpha, 1, nhm
+                        nwm, nwk, nbm, nbk, not white, depth - 1, -beta, -alpha, 1, nhm, clocks
                     )
                 else:
                     sc = -self._negamax(
-                        nwm, nwk, nbm, nbk, not white, depth - 1, -alpha - 1, -alpha, 1, nhm
+                        nwm, nwk, nbm, nbk, not white, depth - 1, -alpha - 1, -alpha, 1, nhm, clocks
                     )
                     if alpha < sc < beta:
                         sc = -self._negamax(
-                            nwm, nwk, nbm, nbk, not white, depth - 1, -beta, -sc, 1, nhm
+                            nwm, nwk, nbm, nbk, not white, depth - 1, -beta, -alpha, 1, nhm, clocks
                         )
                 if sc > best:
                     best, best_mv = sc, mv
-                    # Record for deadline salvage: best root move resolved at
-                    # this depth so far (across aspiration re-searches).
-                    if sc > self._partial_score:
-                        self._partial_score = sc
-                        self._partial_mv = mv
+                    if window_alpha < sc < beta:
+                        self._partial_mv, self._partial_score = mv, sc
                 if sc > alpha:
                     alpha = sc
                 if alpha >= beta:
                     break
         finally:
-            self._path.discard(key)
+            if count:
+                self._path[key] = count
+            else:
+                del self._path[key]
         return best_mv, best
 
     # -- inner nodes --------------------------------------------------------
@@ -761,40 +845,53 @@ class TurboEngine(Engine):
         beta: int,
         ply: int,
         hm_clock: int,
+        endgame: tuple[int, int] = (-1, -1),
     ) -> int:
         self.nodes += 1
-        if self._deadline is not None and not self.nodes & 2047:
+        if self._deadline is not None and not self.nodes & 127:
             if time.perf_counter() > self._deadline:
                 raise _Timeout
 
-        if hm_clock >= 50:
-            return DRAW
-
         key = (wm, wk, bm, bk, white)
         path = self._path
-        if key in path:
+        count = path.get(key, 0)
+        if count >= 2:
             return DRAW
 
+        if hm_clock >= 50 or 0 in endgame:
+            if not (_gen_captures(wm, wk, bm, bk, white) or _gen_quiets(wm, wk, bm, bk, white)):
+                return -(MATE - ply)
+            return DRAW
+        if ply >= MAX_PLY:
+            if not (_gen_captures(wm, wk, bm, bk, white) or _gen_quiets(wm, wk, bm, bk, white)):
+                return -(MATE - ply)
+            return _evaluate(wm, wk, bm, bk, white)
+
         tt = self.tt
-        entry = tt.get(key)
+        tt_key = (*key, hm_clock, endgame)
+        # A score following reversible moves depends on repetition history.
+        # History is irrelevant immediately after an irreversible move.
+        entry = tt.get(tt_key)
         tt_move = None
         if entry is not None:
-            e_depth, e_flag, e_score, e_move = entry
+            e_depth, e_flag, e_score, e_move, e_context = entry
             tt_move = e_move
-            if e_depth >= depth:
+            if e_score >= MATE - MAX_PLY:
+                e_score -= ply
+            elif e_score <= -MATE + MAX_PLY:
+                e_score += ply
+            if e_depth >= depth and e_context == (frozenset(path.items()) if hm_clock else None):
                 if e_flag == TT_FLAG_EXACT:
                     return e_score
                 if e_flag == TT_FLAG_LOWER:
                     if e_score >= beta:
                         return e_score
-                    if e_score > alpha:
-                        alpha = e_score
                 elif e_flag == TT_FLAG_UPPER and e_score <= alpha:
                     return e_score
 
         captures = _gen_captures(wm, wk, bm, bk, white)
         if depth <= 0 and not captures:
-            return self._qs_quiet(wm, wk, bm, bk, white, alpha, beta, ply, True)
+            return self._qs_quiet(wm, wk, bm, bk, white, alpha, beta, ply, True, hm_clock, endgame)
 
         moves = captures or _gen_quiets(wm, wk, bm, bk, white)
         if not moves:
@@ -803,11 +900,18 @@ class TurboEngine(Engine):
         if depth <= 0:
             # Forced capture: resolve the chain in quiescence style.
             best = -INF
-            path.add(key)
+            path[key] = count + 1
             try:
                 for mv in moves:
                     nwm, nwk, nbm, nbk, _ = _apply(wm, wk, bm, bk, white, mv)
-                    sc = -self._negamax(nwm, nwk, nbm, nbk, not white, 0, -beta, -alpha, ply + 1, 0)
+                    clocks = (
+                        advance_clock(nwm, nwk, nbm, nbk, endgame)
+                        if (nwk and nbk or endgame != (-1, -1))
+                        else endgame
+                    )
+                    sc = -self._negamax(
+                        nwm, nwk, nbm, nbk, not white, 0, -beta, -alpha, ply + 1, 0, clocks
+                    )
                     if sc > best:
                         best = sc
                     if sc > alpha:
@@ -815,21 +919,31 @@ class TurboEngine(Engine):
                     if alpha >= beta:
                         break
             finally:
-                path.discard(key)
+                if count:
+                    path[key] = count
+                else:
+                    del path[key]
             return best
 
         # Single-reply extension.
+        requested_depth = depth
         if len(moves) == 1:
             depth += 1
 
         # Scan-style forward pruning: shallow verification search at a
         # raised beta (draughts substitute for null-move pruning).
-        if depth >= 3 and not captures and beta < MATE - 512 and beta > -(MATE - 512):
+        if (
+            depth >= 3
+            and beta == alpha + 1
+            and not captures
+            and beta < MATE - 512
+            and beta > -(MATE - 512)
+        ):
             margin = 10 * depth
             new_beta = beta + margin
             v_depth = depth * 2 // 5
             sc = self._negamax(
-                wm, wk, bm, bk, white, v_depth, new_beta - 1, new_beta, ply, hm_clock
+                wm, wk, bm, bk, white, v_depth, new_beta - 1, new_beta, ply, hm_clock, endgame
             )
             if sc >= new_beta:
                 return sc - margin
@@ -838,14 +952,20 @@ class TurboEngine(Engine):
         if len(moves) > 1:
             hist = self.hist
             if captures:
-                if tt_move is not None and tt_move in moves:
-                    moves.sort(key=lambda m: m != tt_move)
+                enemy_kings = bk if white else wk
+                moves.sort(
+                    key=lambda m: (m == tt_move, (m[2] & enemy_kings).bit_count()), reverse=True
+                )
             else:
+                killers = self.killers[ply]
+                offset = 0 if white else 4096
 
-                def order(m, _h=hist, _tt=tt_move):
+                def order(m, _h=hist, _tt=tt_move, _k=killers, _o=offset):
                     if m == _tt:
-                        return -HIST_MAX - 1
-                    return -_h[((m[0].bit_length() - 1) << 6) | (m[1].bit_length() - 1)]
+                        return -HIST_MAX - 3
+                    if m in _k:
+                        return -HIST_MAX - 2 + _k.index(m)
+                    return -_h[_o + ((m[0].bit_length() - 1) << 6) + m[1].bit_length() - 1]
 
                 moves.sort(key=order)
 
@@ -853,11 +973,16 @@ class TurboEngine(Engine):
         best_move = None
         flag = TT_FLAG_UPPER
         orig_alpha = alpha
-        path.add(key)
+        path[key] = count + 1
         try:
             for i, mv in enumerate(moves):
                 nwm, nwk, nbm, nbk, was_man = _apply(wm, wk, bm, bk, white, mv)
                 nhm = 0 if (mv[2] or was_man) else hm_clock + 1
+                clocks = (
+                    advance_clock(nwm, nwk, nbm, nbk, endgame)
+                    if (nwk and nbk or endgame != (-1, -1))
+                    else endgame
+                )
                 new_depth = depth - 1
 
                 red = 0
@@ -876,6 +1001,7 @@ class TurboEngine(Engine):
                         -alpha,
                         ply + 1,
                         nhm,
+                        clocks,
                     )
                 else:
                     sc = -self._negamax(
@@ -889,6 +1015,7 @@ class TurboEngine(Engine):
                         -alpha,
                         ply + 1,
                         nhm,
+                        clocks,
                     )
                     if sc > alpha and (red or sc < beta):
                         sc = -self._negamax(
@@ -902,6 +1029,7 @@ class TurboEngine(Engine):
                             -alpha,
                             ply + 1,
                             nhm,
+                            clocks,
                         )
                 if sc > best:
                     best = sc
@@ -913,24 +1041,43 @@ class TurboEngine(Engine):
                     flag = TT_FLAG_LOWER
                     if not captures:
                         hist = self.hist
-                        idx = ((mv[0].bit_length() - 1) << 6) | (mv[1].bit_length() - 1)
+                        killers = self.killers[ply]
+                        if mv not in killers:
+                            killers.insert(0, mv)
+                            del killers[2:]
+                        offset = 0 if white else 4096
+                        idx = offset + ((mv[0].bit_length() - 1) << 6) + mv[1].bit_length() - 1
                         hist[idx] += (HIST_MAX - hist[idx]) >> 5
                         for j in range(i):
                             pm = moves[j]
-                            idx = ((pm[0].bit_length() - 1) << 6) | (pm[1].bit_length() - 1)
+                            idx = offset + ((pm[0].bit_length() - 1) << 6) + pm[1].bit_length() - 1
                             hist[idx] -= hist[idx] >> 5
                     break
         finally:
-            path.discard(key)
+            if count:
+                path[key] = count
+            else:
+                del path[key]
 
         if flag == TT_FLAG_EXACT and best <= orig_alpha:
             flag = TT_FLAG_UPPER
         # Depth-preferred replacement: don't let shallow searches (e.g. the
         # forward-pruning verification) clobber deeper analysis; always keep
         # exact PV entries.
-        cur = tt.get(key)
-        if cur is None or depth >= cur[0] or flag == TT_FLAG_EXACT:
-            tt[key] = (depth, flag, best, best_move)
+        cur = tt.get(tt_key)
+        if cur is None or requested_depth >= cur[0] or flag == TT_FLAG_EXACT:
+            stored_score = best
+            if best >= MATE - MAX_PLY:
+                stored_score += ply
+            elif best <= -MATE + MAX_PLY:
+                stored_score -= ply
+            tt[tt_key] = (
+                requested_depth,
+                flag,
+                stored_score,
+                best_move,
+                frozenset(path.items()) if hm_clock else None,
+            )
         return best
 
     def _qs_quiet(
@@ -944,24 +1091,36 @@ class TurboEngine(Engine):
         beta: int,
         ply: int,
         allow_threat_ext: bool,
+        hm_clock: int = 0,
+        endgame: tuple[int, int] = (-1, -1),
     ) -> int:
         """Quiet leaf: stand pat, unless the opponent threatens a capture -
         then spend one real ply so hanging pieces are seen (Scan's 'dodge')."""
+        # The caller has ruled out captures. A flying king has a quiet move iff
+        # an adjacent square is empty; no list allocation or ray walk needed.
+        empty = SQ_MASK ^ (wm | wk | bm | bk)
+        men, kings = (wm, wk) if white else (bm, bk)
+        targets = ((men >> 6) | (men >> 7)) if white else ((men << 6) | (men << 7))
+        if not (targets | (kings >> 6) | (kings >> 7) | (kings << 6) | (kings << 7)) & empty:
+            return -(MATE - ply)
         if allow_threat_ext and ply < 48 and _has_capture(wm, wk, bm, bk, not white):
-            return self._negamax(wm, wk, bm, bk, white, 1, alpha, beta, ply, 0)
-        return _evaluate(wm, wk, bm, bk, white)
+            return self._negamax(wm, wk, bm, bk, white, 1, alpha, beta, ply, hm_clock, endgame)
+        # Static scores are independent of draw/repetition history and search
+        # windows. Reuse them across iterative-deepening visits, but never cache
+        # a quiescence-search bound as a static score.
+        eval_key = (wm, wk, bm, bk)
+        score = self._eval_cache.get(eval_key)
+        if score is None:
+            score = _evaluate(wm, wk, bm, bk, True)
+            if len(self._eval_cache) < EVAL_CACHE_MAX:
+                self._eval_cache[eval_key] = score
+        return score if white else -score
 
     # -- board conversion ---------------------------------------------------
 
     @staticmethod
     def _convert(board: BaseBoard) -> tuple[int, int, int, int]:
-        def conv(bb50: int) -> int:
-            out = 0
-            while bb50:
-                lsb = bb50 & -bb50
-                out |= BIT[lsb.bit_length() - 1]
-                bb50 ^= lsb
-            return out
+        conv = CORE_STANDARD.to_ghost
 
         return (
             conv(board.white_men),

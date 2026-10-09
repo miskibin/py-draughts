@@ -7,6 +7,7 @@ from __future__ import annotations
 import numpy as np
 
 from draughts.boards._core import CORE_STANDARD as _CORE
+from draughts.boards._draw import endgame_limits
 from draughts.boards.base import BaseBoard
 from draughts.models import Color
 from draughts.move import Move
@@ -55,12 +56,13 @@ class Board(BaseBoard):
 
     @property
     def is_draw(self) -> bool:
-        return (
+        drawn = (
             self.is_25_moves_rule
             or self.is_threefold_repetition
             or self.is_5_moves_rule
             or self.is_16_moves_rule
         )
+        return drawn and bool(self.legal_moves)
 
     @property
     def is_25_moves_rule(self) -> bool:
@@ -69,23 +71,48 @@ class Board(BaseBoard):
 
     @property
     def is_16_moves_rule(self) -> bool:
-        """Draw after 16 moves in specific endgames (≤4 pieces, ≥3 kings)."""
-        if self.halfmove_clock < 32 or self._popcount(self._all()) > 4:
-            return False
-        return (
-            self._popcount(self.white_kings | self.black_kings) * 2
-            + self._popcount(self.white_men | self.black_men)
-            >= 6
-        )
+        """FMJD 6.3: three pieces including a king against a lone king."""
+        return self._endgame_remaining[0] == 0
 
     @property
     def is_5_moves_rule(self) -> bool:
-        """Draw after 5 moves in specific endgames (≤3 pieces, ≥2 kings)."""
-        if self._popcount(self._all()) > 3:
-            return False
-        return (
-            self._popcount(self.white_kings | self.black_kings) * 2
-            + self._popcount(self.white_men | self.black_men)
-            >= 5
-            and self.halfmove_clock >= 10
-        )
+        """FMJD 6.4: one/two pieces including a king against a lone king."""
+        return self._endgame_remaining[1] == 0
+
+    @property
+    def _endgame_remaining(self) -> tuple[int, int]:
+        """Reconstruct up to 32 plies of material history without push overhead."""
+        if self._all().bit_count() > 4:
+            return -1, -1
+        counts = [
+            self.white_men.bit_count(),
+            self.white_kings.bit_count(),
+            self.black_men.bit_count(),
+            self.black_kings.bit_count(),
+        ]
+        a, b = endgame_limits(*counts)
+        turn = self.turn
+        stack = self._moves_stack
+        for i in range(1, min(32, len(stack)) + 1):
+            move = stack[-i]
+            turn = Color.BLACK if turn == Color.WHITE else Color.WHITE
+            if move.is_promotion:
+                side = 0 if turn == Color.WHITE else 2
+                counts[side] += 1
+                counts[side + 1] -= 1
+            for piece in move.captured_entities:
+                counts[(0 if piece < 0 else 2) + (abs(piece) == 2)] += 1
+            if sum(counts) > 4:
+                break
+            old_a, old_b = endgame_limits(*counts)
+            if old_a >= 0:
+                a = max(0, old_a - i)
+            if old_b >= 0:
+                b = max(0, old_b - i)
+        if self._endgame_start is not None:
+            old_a, old_b = self._endgame_start
+            if old_a >= 0:
+                a = max(0, old_a - len(stack))
+            if old_b >= 0:
+                b = max(0, old_b - len(stack))
+        return a, b
