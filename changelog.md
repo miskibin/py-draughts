@@ -2,6 +2,31 @@
 
 ## Unreleased
 
+- Profile-guided optimizations: bit-mask king rays, direct bitboard FEN
+  parsing, cheaper undo, exact material/PST folding into the trained pattern
+  tables, and a bounded static-evaluation cache. Trained weights are unchanged.
+- International draw fixes: actual threefold positions (including the initial
+  position and longer cycles), correct five/sixteen-move material conditions,
+  clocks surviving man moves/captures, and terminal wins taking precedence.
+- TurboEngine now recognizes terminal positions at the quiescence horizon,
+  searches forced moves when an evaluation is requested, preserves draw clocks
+  in threat extensions, and checks time more frequently. Transposition scores
+  include draw/repetition context, normalize mate distance, and retain the
+  requested depth before forced-reply extensions. Only exact partial root
+  scores can be reused after a timeout. Added killer moves and side-specific
+  history ordering; incompatible 10x10 variants and invalid budgets are rejected.
+- Fixed shared mutable capture lists in quiet moves and truncated malformed
+  black-piece FEN lists; explicit capture notation must match the complete
+  ordered path. Benchmark results accept raw/wrapped FENs and respect variant wins, wins on
+  the last allowed ply, Black-to-move openings, and illegal-move errors.
+- Added 50 regression cases, repeatable profiling/microbenchmark tooling and
+  paired opening matches with relative Elo and a pair-bootstrap interval.
+  See `docs/source/performance_review.rst` and `benchmarks/review-2026-10-08/`
+  for measured results and their limits.
+  The held-out 600-game match at 0.1 s/move measured **+63.2 relative Elo**
+  (pair-bootstrap 95% interval +40.7 to +86.3) against `b8c867f6`; this is
+  not an absolute rating.
+
 ## 1.9.1
 
 Bug fixes:

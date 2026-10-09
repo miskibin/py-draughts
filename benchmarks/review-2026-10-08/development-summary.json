@@ -1,0 +1,252 @@
+[
+  {
+    "experiment": "development-match",
+    "meta": {
+      "seed": 73017,
+      "depth": null,
+      "time_limit": 0.03,
+      "workers": 6,
+      "max_plies": 300,
+      "python": "3.12.14",
+      "platform": "Linux-6.18.44-x86_64-with-glibc2.39",
+      "elapsed_s": 36.72283557399351,
+      "engine_sha256": [
+        "fb2553956886932bbc5043164c5f7232c6c7486d921e709f71a08f671649eef8",
+        "fe7bf4170513ff0212a19bf0eb7d6c91f7efa1773dcdf3ae935e3df8d07f1012"
+      ],
+      "weights_sha256": [
+        "1f776dc45be3dd0bf81e11dd5691c8500f6183e250af6c4d8a7b91521513925e",
+        "1f776dc45be3dd0bf81e11dd5691c8500f6183e250af6c4d8a7b91521513925e"
+      ],
+      "rating": "relative to frozen baseline; NOT absolute or FMJD Elo"
+    },
+    "summary": {
+      "pairs": 30,
+      "games": 60,
+      "wins": 15,
+      "draws": 16,
+      "losses": 29,
+      "score": 0.38333333333333336,
+      "relative_elo": -82.58955521976084,
+      "elo_95_ci": [
+        -168.4021250962924,
+        0.0
+      ],
+      "interval": "20,000 opening-pair bootstrap resamples; Hoeffding fallback if degenerate",
+      "positive_gain_at_95_percent": false,
+      "terminations": {
+        "0-1": 26,
+        "1-0": 18,
+        "1/2-1/2": 16
+      },
+      "seconds": [
+        87.40829996415414,
+        106.57166028123174
+      ],
+      "nodes": [
+        11998973,
+        15076315
+      ]
+    }
+  },
+  {
+    "experiment": "development-match-v2",
+    "meta": {
+      "seed": 73017,
+      "depth": null,
+      "time_limit": 0.03,
+      "workers": 6,
+      "max_plies": 300,
+      "python": "3.12.14",
+      "platform": "Linux-6.18.44-x86_64-with-glibc2.39",
+      "elapsed_s": 39.5779817319999,
+      "engine_sha256": [
+        "6d0f344632e32a242e1d746fb0dc360cc3a7debdcd3fd31d2eeff5effde55c4e",
+        "fe7bf4170513ff0212a19bf0eb7d6c91f7efa1773dcdf3ae935e3df8d07f1012"
+      ],
+      "weights_sha256": [
+        "1f776dc45be3dd0bf81e11dd5691c8500f6183e250af6c4d8a7b91521513925e",
+        "1f776dc45be3dd0bf81e11dd5691c8500f6183e250af6c4d8a7b91521513925e"
+      ],
+      "rating": "relative to frozen baseline; NOT absolute or FMJD Elo"
+    },
+    "summary": {
+      "pairs": 30,
+      "games": 60,
+      "wins": 22,
+      "draws": 19,
+      "losses": 19,
+      "score": 0.525,
+      "relative_elo": 17.386277512436138,
+      "elo_95_ci": [
+        -52.51156585572756,
+        88.73949984654254
+      ],
+      "interval": "20,000 opening-pair bootstrap resamples; Hoeffding fallback if degenerate",
+      "positive_gain_at_95_percent": false,
+      "terminations": {
+        "0-1": 20,
+        "1-0": 21,
+        "1/2-1/2": 19
+      },
+      "seconds": [
+        94.55989885189047,
+        121.78084910198231
+      ],
+      "nodes": [
+        11420225,
+        14235779
+      ]
+    }
+  },
+  {
+    "experiment": "development-depth5",
+    "meta": {
+      "seed": 73017,
+      "depth": 5,
+      "time_limit": null,
+      "workers": 2,
+      "max_plies": 300,
+      "python": "3.12.14",
+      "platform": "Linux-6.18.44-x86_64-with-glibc2.39",
+      "elapsed_s": 262.20500790901133,
+      "engine_sha256": [
+        "72b5bbf0462904cd4b90a161c98d1667899aba07e2d1852f1790ff17e4979b19",
+        "fe7bf4170513ff0212a19bf0eb7d6c91f7efa1773dcdf3ae935e3df8d07f1012"
+      ],
+      "weights_sha256": [
+        "1f776dc45be3dd0bf81e11dd5691c8500f6183e250af6c4d8a7b91521513925e",
+        "1f776dc45be3dd0bf81e11dd5691c8500f6183e250af6c4d8a7b91521513925e"
+      ],
+      "rating": "relative to frozen baseline; NOT absolute or FMJD Elo"
+    },
+    "summary": {
+      "pairs": 20,
+      "games": 40,
+      "wins": 18,
+      "draws": 11,
+      "losses": 11,
+      "score": 0.5875,
+      "relative_elo": 61.433567223132,
+      "elo_95_ci": [
+        -26.106692605036592,
+        147.19071411783773
+      ],
+      "interval": "20,000 opening-pair bootstrap resamples; Hoeffding fallback if degenerate",
+      "positive_gain_at_95_percent": false,
+      "terminations": {
+        "0-1": 14,
+        "1-0": 15,
+        "1/2-1/2": 11
+      },
+      "seconds": [
+        241.9982424644695,
+        256.96047947288025
+      ],
+      "nodes": [
+        30933505,
+        31258794
+      ]
+    }
+  },
+  {
+    "experiment": "development-match-v3",
+    "meta": {
+      "seed": 73017,
+      "depth": null,
+      "time_limit": 0.1,
+      "workers": 6,
+      "max_plies": 300,
+      "python": "3.12.14",
+      "platform": "Linux-6.18.44-x86_64-with-glibc2.39",
+      "elapsed_s": 160.46504929500225,
+      "engine_sha256": [
+        "72b5bbf0462904cd4b90a161c98d1667899aba07e2d1852f1790ff17e4979b19",
+        "fe7bf4170513ff0212a19bf0eb7d6c91f7efa1773dcdf3ae935e3df8d07f1012"
+      ],
+      "weights_sha256": [
+        "1f776dc45be3dd0bf81e11dd5691c8500f6183e250af6c4d8a7b91521513925e",
+        "1f776dc45be3dd0bf81e11dd5691c8500f6183e250af6c4d8a7b91521513925e"
+      ],
+      "rating": "relative to frozen baseline; NOT absolute or FMJD Elo"
+    },
+    "summary": {
+      "pairs": 40,
+      "games": 80,
+      "wins": 28,
+      "draws": 31,
+      "losses": 21,
+      "score": 0.54375,
+      "relative_elo": 30.478556999265027,
+      "elo_95_ci": [
+        -21.74306492903708,
+        84.12214383471319
+      ],
+      "interval": "20,000 opening-pair bootstrap resamples; Hoeffding fallback if degenerate",
+      "positive_gain_at_95_percent": false,
+      "terminations": {
+        "0-1": 29,
+        "1-0": 20,
+        "1/2-1/2": 31
+      },
+      "seconds": [
+        419.6155928296939,
+        449.9180100722442
+      ],
+      "nodes": [
+        58445712,
+        58918459
+      ]
+    }
+  },
+  {
+    "experiment": "development-match-v4",
+    "meta": {
+      "seed": 73017,
+      "depth": null,
+      "time_limit": 0.1,
+      "workers": 6,
+      "max_plies": 300,
+      "python": "3.12.14",
+      "platform": "Linux-6.18.44-x86_64-with-glibc2.39",
+      "elapsed_s": 153.13117690299987,
+      "engine_sha256": [
+        "f405f18a203b837f4f88adab0d0ddc89baf50587bae395f8f8336bfa2eacf13d",
+        "fe7bf4170513ff0212a19bf0eb7d6c91f7efa1773dcdf3ae935e3df8d07f1012"
+      ],
+      "weights_sha256": [
+        "1f776dc45be3dd0bf81e11dd5691c8500f6183e250af6c4d8a7b91521513925e",
+        "1f776dc45be3dd0bf81e11dd5691c8500f6183e250af6c4d8a7b91521513925e"
+      ],
+      "rating": "relative to frozen baseline; NOT absolute or FMJD Elo"
+    },
+    "summary": {
+      "pairs": 40,
+      "games": 80,
+      "wins": 32,
+      "draws": 24,
+      "losses": 24,
+      "score": 0.55,
+      "relative_elo": 34.860070287560106,
+      "elo_95_ci": [
+        -21.74306492903708,
+        93.38774485619935
+      ],
+      "interval": "20,000 opening-pair bootstrap resamples; Hoeffding fallback if degenerate",
+      "positive_gain_at_95_percent": false,
+      "terminations": {
+        "0-1": 31,
+        "1-0": 25,
+        "1/2-1/2": 24
+      },
+      "seconds": [
+        410.56769115936186,
+        439.71706991239625
+      ],
+      "nodes": [
+        55677084,
+        57148892
+      ]
+    }
+  }
+]

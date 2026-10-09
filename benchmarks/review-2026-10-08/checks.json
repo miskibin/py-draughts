@@ -1,0 +1,22 @@
+{
+  "baseline_commit": "b8c867f6ac047030bac693511f87ff3217ed58cf",
+  "engine_commit": "7e73ad7",
+  "tests": "607 passed, 9 skipped",
+  "new_regression_cases": 50,
+  "skipped_reason": "Patched external Scan oracle is not installed",
+  "lint": "ruff check . passed",
+  "format": "ruff format --check . passed",
+  "types": "mypy draughts --ignore-missing-imports passed",
+  "package": "wheel and sdist built; draw module and weights present in wheel",
+  "docs": "HTML build with sphinx_sitemap disabled locally because the runner blocks its IPC socket",
+  "elo_gain": 63.22726196896345,
+  "elo_95_ci": [
+    40.719573240014974,
+    86.27318984622599
+  ],
+  "capped_games": 3,
+  "cap_sensitivity_elo": [
+    61.433567223132,
+    65.02429664245845
+  ]
+}

@@ -36,9 +36,6 @@ class Move:
         "_is_king_move",
     )
 
-    # Singleton empty list to avoid creating new empty lists for simple moves
-    _EMPTY_LIST: list = []
-
     def __init__(
         self,
         visited_squares: list[int],
@@ -56,8 +53,8 @@ class Move:
             is_promotion: Whether the move results in promotion.
         """
         self.square_list = visited_squares
-        self.captured_list = captured_list if captured_list else Move._EMPTY_LIST
-        self.captured_entities = captured_entities if captured_entities else Move._EMPTY_LIST
+        self.captured_list = captured_list if captured_list is not None else []
+        self.captured_entities = captured_entities if captured_entities is not None else []
         self.is_promotion = is_promotion
         self.halfmove_clock = 0
         self._len = len(captured_list) + 1 if captured_list else 1
@@ -163,7 +160,19 @@ class Move:
 
         move_obj = Move([int(step) - 1 for step in steps])
         legal_moves = list(legal_moves)
-        matches = [legal_move for legal_move in legal_moves if legal_move == move_obj]
+        # Endpoint-only notation may abbreviate a capture. Once intermediate
+        # squares are supplied they describe an exact ordered path; permissive
+        # Move.__eq__ also accepts reordered/repeated/subset paths and must not
+        # be used to validate that explicit notation.
+        matches = [
+            legal_move
+            for legal_move in legal_moves
+            if (
+                legal_move.square_list == move_obj.square_list
+                if len(move_obj.square_list) > 2
+                else legal_move == move_obj
+            )
+        ]
         if len(matches) == 1:
             return matches[0]
         if not matches:

@@ -177,4 +177,5 @@ Variants
    :caption: Reference
 
    benchmarking
+   performance_review
    comparison

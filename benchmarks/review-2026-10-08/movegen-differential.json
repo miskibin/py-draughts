@@ -1,0 +1,12 @@
+{
+  "seed": 20261008,
+  "checks": {
+    "CORE_STANDARD": 1000,
+    "CORE_RUSSIAN": 1000,
+    "CORE_BRAZILIAN": 1000,
+    "CORE_AMERICAN": 1000
+  },
+  "mismatches": 0,
+  "elapsed_s": 0.11153254899545573,
+  "method": "Exact raw move/path/promotion-list comparison against frozen baseline _core on random mixed man/king positions; not an external rules oracle"
+}
