@@ -1,0 +1,532 @@
+<!doctype html>
+<html class="no-js" lang="en" data-content_root="./">
+  <head><meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <meta name="color-scheme" content="light dark"><meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta property="og:title" content="October 2026 performance and engine review" />
+<meta property="og:type" content="website" />
+<meta property="og:url" content="https://miskibin.github.io/py-draughts/performance_review.html" />
+<meta property="og:site_name" content="py-draughts" />
+<meta property="og:description" content="This review compares the repository baseline b8c867f6 with the reviewed engine in 7e73ad7. The shipped trained weights were not retrained or changed. The scope is board operations, international se..." />
+<meta property="og:image" content="https://miskibin.github.io/py-draughts/_static/speed_comparison.png" />
+<meta property="og:image:alt" content="py-draughts vs pydraughts speed comparison — up to 460x faster" />
+<meta name="description" content="This review compares the repository baseline b8c867f6 with the reviewed engine in 7e73ad7. The shipped trained weights were not retrained or changed. The scope is board operations, international se..." />
+<meta name="keywords" content="draughts, checkers, python, international draughts, frisian draughts, russian draughts, brazilian draughts, american checkers, antidraughts, breakthrough, frysk, bitboard, pdn, fen, alpha-beta, hub protocol, game engine, board game ai, pydraughts alternative">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="index" title="Index" href="genindex.html"><link rel="search" title="Search" href="search.html"><link rel="next" title="py-draughts vs pydraughts" href="comparison.html"><link rel="prev" title="Benchmarking (Internal)" href="benchmarking.html">
+        <link rel="canonical" href="https://miskibin.github.io/py-draughts/performance_review.html">
+
+    <!-- Generated with Sphinx 9.1.0 and Furo 2025.12.19 -->
+        <title>October 2026 performance and engine review - py-draughts 1.9.1</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=d75fae25" />
+    <link rel="stylesheet" type="text/css" href="_static/styles/furo.css?v=7bdb33bb" />
+    <link rel="stylesheet" type="text/css" href="_static/copybutton.css?v=76b2166b" />
+    <link rel="stylesheet" type="text/css" href="_static/sphinx-design.min.css?v=95c83b7e" />
+    <link rel="stylesheet" type="text/css" href="_static/styles/furo-extensions.css?v=8dab3a3b" />
+    <link rel="stylesheet" type="text/css" href="_static/custom.css?v=c354dfeb" />
+    
+    
+
+
+<style>
+  body {
+    --color-code-background: #f0f0f0;
+  --color-code-foreground: black;
+  --color-brand-primary: #0f766e;
+  --color-brand-content: #0f766e;
+  --color-brand-visited: #0f766e;
+  --font-stack: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-stack--monospace: 'JetBrains Mono', 'Fira Code', SFMono-Regular, Menlo, Consolas, monospace;
+  --color-admonition-background: transparent;
+  
+  }
+  @media not print {
+    body[data-theme="dark"] {
+      --color-code-background: #272822;
+  --color-code-foreground: #f8f8f2;
+  --color-brand-primary: #2dd4bf;
+  --color-brand-content: #2dd4bf;
+  --color-brand-visited: #2dd4bf;
+  
+    }
+    @media (prefers-color-scheme: dark) {
+      body:not([data-theme="light"]) {
+        --color-code-background: #272822;
+  --color-code-foreground: #f8f8f2;
+  --color-brand-primary: #2dd4bf;
+  --color-brand-content: #2dd4bf;
+  --color-brand-visited: #2dd4bf;
+  
+      }
+    }
+  }
+</style></head>
+  <body>
+    
+    <script>
+      document.body.dataset.theme = localStorage.getItem("theme") || "auto";
+    </script>
+    
+
+<svg xmlns="http://www.w3.org/2000/svg" style="display: none;">
+  <symbol id="svg-toc" viewBox="0 0 24 24">
+    <title>Contents</title>
+    <svg stroke="currentColor" fill="currentColor" stroke-width="0" viewBox="0 0 1024 1024">
+      <path d="M408 442h480c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8H408c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8zm-8 204c0 4.4 3.6 8 8 8h480c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8H408c-4.4 0-8 3.6-8 8v56zm504-486H120c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8h784c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8zm0 632H120c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8h784c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8zM115.4 518.9L271.7 642c5.8 4.6 14.4.5 14.4-6.9V388.9c0-7.4-8.5-11.5-14.4-6.9L115.4 505.1a8.74 8.74 0 0 0 0 13.8z"/>
+    </svg>
+  </symbol>
+  <symbol id="svg-menu" viewBox="0 0 24 24">
+    <title>Menu</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather-menu">
+      <line x1="3" y1="12" x2="21" y2="12"></line>
+      <line x1="3" y1="6" x2="21" y2="6"></line>
+      <line x1="3" y1="18" x2="21" y2="18"></line>
+    </svg>
+  </symbol>
+  <symbol id="svg-arrow-right" viewBox="0 0 24 24">
+    <title>Expand</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather-chevron-right">
+      <polyline points="9 18 15 12 9 6"></polyline>
+    </svg>
+  </symbol>
+  <symbol id="svg-sun" viewBox="0 0 24 24">
+    <title>Light mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="feather-sun">
+      <circle cx="12" cy="12" r="5"></circle>
+      <line x1="12" y1="1" x2="12" y2="3"></line>
+      <line x1="12" y1="21" x2="12" y2="23"></line>
+      <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+      <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+      <line x1="1" y1="12" x2="3" y2="12"></line>
+      <line x1="21" y1="12" x2="23" y2="12"></line>
+      <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+      <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+    </svg>
+  </symbol>
+  <symbol id="svg-moon" viewBox="0 0 24 24">
+    <title>Dark mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-moon">
+      <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+      <path d="M12 3c.132 0 .263 0 .393 0a7.5 7.5 0 0 0 7.92 12.446a9 9 0 1 1 -8.313 -12.454z" />
+    </svg>
+  </symbol>
+  <symbol id="svg-sun-with-moon" viewBox="0 0 24 24">
+    <title>Auto light/dark, in light mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round"
+      class="icon-custom-derived-from-feather-sun-and-tabler-moon">
+      <path style="opacity: 50%" d="M 5.411 14.504 C 5.471 14.504 5.532 14.504 5.591 14.504 C 3.639 16.319 4.383 19.569 6.931 20.352 C 7.693 20.586 8.512 20.551 9.25 20.252 C 8.023 23.207 4.056 23.725 2.11 21.184 C 0.166 18.642 1.702 14.949 4.874 14.536 C 5.051 14.512 5.231 14.5 5.411 14.5 L 5.411 14.504 Z"/>
+      <line x1="14.5" y1="3.25" x2="14.5" y2="1.25"/>
+      <line x1="14.5" y1="15.85" x2="14.5" y2="17.85"/>
+      <line x1="10.044" y1="5.094" x2="8.63" y2="3.68"/>
+      <line x1="19" y1="14.05" x2="20.414" y2="15.464"/>
+      <line x1="8.2" y1="9.55" x2="6.2" y2="9.55"/>
+      <line x1="20.8" y1="9.55" x2="22.8" y2="9.55"/>
+      <line x1="10.044" y1="14.006" x2="8.63" y2="15.42"/>
+      <line x1="19" y1="5.05" x2="20.414" y2="3.636"/>
+      <circle cx="14.5" cy="9.55" r="3.6"/>
+    </svg>
+  </symbol>
+  <symbol id="svg-moon-with-sun" viewBox="0 0 24 24">
+    <title>Auto light/dark, in dark mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round"
+      class="icon-custom-derived-from-feather-sun-and-tabler-moon">
+      <path d="M 8.282 7.007 C 8.385 7.007 8.494 7.007 8.595 7.007 C 5.18 10.184 6.481 15.869 10.942 17.24 C 12.275 17.648 13.706 17.589 15 17.066 C 12.851 22.236 5.91 23.143 2.505 18.696 C -0.897 14.249 1.791 7.786 7.342 7.063 C 7.652 7.021 7.965 7 8.282 7 L 8.282 7.007 Z"/>
+      <line style="opacity: 50%" x1="18" y1="3.705" x2="18" y2="2.5"/>
+      <line style="opacity: 50%" x1="18" y1="11.295" x2="18" y2="12.5"/>
+      <line style="opacity: 50%" x1="15.316" y1="4.816" x2="14.464" y2="3.964"/>
+      <line style="opacity: 50%" x1="20.711" y1="10.212" x2="21.563" y2="11.063"/>
+      <line style="opacity: 50%" x1="14.205" y1="7.5" x2="13.001" y2="7.5"/>
+      <line style="opacity: 50%" x1="21.795" y1="7.5" x2="23" y2="7.5"/>
+      <line style="opacity: 50%" x1="15.316" y1="10.184" x2="14.464" y2="11.036"/>
+      <line style="opacity: 50%" x1="20.711" y1="4.789" x2="21.563" y2="3.937"/>
+      <circle style="opacity: 50%" cx="18" cy="7.5" r="2.169"/>
+    </svg>
+  </symbol>
+  <symbol id="svg-pencil" viewBox="0 0 24 24">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-pencil-code">
+      <path d="M4 20h4l10.5 -10.5a2.828 2.828 0 1 0 -4 -4l-10.5 10.5v4" />
+      <path d="M13.5 6.5l4 4" />
+      <path d="M20 21l2 -2l-2 -2" />
+      <path d="M17 17l-2 2l2 2" />
+    </svg>
+  </symbol>
+  <symbol id="svg-eye" viewBox="0 0 24 24">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-eye-code">
+      <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+      <path d="M10 12a2 2 0 1 0 4 0a2 2 0 0 0 -4 0" />
+      <path
+        d="M11.11 17.958c-3.209 -.307 -5.91 -2.293 -8.11 -5.958c2.4 -4 5.4 -6 9 -6c3.6 0 6.6 2 9 6c-.21 .352 -.427 .688 -.647 1.008" />
+      <path d="M20 21l2 -2l-2 -2" />
+      <path d="M17 17l-2 2l2 2" />
+    </svg>
+  </symbol>
+</svg>
+
+<input type="checkbox" class="sidebar-toggle" name="__navigation" id="__navigation" aria-label="Toggle site navigation sidebar">
+<input type="checkbox" class="sidebar-toggle" name="__toc" id="__toc" aria-label="Toggle table of contents sidebar">
+<label class="overlay sidebar-overlay" for="__navigation"></label>
+<label class="overlay toc-overlay" for="__toc"></label>
+
+<a class="skip-to-content muted-link" href="#furo-main-content">Skip to content</a>
+
+
+
+<div class="page">
+  <header class="mobile-header">
+    <div class="header-left">
+      <label class="nav-overlay-icon" for="__navigation">
+        <span class="icon"><svg><use href="#svg-menu"></use></svg></span>
+      </label>
+    </div>
+    <div class="header-center">
+      <a href="index.html"><div class="brand">py-draughts 1.9.1</div></a>
+    </div>
+    <div class="header-right">
+      <div class="theme-toggle-container theme-toggle-header">
+        <button class="theme-toggle" aria-label="Toggle Light / Dark / Auto color theme">
+          <svg class="theme-icon-when-auto-light"><use href="#svg-sun-with-moon"></use></svg>
+          <svg class="theme-icon-when-auto-dark"><use href="#svg-moon-with-sun"></use></svg>
+          <svg class="theme-icon-when-dark"><use href="#svg-moon"></use></svg>
+          <svg class="theme-icon-when-light"><use href="#svg-sun"></use></svg>
+        </button>
+      </div>
+      <label class="toc-overlay-icon toc-header-icon" for="__toc">
+        <span class="icon"><svg><use href="#svg-toc"></use></svg></span>
+      </label>
+    </div>
+  </header>
+  <aside class="sidebar-drawer">
+    <div class="sidebar-container">
+      
+      <div class="sidebar-sticky"><a class="sidebar-brand" href="index.html">
+  
+  <span class="sidebar-brand-text">py-draughts 1.9.1</span>
+  
+</a><form class="sidebar-search-container" method="get" action="search.html" role="search">
+  <input class="sidebar-search" placeholder="Search" name="q" aria-label="Search">
+  <input type="hidden" name="check_keywords" value="yes">
+  <input type="hidden" name="area" value="default">
+</form>
+<div id="searchbox"></div><div class="sidebar-scroll"><div class="sidebar-tree">
+  <p class="caption" role="heading"><span class="caption-text">Guide</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="core.html">Core API</a></li>
+<li class="toctree-l1"><a class="reference internal" href="engine.html">Engine</a></li>
+<li class="toctree-l1"><a class="reference internal" href="ai.html">Writing Your Own AI</a></li>
+<li class="toctree-l1"><a class="reference internal" href="svg.html">SVG Rendering</a></li>
+<li class="toctree-l1"><a class="reference internal" href="server.html">Server</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Reference</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="benchmarking.html">Benchmarking (Internal)</a></li>
+<li class="toctree-l1 current current-page"><a class="current reference internal" href="#">October 2026 performance and engine review</a></li>
+<li class="toctree-l1"><a class="reference internal" href="comparison.html">py-draughts vs pydraughts</a></li>
+</ul>
+
+</div>
+</div>
+
+      </div>
+      
+    </div>
+  </aside>
+  <div class="main">
+    <div class="content">
+      <div class="article-container">
+        <a href="#" class="back-to-top muted-link">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+            <path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8v12z"></path>
+          </svg>
+          <span>Back to top</span>
+        </a>
+        <div class="content-icon-container">
+          <div class="view-this-page">
+  <a class="muted-link" href="https://github.com/miskibin/py-draughts/blob/main/docs/source/performance_review.rst?plain=true" title="View this page">
+    <svg><use href="#svg-eye"></use></svg>
+    <span class="visually-hidden">View this page</span>
+  </a>
+</div><div class="edit-this-page">
+  <a class="muted-link" href="https://github.com/miskibin/py-draughts/edit/main/docs/source/performance_review.rst" rel="edit" title="Edit this page">
+    <svg><use href="#svg-pencil"></use></svg>
+    <span class="visually-hidden">Edit this page</span>
+  </a>
+</div><div class="theme-toggle-container theme-toggle-content">
+            <button class="theme-toggle" aria-label="Toggle Light / Dark / Auto color theme">
+              <svg class="theme-icon-when-auto-light"><use href="#svg-sun-with-moon"></use></svg>
+              <svg class="theme-icon-when-auto-dark"><use href="#svg-moon-with-sun"></use></svg>
+              <svg class="theme-icon-when-dark"><use href="#svg-moon"></use></svg>
+              <svg class="theme-icon-when-light"><use href="#svg-sun"></use></svg>
+            </button>
+          </div>
+          <label class="toc-overlay-icon toc-content-icon" for="__toc">
+            <span class="icon"><svg><use href="#svg-toc"></use></svg></span>
+          </label>
+        </div>
+        <article role="main" id="furo-main-content">
+          <section id="october-2026-performance-and-engine-review">
+<h1>October 2026 performance and engine review<a class="headerlink" href="#october-2026-performance-and-engine-review" title="Link to this heading">¶</a></h1>
+<p>This review compares the repository baseline <code class="docutils literal notranslate"><span class="pre">b8c867f6</span></code> with the reviewed
+engine in <code class="docutils literal notranslate"><span class="pre">7e73ad7</span></code>. The shipped trained weights were not retrained or changed.
+The scope is board operations, international search, draw adjudication and
+benchmark correctness; this is not a claim that every possible library bug
+has been eliminated.</p>
+<section id="performance">
+<h2>Performance<a class="headerlink" href="#performance" title="Link to this heading">¶</a></h2>
+<p>Measured with CPython 3.12.14 on an AMD EPYC 9V74 runner. Each number is the
+median of nine repetitions over eleven fixed positions, with 2,000 loops per
+repetition. Imports/setup are excluded; baseline and candidate runs were
+sequential, before the parallel strength tournament. These are local benchmark
+results, not universal hardware-independent speed claims.</p>
+<div class="table-wrapper docutils container" id="id1">
+<table class="docutils align-default" id="id1">
+<caption><span class="caption-text">Median microseconds per operation</span><a class="headerlink" href="#id1" title="Link to this table">¶</a></caption>
+<thead>
+<tr class="row-odd"><th class="head"><p>Operation</p></th>
+<th class="head"><p>Before</p></th>
+<th class="head"><p>After</p></th>
+<th class="head"><p>Speedup</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>FEN parsing</p></td>
+<td><p>25.474</p></td>
+<td><p>14.356</p></td>
+<td><p>1.77x</p></td>
+</tr>
+<tr class="row-odd"><td><p>Public legal moves</p></td>
+<td><p>9.215</p></td>
+<td><p>7.145</p></td>
+<td><p>1.29x</p></td>
+</tr>
+<tr class="row-even"><td><p>Push + pop</p></td>
+<td><p>1.618</p></td>
+<td><p>1.256</p></td>
+<td><p>1.29x</p></td>
+</tr>
+<tr class="row-odd"><td><p>Board features</p></td>
+<td><p>11.108</p></td>
+<td><p>8.822</p></td>
+<td><p>1.26x</p></td>
+</tr>
+<tr class="row-even"><td><p>Static evaluation</p></td>
+<td><p>4.062</p></td>
+<td><p>2.119</p></td>
+<td><p>1.92x</p></td>
+</tr>
+<tr class="row-odd"><td><p>Internal capture generation</p></td>
+<td><p>3.825</p></td>
+<td><p>1.858</p></td>
+<td><p>2.06x</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>The complete depth-six search workload is deliberately also reported:
+<strong>0.594 s / 74,428 nodes before</strong>, versus <strong>0.628 s / 91,946 nodes after</strong>.
+That is about <strong>5.8% more elapsed time</strong>, <strong>23.5% more nodes</strong>, and
+<strong>16.7% higher node throughput</strong> (125,369 to 146,348 nodes/s).
+The search semantics changed: corrected terminal/draw handling, safe
+transposition depth/context and move ordering produce different trees. A
+fixed-depth stopwatch alone therefore does not establish playing strength.</p>
+<p>The baseline cProfile run identified static evaluation and flying-king ray
+scanning as major hot spots. Material/PST values are now folded into the
+existing pattern tables exactly, king capture scans use ray masks, FEN parsing
+builds bitboards directly, and undo touches only the affected bitboards.
+Static scores are cached separately from context-dependent search bounds.
+Raw repetitions and the top thirty profile rows are retained in
+<code class="docutils literal notranslate"><span class="pre">benchmarks/review-2026-10-08/before.json</span></code> and <code class="docutils literal notranslate"><span class="pre">after.json</span></code>.</p>
+</section>
+<section id="correctness-changes">
+<h2>Correctness changes<a class="headerlink" href="#correctness-changes" title="Link to this heading">¶</a></h2>
+<ul class="simple">
+<li><p>Repetition compares complete positions and the side to move, includes the
+starting position, and handles cycles longer than four plies. It no longer
+infers a draw merely because one player repeated the same move.</p></li>
+<li><p>International five/sixteen-move endings use the correct material conditions.
+Those clocks survive man moves and captures; a terminal win on the final
+allowed ply takes precedence. Copies retain the endgame counters while, as
+before, <code class="docutils literal notranslate"><span class="pre">copy()</span></code> intentionally starts with an empty move history.</p></li>
+<li><p>A blocked or empty side is recognized as lost at a quiescence leaf.
+Requesting an evaluation of a forced move searches its consequences.</p></li>
+<li><p>Threat extensions retain the draw clocks. Transposition entries include
+clock/repetition context, normalize mate distance for the current ply, and
+store the requested search depth before a forced-reply extension.</p></li>
+<li><p>Timeout handling accepts only exact partial root results and resets them on
+every aspiration retry. Fail-high/low bounds are not compared as exact scores.</p></li>
+<li><p>TurboEngine rejects incompatible variants and invalid budgets. Move ordering
+adds two killers per ply and separate history tables for White and Black.</p></li>
+<li><p>Quiet moves no longer share mutable capture lists. Malformed trailing text
+in a black-piece FEN list is rejected instead of silently discarded. Explicit
+capture paths must match the order/length; endpoint abbreviations still work.</p></li>
+<li><p>The benchmark respects variant-specific results and wins on its final ply,
+accounts for Black-to-move openings, reports illegal moves as explicit errors,
+accepts both raw and wrapped opening FENs, and reports neutral Elo for an empty result set.</p></li>
+</ul>
+<p>Draw rules were checked against <a class="reference external" href="https://www.fmjd.org/docs/Annex_1.pdf">FMJD Annex 1, articles 6 and 7</a>. Tests cover the relevant material,
+history, capture, promotion, copy and undo cases; they are not a formal proof
+of every reachable game state.</p>
+</section>
+<section id="strength-experiment">
+<h2>Strength experiment<a class="headerlink" href="#strength-experiment" title="Link to this heading">¶</a></h2>
+<p>The final experiment uses <strong>300 distinct openings / 600 games</strong>, each opening
+played with colours reversed. Openings are generated from legal starting
+positions using seed <strong>20261009</strong>, with 4–12 random plies and equal material;
+they are distinct from the development seed <strong>73017</strong>. Both engines receive
+<strong>0.1 seconds per move</strong>, with six workers, fresh engine instances per game,
+and a 300-ply maximum. Both use the corrected current board as referee.
+An engine exception or illegal move aborts the run instead of becoming a win.</p>
+<p>The frozen baseline checks its deadline every 2,048 nodes and can overrun the
+budget more than the candidate, which checks every 128 nodes. Actual time
+consumption is retained in the result file. This remaining asymmetry favours
+the baseline; neither implementation is a hard real-time process.</p>
+<p>The candidate scored <strong>239 wins, 230 draws and 131 losses</strong>,
+for <strong>59.0%</strong> of the points. Its estimated gain is <strong>+63.2
+relative Elo</strong>, with an approximate <strong>95% interval of
++40.7 to +86.3</strong>. The interval excludes zero.</p>
+<p>Three games reached the 300-ply cap and were scored as draws; the other
+597 finished under the board rules. Scoring all three capped games as
+candidate losses or all three as candidate wins changes the point estimate
+only to +61.4 / +65.0 Elo, respectively.</p>
+<p>Actual engine time summed to <strong>3211.5 s for the candidate</strong> and
+<strong>3471.3 s for the baseline</strong>; the baseline used
+8.1% more time. No engine errors or illegal
+moves occurred. The full fixed-size tournament took 18.9
+minutes of wall time.
+Raw per-game moves, final FENs, time, node counts, source/weight SHA-256 hashes
+and the aggregate result live in <code class="docutils literal notranslate"><span class="pre">benchmarks/review-2026-10-08/holdout.json</span></code>.</p>
+<p>Relative Elo is <code class="docutils literal notranslate"><span class="pre">400</span> <span class="pre">*</span> <span class="pre">log10(p</span> <span class="pre">/</span> <span class="pre">(1</span> <span class="pre">-</span> <span class="pre">p))</span></code>, where <code class="docutils literal notranslate"><span class="pre">p</span></code> is wins plus half
+the draws, divided by games. The approximate 95% interval resamples whole
+opening pairs 20,000 times, keeping the two correlated colour games together.
+This is strength relative to this baseline at this time control and opening
+distribution, <strong>not an absolute FMJD, online, or human-player rating</strong>.
+Small development matches guided implementation and are not included in the
+final confidence interval.</p>
+</section>
+<section id="validation-and-reproduction">
+<h2>Validation and reproduction<a class="headerlink" href="#validation-and-reproduction" title="Link to this heading">¶</a></h2>
+<ul class="simple">
+<li><p>607 tests passed; 9 existing Scan-oracle tests were skipped because the
+patched external binary is unavailable. There are 50 added regression cases.</p></li>
+<li><p>Ruff lint, Ruff formatting and mypy passed. Both wheel and sdist built; the
+wheel contains the new draw module and trained weights. The HTML docs built
+with sitemap generation disabled locally because its IPC socket is blocked
+in this runner.</p></li>
+<li><p>An additional exact comparison of 4,000 random mixed man/king positions
+against the frozen move core found zero differences, across International,
+Russian, Brazilian and American rules. This is a differential check, not
+an independent external rules oracle.</p></li>
+</ul>
+<p>From a checkout of the reviewed branch:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">git</span> <span class="n">worktree</span> <span class="n">add</span> <span class="o">--</span><span class="n">detach</span> <span class="o">../</span><span class="n">py</span><span class="o">-</span><span class="n">draughts</span><span class="o">-</span><span class="n">baseline</span> <span class="n">b8c867f6ac047030bac693511f87ff3217ed58cf</span>
+<span class="n">python</span> <span class="o">-</span><span class="n">m</span> <span class="n">pip</span> <span class="n">install</span> <span class="o">-</span><span class="n">e</span> <span class="s1">'.[dev]'</span>
+<span class="n">python</span> <span class="o">-</span><span class="n">m</span> <span class="n">pytest</span> <span class="n">test</span><span class="o">/</span> <span class="o">-</span><span class="n">q</span>
+<span class="n">python</span> <span class="o">-</span><span class="n">m</span> <span class="n">ruff</span> <span class="n">check</span> <span class="o">.</span>
+<span class="n">python</span> <span class="o">-</span><span class="n">m</span> <span class="n">ruff</span> <span class="nb">format</span> <span class="o">--</span><span class="n">check</span> <span class="o">.</span>
+<span class="n">python</span> <span class="o">-</span><span class="n">m</span> <span class="n">mypy</span> <span class="n">draughts</span> <span class="o">--</span><span class="n">ignore</span><span class="o">-</span><span class="n">missing</span><span class="o">-</span><span class="n">imports</span>
+<span class="n">python</span> <span class="n">tools</span><span class="o">/</span><span class="n">review_performance</span><span class="o">.</span><span class="n">py</span> <span class="o">--</span><span class="n">root</span> <span class="o">../</span><span class="n">py</span><span class="o">-</span><span class="n">draughts</span><span class="o">-</span><span class="n">baseline</span> <span class="o">--</span><span class="n">out</span> <span class="n">before</span><span class="o">.</span><span class="n">json</span>
+<span class="n">python</span> <span class="n">tools</span><span class="o">/</span><span class="n">review_performance</span><span class="o">.</span><span class="n">py</span> <span class="o">--</span><span class="n">root</span> <span class="o">.</span> <span class="o">--</span><span class="n">out</span> <span class="n">after</span><span class="o">.</span><span class="n">json</span>
+<span class="n">python</span> <span class="n">tools</span><span class="o">/</span><span class="n">compare_turbo</span><span class="o">.</span><span class="n">py</span> <span class="o">--</span><span class="n">baseline</span> <span class="o">../</span><span class="n">py</span><span class="o">-</span><span class="n">draughts</span><span class="o">-</span><span class="n">baseline</span> \
+    <span class="o">--</span><span class="n">pairs</span> <span class="mi">300</span> <span class="o">--</span><span class="n">time</span> <span class="mf">0.1</span> <span class="o">--</span><span class="n">workers</span> <span class="mi">6</span> <span class="o">--</span><span class="n">seed</span> <span class="mi">20261009</span> <span class="o">--</span><span class="n">out</span> <span class="n">holdout</span><span class="o">.</span><span class="n">json</span>
+</pre></div>
+</div>
+<p>Timed matches fluctuate with machine load and scheduling. Fixed-depth games
+are also available with <code class="docutils literal notranslate"><span class="pre">--depth</span> <span class="pre">5</span></code> in place of <code class="docutils literal notranslate"><span class="pre">--time</span> <span class="pre">0.1</span></code>, but they
+answer a different resource-budget question.</p>
+</section>
+</section>
+
+        </article>
+      </div>
+      <footer>
+        
+        <div class="related-pages">
+          <a class="next-page" href="comparison.html">
+              <div class="page-info">
+                <div class="context">
+                  <span>Next</span>
+                </div>
+                <div class="title">py-draughts vs pydraughts</div>
+              </div>
+              <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
+            </a>
+          <a class="prev-page" href="benchmarking.html">
+              <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
+              <div class="page-info">
+                <div class="context">
+                  <span>Previous</span>
+                </div>
+                
+                <div class="title">Benchmarking (Internal)</div>
+                
+              </div>
+            </a>
+        </div>
+        <div class="bottom-of-page">
+          <div class="left-details">
+            <div class="copyright">
+                Copyright &#169; 2023-2026, Michał Skibiński
+            </div>
+            Made with 
+            <a href="https://github.com/pradyunsg/furo">Furo</a>
+            
+          </div>
+          <div class="right-details">
+            <div class="icons">
+              <a class="muted-link " href="https://github.com/miskibin/py-draughts" aria-label="GitHub">
+                <svg stroke="currentColor" fill="currentColor" stroke-width="0" viewBox="0 0 16 16">
+                    <path fill-rule="evenodd" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0 0 16 8c0-4.42-3.58-8-8-8z"></path>
+                </svg>
+            </a>
+              <a class="muted-link " href="https://pypi.org/project/py-draughts/" aria-label="PyPI"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm-1.7 4.5h3.4v9h-3.4v-9zm0 11h3.4v3.4h-3.4v-3.4z"/></svg></a>
+              
+            </div>
+          </div>
+        </div>
+        
+      </footer>
+    </div>
+    <aside class="toc-drawer">
+      
+      
+      <div class="toc-sticky toc-scroll">
+        <div class="toc-title-container">
+          <span class="toc-title">
+            On this page
+          </span>
+        </div>
+        <div class="toc-tree-container">
+          <div class="toc-tree">
+            <ul>
+<li><a class="reference internal" href="#">October 2026 performance and engine review</a><ul>
+<li><a class="reference internal" href="#performance">Performance</a></li>
+<li><a class="reference internal" href="#correctness-changes">Correctness changes</a></li>
+<li><a class="reference internal" href="#strength-experiment">Strength experiment</a></li>
+<li><a class="reference internal" href="#validation-and-reproduction">Validation and reproduction</a></li>
+</ul>
+</li>
+</ul>
+
+          </div>
+        </div>
+      </div>
+      
+      
+    </aside>
+  </div>
+</div><script src="_static/documentation_options.js?v=13acaba6"></script>
+    <script src="_static/doctools.js?v=fd6eb6e6"></script>
+    <script src="_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="_static/scripts/furo.js?v=46bd48cc"></script>
+    <script src="_static/clipboard.min.js?v=a7894cd8"></script>
+    <script src="_static/copybutton.js?v=30646c52"></script>
+    <script src="_static/design-tabs.js?v=f930bc37"></script>
+    </body>
+</html>
