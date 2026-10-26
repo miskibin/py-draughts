@@ -438,7 +438,14 @@ Scan it falls back to the built-in engine as a weaker teacher.
 
 ## [Server](https://miskibin.github.io/py-draughts/server.html)
 
-Interactive web interface for playing and engine testing:
+Interactive web interface for playing and engine testing. Run just the UI
+with one command, then open http://localhost:8000:
+
+```bash
+uvx --from py-draughts draughts-server   # or: pip install py-draughts && draughts-server
+```
+
+Options: `--port 8080`, `--host 0.0.0.0`, `--depth 8`. Or embed it in Python:
 
 ```python
 from draughts import StandardBoard, Server, SimpleEngine

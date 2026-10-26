@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "py-draughts"
-version = "1.10.0"
+version = "1.10.1"
 description = "Fastest Python draughts / checkers library (import: draughts). Bitboard move generation ~200x faster than pydraughts. PDN/FEN, alpha-beta engine, HUB protocol, web UI. 8 variants: International, American, Frisian, Russian, Brazilian, Antidraughts, Breakthrough, Frysk!"
 readme = "readme.md"
 license = {file = "LICENSE"}
@@ -63,6 +63,9 @@ dependencies = [
     "httpx>=0.28.1",
     "requests>=2.32.5",
 ]
+
+[project.scripts]
+draughts-server = "draughts.server.__main__:main"
 
 [project.urls]
 Homepage = "https://github.com/miskibin/py-draughts"

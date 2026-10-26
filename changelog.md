@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.10.1
+
+- New `draughts-server` command to start the web UI in one line:
+  `uvx --from py-draughts draughts-server`.
+
 ## 1.10.0
 
 - Replaced the web UI with a responsive draughts workspace (documented with

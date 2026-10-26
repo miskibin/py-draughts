@@ -41,9 +41,17 @@ Quick Start
 Command Line
 ~~~~~~~~~~~~
 
-Start directly from terminal::
+Run just the UI with one command (no project setup needed), then open
+http://localhost:8000::
 
-    python -m draughts.server.server
+    uvx --from py-draughts draughts-server
+
+Or after ``pip install py-draughts``::
+
+    draughts-server              # same as: python -m draughts.server
+
+Options: ``--port 8080``, ``--host 0.0.0.0`` (expose on the network),
+``--depth 8`` (SimpleEngine search depth).
 
 Engine Matches
 --------------
