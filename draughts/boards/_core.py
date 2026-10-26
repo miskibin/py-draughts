@@ -352,6 +352,17 @@ class MoveGen:
                     kb ^= frm
                     frm_sq = b2s[frm.bit_length() - 1]
                     man_dfs(frm, enemy, all_p ^ frm, all_dirs, 0, [frm_sq], [], out)
+            if len(out) > 1:
+                # Chains with the same origin, destination and captured set are
+                # one move (e.g. a king's circular capture run either way round).
+                seen = set()
+                uniq = []
+                for m in out:
+                    key = (m[0][0], m[0][-1], frozenset(m[1]))
+                    if key not in seen:
+                        seen.add(key)
+                        uniq.append(m)
+                out = uniq
             return out
 
         def _quiets(wm, wk, bm, bk, white, all_p, empty):
