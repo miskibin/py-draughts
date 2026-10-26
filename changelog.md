@@ -1,7 +1,9 @@
 # Changelog
 
-## Unreleased
+## 1.10.0
 
+- Replaced the web UI with a responsive draughts workspace (documented with
+  live screenshots).
 - Capture sequences with the same origin, destination and captured pieces
   (e.g. a circular king capture taken either way round) are now generated
   once, fixing inflated perft counts (#56).

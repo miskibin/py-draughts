@@ -25,7 +25,7 @@ import sys
 
 from loguru import logger
 
-__version__ = "1.9.1"
+__version__ = "1.10.0"
 
 # Remove default stderr handler (id=0) - users can add their own with logger.add(sys.stderr)
 try:
