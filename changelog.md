@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Capture sequences with the same origin, destination and captured pieces
+  (e.g. a circular king capture taken either way round) are now generated
+  once, fixing inflated perft counts (#56).
 - Profile-guided optimizations: bit-mask king rays, direct bitboard FEN
   parsing, cheaper undo, exact material/PST folding into the trained pattern
   tables, and a bounded static-evaluation cache. Trained weights are unchanged.

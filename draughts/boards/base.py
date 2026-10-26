@@ -208,6 +208,10 @@ class BaseBoard(ABC):
         """
         All legal moves for the current player.
 
+        Capture sequences that share origin, destination and the set of
+        captured pieces count as a single move, so ``perft`` counts match
+        the standard reference values.
+
         Returns:
             List of :class:`Move` objects representing all legal moves.
 

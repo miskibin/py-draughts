@@ -46,7 +46,7 @@ def perft(board: BaseBoard, depth: int) -> int:
 # the canonical BikDam sequence (9, 81, 658, 4265, 27117, 167140); the 8x8 and
 # american rows were computed from this core and double as regression anchors.
 PERFT_ANCHORS: dict[type[BaseBoard], dict[int, int]] = {
-    StandardBoard: {1: 9, 2: 81, 3: 658, 4: 4265, 5: 27117},
+    StandardBoard: {1: 9, 2: 81, 3: 658, 4: 4265, 5: 27117, 6: 167140},
     AmericanBoard: {1: 7, 2: 49, 3: 379, 4: 2872, 5: 23582},
     RussianBoard: {1: 7, 2: 49, 3: 302, 4: 1469, 5: 7482, 6: 37986},
     BrazilianBoard: {1: 7, 2: 49, 3: 302, 4: 1469, 5: 7473, 6: 37628},
@@ -95,3 +95,12 @@ def test_move_generation_throughput_ceiling() -> None:
         f"(ceiling {THROUGHPUT_CEILING_SECONDS:.0f}s); "
         "a catastrophic move-generation regression is likely"
     )
+
+
+def test_circular_king_capture_not_duplicated() -> None:
+    """Issue #56: a king's circular capture run is one move, not one per direction."""
+    board = StandardBoard.from_fen(
+        "W:W:W20,28,31,32,33,34,36,37,38,40,41,42,43,44,45,46,47,48,49,50"
+        ":B1,2,3,4,5,6,7,8,10,11,12,13,14,15,16,17,19,22,23,24"
+    )
+    assert len(board.legal_moves) == 1
